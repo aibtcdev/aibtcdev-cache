@@ -1,9 +1,10 @@
 {
   "name": "aibtcdev-cache",
+  "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev",
+    "dev": "vite",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
-    "build": "tsc --outDir dist",
+    "build": "vite build",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -11,8 +12,11 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241106.0",
+    "@hono/vite-build": "^1.0.0",
+    "@hono/vite-dev-server": "^0.15.1",
     "@stacks/stacks-blockchain-api-types": "^7.14.1",
     "typescript": "^5.3.2",
+    "vite": "^5.2.12",
     "wrangler": "^3.83.0"
   }
 }

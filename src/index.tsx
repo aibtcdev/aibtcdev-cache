@@ -1,10 +1,13 @@
 import { Hono } from "hono";
+import { renderer } from "./renderer";
 import { CloudflareBindings } from "../worker-configuration";
-import { HiroApiDO } from "./durable-objects/hiro-api";
+// import { HiroApiDO } from "./durable-objects/hiro-api";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 
-app.get("/", (c) => c.text("Hello!"));
+app.use(renderer);
+
+app.get("/", (c) => c.render(<h1>Hello!</h1>));
 
 /*
 app.get("/api/extended", async (c) => {
@@ -77,8 +80,4 @@ app.get("/api/v1/extended/address/:principal/assets", async (c) => {
 });
 */
 
-export default {
-  fetch: app.fetch,
-};
-
-export { HiroApiDO };
+export default app;
