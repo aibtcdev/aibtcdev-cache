@@ -11,8 +11,7 @@ app.get("/", (c) => {
 app.get("/api/v1/info", async (c) => {
   const id = c.env.HIRO_API.idFromName("hiro-api");
   const hiroApiDO = c.env.HIRO_API.get(id);
-  const newRequest = new Request(c.req.raw);
-  const response = await hiroApiDO.fetch(newRequest);
+  const response = await hiroApiDO.fetch(c.req.url);
   return response;
 });
 
