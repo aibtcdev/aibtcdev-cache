@@ -1,99 +1,66 @@
 import { CloudflareBindings } from "../../worker-configuration";
+import { ApiEndpoint } from "../interfaces/hiro-api";
+import { BlockchainInfoEndpoint } from "../endpoints/blockchain-info";
+import { ExtendedInfoEndpoint } from "../endpoints/extended-info";
 
 export class HiroApiDO {
   private state: DurableObjectState;
   private env: CloudflareBindings;
-  private cache: Map<string, { data: any; timestamp: number }>;
-  private readonly CACHE_TTL = 60 * 1000; // 1 minute cache TTL
+  private endpoints: Map<string, ApiEndpoint>;
+  private readonly UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
   constructor(state: DurableObjectState, env: CloudflareBindings) {
     this.state = state;
     this.env = env;
-    this.cache = new Map();
+    this.endpoints = new Map();
+
+    // Register endpoints
+    const endpoints: ApiEndpoint[] = [
+      new BlockchainInfoEndpoint(env),
+      new ExtendedInfoEndpoint(env),
+    ];
+
+    endpoints.forEach(endpoint => {
+      this.endpoints.set(endpoint.path, endpoint);
+    });
+
+    // Setup background updates
+    this.state.blockConcurrencyWhile(async () => {
+      const alarm = await this.state.storage.getAlarm();
+      if (!alarm) {
+        await this.scheduleNextUpdate();
+      }
+    });
   }
 
-  async fetch(request: Request | RequestInfo): Promise<Response> {
+  async fetch(request: Request): Promise<Response> {
     const url = new URL(request.toString());
-    const path = url.pathname;
+    const endpoint = this.endpoints.get(url.pathname);
+
+    if (!endpoint) {
+      return new Response("Not Found", { status: 404 });
+    }
 
     try {
-      switch (path) {
-        case "/api/v2/info":
-          return await this.getBlockchainInfo();
-        case "/api/extended":
-          return await this.getExtendedInfo();
-        default:
-          return new Response("Not Found", { status: 404 });
-      }
+      const data = await endpoint.fetch();
+      return new Response(JSON.stringify(data), {
+        headers: { "Content-Type": "application/json" },
+      });
     } catch (error) {
       console.error("Error in HiroApiDO:", error);
       return new Response("Internal Server Error", { status: 500 });
     }
   }
 
-  private async getBlockchainInfo(): Promise<Response> {
-    const cacheKey = "v2_info";
-    const cached = this.cache.get(cacheKey);
-
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      return new Response(JSON.stringify(cached.data), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const response = await fetch("https://api.hiro.so/v2/info", {
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": this.env.HIRO_API_KEY,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Hiro API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    this.cache.set(cacheKey, {
-      data,
-      timestamp: Date.now(),
-    });
-
-    return new Response(JSON.stringify(data), {
-      headers: { "Content-Type": "application/json" },
-    });
+  async alarm(): Promise<void> {
+    // Update all endpoints
+    await Promise.all(
+      Array.from(this.endpoints.values()).map(endpoint => endpoint.update())
+    );
+    await this.scheduleNextUpdate();
   }
 
-  private async getExtendedInfo(): Promise<Response> {
-    const cacheKey = "extended";
-    const cached = this.cache.get(cacheKey);
-
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      return new Response(JSON.stringify(cached.data), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const response = await fetch("https://api.hiro.so/extended", {
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": this.env.HIRO_API_KEY,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Hiro API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    this.cache.set(cacheKey, {
-      data,
-      timestamp: Date.now(),
-    });
-
-    return new Response(JSON.stringify(data), {
-      headers: { "Content-Type": "application/json" },
-    });
+  private async scheduleNextUpdate(): Promise<void> {
+    await this.state.storage.setAlarm(Date.now() + this.UPDATE_INTERVAL);
   }
 }
