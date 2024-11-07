@@ -1,9 +1,10 @@
+import { DurableObject } from "cloudflare:workers";
 import { CloudflareBindings } from "../../worker-configuration";
 import { ApiEndpoint } from "../interfaces/hiro-api";
 import { BlockchainInfoEndpoint } from "../endpoints/blockchain-info";
 import { ExtendedInfoEndpoint } from "../endpoints/extended-info";
 
-export class HiroApiDO {
+export class HiroApiDO extends DurableObject {
   private state: DurableObjectState;
   private env: CloudflareBindings;
   private endpoints: Map<string, ApiEndpoint>;
@@ -20,7 +21,7 @@ export class HiroApiDO {
       new ExtendedInfoEndpoint(env),
     ];
 
-    endpoints.forEach(endpoint => {
+    endpoints.forEach((endpoint) => {
       this.endpoints.set(endpoint.path, endpoint);
     });
 
@@ -55,7 +56,7 @@ export class HiroApiDO {
   async alarm(): Promise<void> {
     // Update all endpoints
     await Promise.all(
-      Array.from(this.endpoints.values()).map(endpoint => endpoint.update())
+      Array.from(this.endpoints.values()).map((endpoint) => endpoint.update())
     );
     await this.scheduleNextUpdate();
   }
