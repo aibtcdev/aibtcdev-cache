@@ -18,7 +18,7 @@ export class HiroApiDO {
 
     try {
       switch (path) {
-        case "/api/v1/info":
+        case "/api/v2/info":
           return await this.getBlockchainInfo();
         case "/api/v1/extended":
           return await this.getExtendedInfo();
@@ -41,7 +41,7 @@ export class HiroApiDO {
       });
     }
 
-    const response = await fetch("https://api.hiro.so/v1/info", {
+    const response = await fetch("https://api.hiro.so/v2/info", {
       headers: {
         "Content-Type": "application/json",
         apikey: this.env.HIRO_API_KEY,

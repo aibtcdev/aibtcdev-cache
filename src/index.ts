@@ -22,7 +22,7 @@ app.get("/api/v1/extended", async (c) => {
   }
 });
 
-app.get("/api/v1/info", async (c) => {
+app.get("/api/v2/info", async (c) => {
   try {
     const id = c.env.HIRO_API.idFromName("hiro-api");
     const hiroApiDO = c.env.HIRO_API.get(id);
