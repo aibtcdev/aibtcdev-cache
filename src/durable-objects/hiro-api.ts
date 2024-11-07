@@ -20,7 +20,7 @@ export class HiroApiDO {
       switch (path) {
         case "/api/v2/info":
           return await this.getBlockchainInfo();
-        case "/api/v1/extended":
+        case "/api/extended":
           return await this.getExtendedInfo();
         default:
           return new Response("Not Found", { status: 404 });
@@ -32,7 +32,7 @@ export class HiroApiDO {
   }
 
   private async getBlockchainInfo(): Promise<Response> {
-    const cacheKey = "blockchain_info";
+    const cacheKey = "v2_info";
     const cached = this.cache.get(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
@@ -44,7 +44,7 @@ export class HiroApiDO {
     const response = await fetch("https://api.hiro.so/v2/info", {
       headers: {
         "Content-Type": "application/json",
-        apikey: this.env.HIRO_API_KEY,
+        "x-api-key": this.env.HIRO_API_KEY,
       },
     });
 
@@ -65,7 +65,7 @@ export class HiroApiDO {
   }
 
   private async getExtendedInfo(): Promise<Response> {
-    const cacheKey = "extended_info";
+    const cacheKey = "extended";
     const cached = this.cache.get(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
@@ -77,7 +77,7 @@ export class HiroApiDO {
     const response = await fetch("https://api.hiro.so/extended", {
       headers: {
         "Content-Type": "application/json",
-        apikey: this.env.HIRO_API_KEY,
+        "x-api-key": this.env.HIRO_API_KEY,
       },
     });
 
