@@ -16,7 +16,10 @@ app.get("/api/extended", async (c) => {
     const response = await hiroApiDO.fetch(c.req.url);
     if (!response.ok) {
       console.error(`DO returned status: ${response.status}`);
-      return c.json({ error: `DO request failed with status ${response.status}` }, response.status);
+      return c.json({
+        error: `DO request failed with status ${response.status}`,
+        status: response.status,
+      });
     }
     return new Response(response.body, response);
   } catch (error) {
