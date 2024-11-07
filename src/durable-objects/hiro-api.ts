@@ -4,15 +4,12 @@ import { ApiEndpoint } from "../interfaces/hiro-api";
 import { BlockchainInfoEndpoint } from "../endpoints/blockchain-info";
 import { ExtendedInfoEndpoint } from "../endpoints/extended-info";
 
-export class HiroApiDO extends DurableObject {
-  private state: DurableObjectState;
-  private env: CloudflareBindings;
+export class HiroApiDO extends DurableObject<CloudflareBindings> {
   private endpoints: Map<string, ApiEndpoint>;
   private readonly UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-  constructor(state: DurableObjectState, env: CloudflareBindings) {
-    this.state = state;
-    this.env = env;
+  constructor(ctx: DurableObjectState, env: CloudflareBindings) {
+    super(ctx, env);
     this.endpoints = new Map();
 
     // Register endpoints
@@ -26,8 +23,8 @@ export class HiroApiDO extends DurableObject {
     });
 
     // Setup background updates
-    this.state.blockConcurrencyWhile(async () => {
-      const alarm = await this.state.storage.getAlarm();
+    this.ctx.blockConcurrencyWhile(async () => {
+      const alarm = await this.ctx.storage.getAlarm();
       if (!alarm) {
         await this.scheduleNextUpdate();
       }
@@ -62,6 +59,6 @@ export class HiroApiDO extends DurableObject {
   }
 
   private async scheduleNextUpdate(): Promise<void> {
-    await this.state.storage.setAlarm(Date.now() + this.UPDATE_INTERVAL);
+    await this.ctx.storage.setAlarm(Date.now() + this.UPDATE_INTERVAL);
   }
 }
