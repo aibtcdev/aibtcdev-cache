@@ -10,7 +10,7 @@ export class HiroApiDO {
     this.cache = new Map();
   }
 
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request | RequestInfo): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
