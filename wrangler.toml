@@ -8,8 +8,8 @@ pages_build_output_dir = "dist"
 # Workers Logs
 # Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
 # Configuration: https://developers.cloudflare.com/workers/observability/logs/workers-logs/#enable-workers-logs
-[observability]
-enabled = true
+# [observability]
+# enabled = true
 
 # Automatically place your workloads in an optimal location to minimize latency.
 # If you are running back-end logic in a Worker, running it closer to your back-end infrastructure
@@ -58,11 +58,12 @@ enabled = true
 [[durable_objects.bindings]]
 name = "HIRO_API"
 class_name = "HiroApiDO"
+script_name = "index.ts"
 
 # Durable Object migrations
-[[migrations]]
-tag = "v1"
-new_classes = ["HiroApiDO"]
+# [[migrations]]
+# tag = "v1"
+# new_classes = ["HiroApiDO"]
 
 # Bind a Hyperdrive configuration. Use to accelerate access to your existing databases from Cloudflare Workers.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#hyperdrive
