@@ -8,11 +8,16 @@ app.get("/", (c) => {
   return c.text("Hello Hono!");
 });
 
-app.get("/api/v1/extended", async (c) => {
+app.get("/api/extended", async (c) => {
   try {
     const id = c.env.HIRO_API.idFromName("hiro-api");
     const hiroApiDO = c.env.HIRO_API.get(id);
+    console.log(`Fetching from DO with URL: ${c.req.url}`);
     const response = await hiroApiDO.fetch(c.req.url);
+    if (!response.ok) {
+      console.error(`DO returned status: ${response.status}`);
+      return c.json({ error: `DO request failed with status ${response.status}` }, response.status);
+    }
     return new Response(response.body, response);
   } catch (error) {
     return c.json(
