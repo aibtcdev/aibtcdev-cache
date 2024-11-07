@@ -4,18 +4,8 @@ import { HiroApiDO } from "./durable-objects/hiro-api";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 
-app.get("/", (c) => {
-  try {
-    return c.json({ message: "Hello Hono!", status: "ok" });
-  } catch (error) {
-    return c.json(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        status: 500,
-      },
-      500
-    );
-  }
+app.get("/", async (c) => {
+  return c.json({ message: "Hello Hono!", status: "ok" });
 });
 
 app.get("/api/extended", async (c) => {
