@@ -2,12 +2,12 @@ import { Hono } from "hono";
 import { CloudflareBindings } from "../worker-configuration";
 import { HiroApiDO } from "./durable-objects/hiro-api";
 
-const app = new Hono<{ Bindings: CloudflareBindings }>();
+const app = new Hono();
 
 app.get("/", async (c) => {
-  return c.json({ message: "Hello Hono!", status: "ok" });
+  return c.text("Hello!");
 });
-
+/*
 app.get("/api/extended", async (c) => {
   try {
     const id = c.env.HIRO_API.idFromName("hiro-api");
@@ -76,7 +76,7 @@ app.get("/api/v1/extended/address/:principal/assets", async (c) => {
     );
   }
 });
-
+*/
 export default app;
 
 export { HiroApiDO };
