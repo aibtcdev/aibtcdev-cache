@@ -58,7 +58,7 @@ pages_build_output_dir = "dist"
 [[durable_objects.bindings]]
 name = "HIRO_API"
 class_name = "HiroApiDO"
-script_name = "index.ts"
+script_name = "aibtcdev-cache"
 
 # Durable Object migrations
 # [[migrations]]
