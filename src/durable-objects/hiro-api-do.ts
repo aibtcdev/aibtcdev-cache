@@ -15,13 +15,17 @@ export class HiroApiDO {
     cacheTtl: number = this.CACHE_TTL
   ): Promise<Response> {
     // try to get from KV, return if found
+    console.log("Trying to get from cache:", cacheKey);
     const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
     if (cached) {
+      console.log("Found in cache:", cacheKey);
       return new Response(cached);
     }
 
     // if not in KV, fetch from API
+    console.log("Not found in cache, fetching from API:", cacheKey);
     const url = new URL(endpoint, this.BASE_URL);
+    console.log("Fetching from URL:", url.toString());
     const response = await fetch(url, {
       headers: {
         "x-api-key": this.env.HIRO_API_KEY,
@@ -44,16 +48,20 @@ export class HiroApiDO {
 
     return new Response(data);
   }
-
+  /*
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    console.log("URL:", url.toString());
+    console.log("Path:", path);
 
     if (path === "/extended") {
       return this.fetchWithCache("/extended", "hiro_api_extended");
     }
 
     if (path === "/v2/info") {
+      console.log("Matches /v2/info");
       return this.fetchWithCache("/v2/info", "hiro_api_v2_info");
     }
 
@@ -82,5 +90,11 @@ export class HiroApiDO {
     }
 
     return new Response("Not found", { status: 404 });
+  }
+    */
+
+  async fetch(request: Request): Promise<Response> {
+    console.log("URL:", request.url);
+    return new Response("Hello, World!");
   }
 }
