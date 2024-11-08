@@ -62,9 +62,10 @@ class_name = "HiroApiDO"
 script_name = "aibtcdev-cache"
 
 # Durable Object migrations
-[[migrations]]
-tag = "v1"
-new_classes = ["HiroApiDO"]
+# NOT SUPPORTED ON CLOUDFLARE PAGES
+# [[migrations]]
+# tag = "v1"
+# new_classes = ["HiroApiDO"]
 
 # Bind a Hyperdrive configuration. Use to accelerate access to your existing databases from Cloudflare Workers.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#hyperdrive
