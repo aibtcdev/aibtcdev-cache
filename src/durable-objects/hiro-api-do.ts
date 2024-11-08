@@ -32,6 +32,30 @@ export class HiroApiDO {
       return new Response(data);
     }
 
+    if (path === "/v2/info") {
+      // Try to get from KV first
+      const cached = await this.env.AIBTCDEV_CACHE_KV.get("hiro_blockchain_info");
+      if (cached) {
+        return new Response(cached);
+      }
+
+      // If not in KV, fetch from Hiro API
+      const response = await fetch("https://api.hiro.so/v2/info", {
+        headers: {
+          'x-hiro-api-key': this.env.HIRO_API_KEY
+        }
+      });
+
+      const data = await response.text();
+      
+      // Cache the response in KV for 5 minutes
+      await this.env.AIBTCDEV_CACHE_KV.put("hiro_blockchain_info", data, {
+        expirationTtl: 300 // 5 minutes
+      });
+
+      return new Response(data);
+    }
+
     return new Response("Not found", { status: 404 });
   }
 }
