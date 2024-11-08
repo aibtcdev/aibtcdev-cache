@@ -1,4 +1,4 @@
-export class HiroAPI {
+export class HiroApiDO {
   constructor(
     private readonly state: DurableObjectState,
     private readonly env: CloudflareBindings
