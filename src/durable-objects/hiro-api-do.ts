@@ -24,7 +24,7 @@ export class HiroApiDO {
     const url = new URL(endpoint, this.BASE_URL);
     const response = await fetch(url, {
       headers: {
-        "x-hiro-api-key": this.env.HIRO_API_KEY,
+        "x-api-key": this.env.HIRO_API_KEY,
       },
     });
 
