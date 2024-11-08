@@ -95,6 +95,6 @@ export class HiroApiDO {
 
   async fetch(request: Request): Promise<Response> {
     console.log("URL:", request.url);
-    return new Response("Hello, World!");
+    return new Response("Hello, World from the DO itself!");
   }
 }
