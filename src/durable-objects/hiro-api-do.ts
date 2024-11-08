@@ -12,68 +12,73 @@ export class HiroApiDO {
   private async fetchWithCache(
     endpoint: string,
     cacheKey: string,
-    apiPath: string = endpoint
+    cacheTtl: number = this.CACHE_TTL
   ): Promise<Response> {
-    // Try to get from KV first
+    // try to get from KV, return if found
     const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
     if (cached) {
       return new Response(cached);
     }
 
-    // If not in KV, fetch from Hiro API
-    const response = await fetch(`${this.BASE_URL}${apiPath}`, {
+    // if not in KV, fetch from API
+    const url = new URL(endpoint, this.BASE_URL);
+    const response = await fetch(url, {
       headers: {
         "x-hiro-api-key": this.env.HIRO_API_KEY,
       },
     });
 
+    if (!response.ok) {
+      return new Response(
+        `Error fetching data from Hiro API: ${response.statusText}, ${url}`,
+        { status: response.status }
+      );
+    }
+
     const data = await response.text();
 
     // Cache the response
     await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, data, {
-      expirationTtl: this.CACHE_TTL,
+      expirationTtl: cacheTtl,
     });
 
     return new Response(data);
-  }
-
-  private async handleApiStatus(): Promise<Response> {
-    return this.fetchWithCache(
-      "/api/status",
-      "hiro_api_status",
-      "/extended"
-    );
-  }
-
-  private async handleBlockchainInfo(): Promise<Response> {
-    return this.fetchWithCache(
-      "/v2/info",
-      "hiro_blockchain_info"
-    );
-  }
-
-  private async handleAccountAssets(path: string): Promise<Response> {
-    const principal = path.split("/")[4];
-    return this.fetchWithCache(
-      path,
-      `hiro_account_assets_${principal}`
-    );
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    if (path === "/api/status") {
-      return this.handleApiStatus();
+    if (path === "/extended") {
+      return this.fetchWithCache("/extended", "hiro_api_extended");
     }
 
     if (path === "/v2/info") {
-      return this.handleBlockchainInfo();
+      return this.fetchWithCache("/v2/info", "hiro_api_v2_info");
     }
 
-    if (path.startsWith("/extended/v1/address/") && path.endsWith("/assets")) {
-      return this.handleAccountAssets(path);
+    if (path.startsWith("/extended/v1/address/")) {
+      const principal = path.split("/")[4];
+      if (path.endsWith("/assets")) {
+        return this.fetchWithCache(
+          path,
+          `hiro_api_extended_v1_address_${principal}_assets`
+        );
+      }
+      if (path.endsWith("/balances")) {
+        return this.fetchWithCache(
+          path,
+          `hiro_api_extended_v1_address_${principal}_balances`
+        );
+      }
+    }
+
+    if (path === "/extended/v1/tx") {
+      return this.fetchWithCache(path, "hiro_api_extended_v1_tx");
+    }
+
+    if (path === "/extended/v1/tx/mempool") {
+      return this.fetchWithCache(path, "hiro_api_extended_v1_tx_mempool");
     }
 
     return new Response("Not found", { status: 404 });
