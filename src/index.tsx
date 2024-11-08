@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { renderer } from "./renderer";
 import { CloudflareBindings } from "../worker-configuration";
-// import { HiroApiDO } from "./durable-objects/hiro-api";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 
