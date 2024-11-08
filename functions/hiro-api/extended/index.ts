@@ -17,10 +17,10 @@ export const onRequest: PagesFunction<CloudflareBindings> = async (context) => {
       throw new Error("Failed to fetch data from Hiro API");
     }
 
-    return response; // Explicitly return the Response object
+    return response;
   } catch (error) {
     console.error("Error occurred:", error);
     // throw the error
-    throw new Error("Internal Server Error");
+    throw new Error(`Internal Server Error: ${error}`);
   }
 };
