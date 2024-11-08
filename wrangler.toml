@@ -62,6 +62,7 @@ class_name = "HiroApiDO"
 script_name = "aibtcdev-cache"
 
 # Durable Object migrations
+# NOT SUPPORTED ON CLOUDFLARE PAGES
 # [[migrations]]
 # tag = "v1"
 # new_classes = ["HiroApiDO"]
