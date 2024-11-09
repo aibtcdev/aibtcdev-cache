@@ -101,7 +101,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		if (endpoint === '' || endpoint === '/') {
 			return new Response(
 				JSON.stringify({
-					message: `Welcome to the aibtcdev-api-cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+					message: `Welcome to the hiro-api cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
 				}),
 				{
 					headers: { 'Content-Type': 'application/json' },
@@ -185,7 +185,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		// return 404 for any other endpoint
 		return new Response(
 			JSON.stringify({
-				error: `Unrecognized endpoint: ${endpoint}`,
+				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
 			}),
 			{
 				status: 404,
@@ -194,6 +194,8 @@ export class HiroApiDO extends DurableObject<Env> {
 		);
 	}
 }
+
+const supportedServices = ['hiro-api'];
 
 export default {
 	/**
@@ -207,6 +209,17 @@ export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname;
+
+		if (path === '/') {
+			return new Response(
+				JSON.stringify({
+					message: `Welcome to the aibtcdev-api-cache! Supported services: ${supportedServices.join(', ')}`,
+				}),
+				{
+					headers: { 'Content-Type': 'application/json' },
+				}
+			);
+		}
 
 		if (path.startsWith('/hiro-api')) {
 			// Create a DurableObjectId for our instance
@@ -222,7 +235,7 @@ export default {
 		// Return 404 for any other path
 		return new Response(
 			JSON.stringify({
-				error: 'Invalid path',
+				error: `Invalid path: ${path}. Supported services: ${supportedServices.join(', ')}`,
 			}),
 			{
 				status: 404,
