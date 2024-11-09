@@ -17,6 +17,7 @@ import { DurableObject } from 'cloudflare:workers';
 export class HiroApiDO extends DurableObject {
 	private readonly CACHE_TTL: number = 3600;
 	private readonly BASE_URL: string = 'https://api.hiro.so';
+	private readonly BASE_PATH: string = '/hiro-api';
 
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
@@ -33,33 +34,34 @@ export class HiroApiDO extends DurableObject {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		console.log(`Fetching ${path}`);
+		console.log('Trying to match the base path');
+		console.log('Requested path: ', path);
+		console.log('Base path: ', this.BASE_PATH);
 
-		if (path === '/extended') {
-			return new Response('/extended');
+		if (path.replace(this.BASE_PATH, '') === '/') {
+			return new Response('Root');
 		}
 
-		if (path === '/v2/info') {
-			return new Response('/v2/info');
+		if (path.startsWith(this.BASE_PATH)) {
+			console.log('Matched base path');
+			const endpoint = path.replace(this.BASE_PATH, '');
+			if (endpoint === '/extended') {
+				return new Response('/extended direct match');
+			}
+			if (endpoint === '/v2/info') {
+				return new Response('/v2/info direct match');
+			}
+			if (endpoint.startsWith('/extended/v1/address/')) {
+				const address = endpoint.split('/').pop();
+				console.log('endpoint: ', endpoint);
+				console.log('address: ', address);
+
+				return new Response(`/extended/v1/address/${address}`);
+			}
+			return new Response(`Unrecognized requested endpoint: ${endpoint}`, { status: 404 });
 		}
 
-		if (path.startsWith('/extended/v1/address/')) {
-			const address = path.split('/').pop();
-			return new Response(`/extended/v1/address/${address}`);
-		}
-
-		return new Response(`Invalid path: ${path}`, { status: 404 });
-	}
-
-	/**
-	 * The Durable Object exposes an RPC method sayHello which will be invoked when when a Durable
-	 *  Object instance receives a request from a Worker via the same method invocation on the stub
-	 *
-	 * @param name - The name provided to a Durable Object instance from a Worker
-	 * @returns The greeting to be sent back to the Worker
-	 */
-	async sayHello(name: string): Promise<string> {
-		return `Hello, ${name}!`;
+		return new Response(`Unrecognized path: ${path}`, { status: 404 });
 	}
 }
 
