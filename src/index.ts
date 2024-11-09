@@ -52,11 +52,27 @@ export class HiroApiDO extends DurableObject {
 				return new Response('/v2/info direct match');
 			}
 			if (endpoint.startsWith('/extended/v1/address/')) {
-				const address = endpoint.split('/').pop();
-				console.log('endpoint: ', endpoint);
-				console.log('address: ', address);
+				// Remove '/extended/v1/address/' from the start
+				const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
+				
+				if (pathParts.length < 2) {
+					return new Response('Invalid address path format', { status: 400 });
+				}
 
-				return new Response(`/extended/v1/address/${address}`);
+				const address = pathParts[0];
+				const action = pathParts[1];
+
+				console.log('endpoint:', endpoint);
+				console.log('address:', address);
+				console.log('action:', action);
+
+				// Validate the action
+				const validActions = ['assets', 'balances'];
+				if (!validActions.includes(action)) {
+					return new Response(`Invalid action: ${action}. Valid actions are: ${validActions.join(', ')}`, { status: 400 });
+				}
+
+				return new Response(`Address: ${address}, Action: ${action}`);
 			}
 			return new Response(`Unrecognized requested endpoint: ${endpoint}`, { status: 404 });
 		}
