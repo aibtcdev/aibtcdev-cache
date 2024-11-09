@@ -1,25 +1,14 @@
 import { DurableObject } from 'cloudflare:workers';
+import { Env } from '../worker-configuration';
 
 /**
- * Welcome to Cloudflare Workers! This is your first Durable Objects application.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your Durable Object in action
- * - Run `npm run deploy` to publish your application
- *
- * Bind resources to your worker in `wrangler.toml`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/durable-objects
+ * Durable Object class for the Hiro API
  */
-
-/** A Durable Object's behavior is defined in an exported Javascript class */
 export class HiroApiDO extends DurableObject {
 	private readonly CACHE_TTL: number = 3600;
-	private readonly BASE_URL: string = 'https://api.hiro.so';
+	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address'];
-
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
 	 * 	`DurableObjectStub::get` for a given identifier (no-op constructors can be omitted)
@@ -29,6 +18,18 @@ export class HiroApiDO extends DurableObject {
 	 */
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
+	}
+
+	private async fetchWithCache(endpoint: string, cacheKey: string, cacheTtl: number = this.CACHE_TTL): Promise<Response> {
+		// try to get value from KV first
+		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
+		if (cached) {
+			return new Response(cached);
+		}
+
+		// if not in KV, fetch from API
+		const url = new URL(endpoint, this.BASE_API_URL);
+		const response = await fetch(url);
 	}
 
 	async fetch(request: Request): Promise<Response> {
