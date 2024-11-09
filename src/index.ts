@@ -177,15 +177,9 @@ export class HiroApiDO extends DurableObject<Env> {
 				);
 			}
 
-			return new Response(
-				JSON.stringify({
-					address,
-					action,
-				}),
-				{
-					headers: { 'Content-Type': 'application/json' },
-				}
-			);
+			// Construct the endpoint path
+			const apiEndpoint = `/extended/v1/address/${address}/${action}`;
+			return this.fetchWithCache(apiEndpoint, cacheKey);
 		}
 
 		// return 404 for any other endpoint
