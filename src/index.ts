@@ -18,6 +18,7 @@ export class HiroApiDO extends DurableObject {
 	 */
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
+		this.ctx = ctx;
 		this.env = env;
 	}
 
