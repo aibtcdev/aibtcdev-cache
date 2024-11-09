@@ -62,8 +62,8 @@ class_name = "HiroApiDO"
 # Durable Object migrations.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#migrations
 [[migrations]]
-tag = "v1"
-new_classes = ["HIRO_API_DO"]
+tag = "v1" 
+new_classes = ["HiroApiDO"]
 
 # Bind a Hyperdrive configuration. Use to accelerate access to your existing databases from Cloudflare Workers.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#hyperdrive
