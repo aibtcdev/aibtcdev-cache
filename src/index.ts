@@ -26,6 +26,28 @@ export class HiroApiDO extends DurableObject {
 		super(ctx, env);
 	}
 
+	async fetch(request: Request): Promise<Response> {
+		const url = new URL(request.url);
+		const path = url.pathname;
+
+		console.log(`Fetching ${path}`);
+
+		if (path === '/extended') {
+			return new Response('/extended');
+		}
+
+		if (path === '/v2/info') {
+			return new Response('/v2/info');
+		}
+
+		if (path.startsWith('/extended/v1/address/')) {
+			const address = path.split('/').pop();
+			return new Response(`/extended/v1/address/${address}`);
+		}
+
+		return new Response(`Invalid path: ${path}`, { status: 404 });
+	}
+
 	/**
 	 * The Durable Object exposes an RPC method sayHello which will be invoked when when a Durable
 	 *  Object instance receives a request from a Worker via the same method invocation on the stub
@@ -49,17 +71,16 @@ export default {
 	 */
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
-		
+
 		if (url.pathname.startsWith('/hiro-api')) {
 			// Create a DurableObjectId for our instance
 			let id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do');
-			
+
 			// Get the stub for communication
 			let stub = env.HIRO_API_DO.get(id);
-			
+
 			// Forward the request to the Durable Object
-			let greeting = await stub.sayHello('world');
-			return new Response(greeting);
+			return await stub.fetch(request);
 		}
 
 		// Return 404 for any other path
