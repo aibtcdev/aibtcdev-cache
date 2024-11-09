@@ -195,7 +195,7 @@ export class HiroApiDO extends DurableObject<Env> {
 	}
 }
 
-const supportedServices = ['hiro-api'];
+const supportedServices = ['/hiro-api'];
 
 export default {
 	/**
