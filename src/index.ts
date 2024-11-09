@@ -9,6 +9,7 @@ export class HiroApiDO extends DurableObject {
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address'];
+	private env: Env;
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
 	 * 	`DurableObjectStub::get` for a given identifier (no-op constructors can be omitted)
@@ -18,7 +19,6 @@ export class HiroApiDO extends DurableObject {
 	 */
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
-		this.ctx = ctx;
 		this.env = env;
 	}
 
@@ -26,14 +26,29 @@ export class HiroApiDO extends DurableObject {
 		// try to get value from KV first
 		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
 		if (cached) {
+			console.log('Found value in KV');
 			return new Response(cached);
 		}
 
-		return new Response('Will fetch it later');
-
-		// if not in KV, fetch from API
-		const url = new URL(endpoint, this.BASE_API_URL);
-		const response = await fetch(url);
+		// if not in KV, try to fetch from API
+		try {
+			// set up the query based on matching endpoint
+			const url = new URL(endpoint, this.BASE_API_URL);
+			const response = await fetch(url);
+			// pass along errors if any
+			if (!response.ok) {
+				return new Response(`Error fetching data from Hiro API: ${response.statusText}`, { status: response.status });
+			}
+			// parse the response and cache it
+			const data = await response.text();
+			await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, data, { expirationTtl: cacheTtl });
+			return new Response(data);
+		} catch (error) {
+			if (error instanceof Error) {
+				return new Response(`Error fetching data from Hiro API: ${error.message}`, { status: 500 });
+			}
+			return new Response('Unknown error fetching data from Hiro API', { status: 500 });
+		}
 	}
 
 	async fetch(request: Request): Promise<Response> {
@@ -58,14 +73,17 @@ export class HiroApiDO extends DurableObject {
 			return new Response(`Unsupported endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`, { status: 404 });
 		}
 
+		// create cache key from endpoint
+		const cacheKey = `hiro_api_${endpoint.replace('/', '_')}`;
+
 		// handle /extended path
 		if (endpoint === '/extended') {
-			return new Response('/extended direct match');
+			return this.fetchWithCache(endpoint, cacheKey);
 		}
 
 		// handle /v2/info path
 		if (endpoint === '/v2/info') {
-			return new Response('/v2/info direct match');
+			return this.fetchWithCache(endpoint, cacheKey);
 		}
 
 		// handle /extended/v1/address path
