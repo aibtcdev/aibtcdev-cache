@@ -18,6 +18,7 @@ export class HiroApiDO extends DurableObject {
 	 */
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
+		this.env = env;
 	}
 
 	private async fetchWithCache(endpoint: string, cacheKey: string, cacheTtl: number = this.CACHE_TTL): Promise<Response> {
@@ -26,6 +27,8 @@ export class HiroApiDO extends DurableObject {
 		if (cached) {
 			return new Response(cached);
 		}
+
+		return new Response('Will fetch it later');
 
 		// if not in KV, fetch from API
 		const url = new URL(endpoint, this.BASE_API_URL);
