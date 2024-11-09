@@ -48,18 +48,21 @@ export default {
 	 * @returns The response to be sent back to the client
 	 */
 	async fetch(request, env, ctx): Promise<Response> {
-		// We will create a `DurableObjectId` using the pathname from the Worker request
-		// This id refers to a unique instance of our 'MyDurableObject' class above
-		let id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do');
+		const url = new URL(request.url);
+		
+		if (url.pathname.startsWith('/hiro-api')) {
+			// Create a DurableObjectId for our instance
+			let id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do');
+			
+			// Get the stub for communication
+			let stub = env.HIRO_API_DO.get(id);
+			
+			// Forward the request to the Durable Object
+			let greeting = await stub.sayHello('world');
+			return new Response(greeting);
+		}
 
-		// This stub creates a communication channel with the Durable Object instance
-		// The Durable Object constructor will be invoked upon the first call for a given id
-		let stub = env.HIRO_API_DO.get(id);
-
-		// We call the `sayHello()` RPC method on the stub to invoke the method on the remote
-		// Durable Object instance
-		let greeting = await stub.sayHello('world');
-
-		return new Response(greeting);
+		// Return 404 for any other path
+		return new Response('Invalid path', { status: 404 });
 	},
 } satisfies ExportedHandler<Env>;
