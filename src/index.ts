@@ -27,7 +27,9 @@ export class HiroApiDO extends DurableObject<Env> {
 		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
 		if (cached) {
 			console.log('Found value in KV');
-			return new Response(cached);
+			return new Response(cached, {
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
 
 		// if not in KV, try to fetch from API
@@ -37,7 +39,12 @@ export class HiroApiDO extends DurableObject<Env> {
 			const response = await fetch(url);
 			// pass along errors if any
 			if (!response.ok) {
-				return new Response(`Error fetching data from Hiro API: ${response.statusText}`, { status: response.status });
+				return new Response(JSON.stringify({
+					error: `Error fetching data from Hiro API: ${response.statusText}`
+				}), { 
+					status: response.status,
+					headers: { 'Content-Type': 'application/json' }
+				});
 			}
 			// parse the response and cache it
 			const data = await response.text();
@@ -45,9 +52,19 @@ export class HiroApiDO extends DurableObject<Env> {
 			return new Response(data);
 		} catch (error) {
 			if (error instanceof Error) {
-				return new Response(`Error fetching data from Hiro API: ${error.message}`, { status: 500 });
+				return new Response(JSON.stringify({
+					error: `Error fetching data from Hiro API: ${error.message}`
+				}), { 
+					status: 500,
+					headers: { 'Content-Type': 'application/json' }
+				});
 			}
-			return new Response('Unknown error fetching data from Hiro API', { status: 500 });
+			return new Response(JSON.stringify({
+				error: 'Unknown error fetching data from Hiro API'
+			}), { 
+				status: 500,
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
 	}
 
@@ -57,7 +74,12 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle requests that don't match the base path
 		if (!path.startsWith(this.BASE_PATH)) {
-			return new Response(`Unrecognized path passed to HiroApiDO: ${path}`, { status: 404 });
+			return new Response(JSON.stringify({
+				error: `Unrecognized path passed to HiroApiDO: ${path}`
+			}), { 
+				status: 404,
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
 
 		// parse requested endpoint from base path
@@ -65,7 +87,11 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle requests to the root route
 		if (endpoint === '' || endpoint === '/') {
-			return new Response('Reached root path');
+			return new Response(JSON.stringify({
+				message: 'Reached root path'
+			}), {
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
 
 		// handle unsupported endpoints
@@ -75,7 +101,13 @@ export class HiroApiDO extends DurableObject<Env> {
 		);
 		
 		if (!isSupported) {
-			return new Response(`Unsupported endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`, { status: 404 });
+			return new Response(JSON.stringify({
+				error: `Unsupported endpoint: ${endpoint}`,
+				supportedEndpoints: this.SUPPORTED_PATHS
+			}), { 
+				status: 404,
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
 
 		// create cache key from endpoint
@@ -97,7 +129,12 @@ export class HiroApiDO extends DurableObject<Env> {
 			const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
 
 			if (pathParts.length < 2) {
-				return new Response('Invalid address path format', { status: 400 });
+				return new Response(JSON.stringify({
+					error: 'Invalid address path format'
+				}), { 
+					status: 400,
+					headers: { 'Content-Type': 'application/json' }
+				});
 			}
 
 			const address = pathParts[0];
@@ -106,14 +143,30 @@ export class HiroApiDO extends DurableObject<Env> {
 			// Validate the action
 			const validActions = ['assets', 'balances'];
 			if (!validActions.includes(action)) {
-				return new Response(`Invalid action: ${action}. Valid actions are: ${validActions.join(', ')}`, { status: 400 });
+				return new Response(JSON.stringify({
+					error: `Invalid action: ${action}`,
+					validActions: validActions
+				}), { 
+					status: 400,
+					headers: { 'Content-Type': 'application/json' }
+				});
 			}
 
-			return new Response(`Address: ${address}, Action: ${action}`);
+			return new Response(JSON.stringify({
+				address,
+				action
+			}), {
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
 
 		// return 404 for any other endpoint
-		return new Response(`Unrecognized endpoint: ${endpoint}`, { status: 404 });
+		return new Response(JSON.stringify({
+			error: `Unrecognized endpoint: ${endpoint}`
+		}), { 
+			status: 404,
+			headers: { 'Content-Type': 'application/json' }
+		});
 	}
 }
 
@@ -142,6 +195,11 @@ export default {
 		}
 
 		// Return 404 for any other path
-		return new Response('Invalid path', { status: 404 });
+		return new Response(JSON.stringify({
+			error: 'Invalid path'
+		}), { 
+			status: 404,
+			headers: { 'Content-Type': 'application/json' }
+		});
 	},
 } satisfies ExportedHandler<Env>;
