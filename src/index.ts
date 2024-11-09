@@ -15,6 +15,9 @@ import { DurableObject } from 'cloudflare:workers';
 
 /** A Durable Object's behavior is defined in an exported Javascript class */
 export class HiroApiDO extends DurableObject {
+	private readonly CACHE_TTL: number = 3600;
+	private readonly BASE_URL: string = 'https://api.hiro.so';
+
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
 	 * 	`DurableObjectStub::get` for a given identifier (no-op constructors can be omitted)
