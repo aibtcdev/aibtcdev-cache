@@ -4,12 +4,12 @@ import { Env } from '../worker-configuration';
 /**
  * Durable Object class for the Hiro API
  */
-export class HiroApiDO extends DurableObject {
+export class HiroApiDO extends DurableObject<Env> {
 	private readonly CACHE_TTL: number = 3600;
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address'];
-	private env: Env;
+
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
 	 * 	`DurableObjectStub::get` for a given identifier (no-op constructors can be omitted)
