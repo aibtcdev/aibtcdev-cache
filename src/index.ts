@@ -101,7 +101,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		if (endpoint === '' || endpoint === '/') {
 			return new Response(
 				JSON.stringify({
-					message: 'Reached root path',
+					message: `Welcome to the aibtcdev-api-cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
 				}),
 				{
 					headers: { 'Content-Type': 'application/json' },
