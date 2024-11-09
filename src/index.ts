@@ -8,7 +8,7 @@ export class HiroApiDO extends DurableObject<Env> {
 	private readonly CACHE_TTL: number = 3600;
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
-	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address'];
+	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address/'];
 
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
@@ -69,7 +69,12 @@ export class HiroApiDO extends DurableObject<Env> {
 		}
 
 		// handle unsupported endpoints
-		if (!this.SUPPORTED_PATHS.includes(endpoint)) {
+		const isSupported = this.SUPPORTED_PATHS.some(path => 
+			endpoint === path || // exact match
+			(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
+		);
+		
+		if (!isSupported) {
 			return new Response(`Unsupported endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`, { status: 404 });
 		}
 
