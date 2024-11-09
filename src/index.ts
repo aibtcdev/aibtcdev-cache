@@ -18,6 +18,7 @@ export class HiroApiDO extends DurableObject {
 	private readonly CACHE_TTL: number = 3600;
 	private readonly BASE_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
+	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address'];
 
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
@@ -34,50 +35,57 @@ export class HiroApiDO extends DurableObject {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		console.log('Trying to match the base path');
-		console.log('Requested path: ', path);
-		console.log('Base path: ', this.BASE_PATH);
-
-		if (path.replace(this.BASE_PATH, '') === '/') {
-			return new Response('Root');
+		// handle requests that don't match the base path
+		if (!path.startsWith(this.BASE_PATH)) {
+			return new Response(`Unrecognized path passed to HiroApiDO: ${path}`, { status: 404 });
 		}
 
-		if (path.startsWith(this.BASE_PATH)) {
-			console.log('Matched base path');
-			const endpoint = path.replace(this.BASE_PATH, '');
-			if (endpoint === '/extended') {
-				return new Response('/extended direct match');
-			}
-			if (endpoint === '/v2/info') {
-				return new Response('/v2/info direct match');
-			}
-			if (endpoint.startsWith('/extended/v1/address/')) {
-				// Remove '/extended/v1/address/' from the start
-				const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
-				
-				if (pathParts.length < 2) {
-					return new Response('Invalid address path format', { status: 400 });
-				}
+		// parse requested endpoint from base path
+		const endpoint = path.replace(this.BASE_PATH, '');
 
-				const address = pathParts[0];
-				const action = pathParts[1];
-
-				console.log('endpoint:', endpoint);
-				console.log('address:', address);
-				console.log('action:', action);
-
-				// Validate the action
-				const validActions = ['assets', 'balances'];
-				if (!validActions.includes(action)) {
-					return new Response(`Invalid action: ${action}. Valid actions are: ${validActions.join(', ')}`, { status: 400 });
-				}
-
-				return new Response(`Address: ${address}, Action: ${action}`);
-			}
-			return new Response(`Unrecognized requested endpoint: ${endpoint}`, { status: 404 });
+		// handle requests to the root route
+		if (endpoint === '' || endpoint === '/') {
+			return new Response('Reached root path');
 		}
 
-		return new Response(`Unrecognized path: ${path}`, { status: 404 });
+		// handle unsupported endpoints
+		if (!this.SUPPORTED_PATHS.includes(endpoint)) {
+			return new Response(`Unsupported endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`, { status: 404 });
+		}
+
+		// handle /extended path
+		if (endpoint === '/extended') {
+			return new Response('/extended direct match');
+		}
+
+		// handle /v2/info path
+		if (endpoint === '/v2/info') {
+			return new Response('/v2/info direct match');
+		}
+
+		// handle /extended/v1/address path
+		if (endpoint.startsWith('/extended/v1/address/')) {
+			// Remove '/extended/v1/address/' from the start
+			const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
+
+			if (pathParts.length < 2) {
+				return new Response('Invalid address path format', { status: 400 });
+			}
+
+			const address = pathParts[0];
+			const action = pathParts[1];
+
+			// Validate the action
+			const validActions = ['assets', 'balances'];
+			if (!validActions.includes(action)) {
+				return new Response(`Invalid action: ${action}. Valid actions are: ${validActions.join(', ')}`, { status: 400 });
+			}
+
+			return new Response(`Address: ${address}, Action: ${action}`);
+		}
+
+		// return 404 for any other endpoint
+		return new Response(`Unrecognized endpoint: ${endpoint}`, { status: 404 });
 	}
 }
 
@@ -92,8 +100,9 @@ export default {
 	 */
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
+		const path = url.pathname;
 
-		if (url.pathname.startsWith('/hiro-api')) {
+		if (path.startsWith('/hiro-api')) {
 			// Create a DurableObjectId for our instance
 			let id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do');
 
