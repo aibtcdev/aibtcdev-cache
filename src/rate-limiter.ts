@@ -17,6 +17,7 @@ export class RateLimitedFetcher {
     private processing = false;
     private lastRequestTime = 0;
     private tokens: number;
+    private windowRequests: number = 0;
     private readonly minRequestSpacing: number;
     private readonly maxRetries = 3;
     private readonly retryDelay = 1000; // 1 second
@@ -44,6 +45,10 @@ export class RateLimitedFetcher {
         return this.tokens;
     }
 
+    public getWindowRequestsCount(): number {
+        return this.windowRequests;
+    }
+
     private startTokenReplenishment() {
         const replenishInterval = this.intervalMs / this.maxRequestsPerInterval;
         setInterval(() => {
@@ -52,6 +57,11 @@ export class RateLimitedFetcher {
                 void this.processQueue();
             }
         }, replenishInterval);
+
+        // Reset window requests counter every interval
+        setInterval(() => {
+            this.windowRequests = 0;
+        }, this.intervalMs);
     }
 
     private async processQueue() {
@@ -74,6 +84,7 @@ export class RateLimitedFetcher {
                     this.queue.shift(); // Remove the request only if successful
                     this.tokens--;
                     this.lastRequestTime = Date.now();
+                    this.windowRequests++;
                 } else if (result.retry && request.retryCount < this.maxRetries) {
                     // Move to end of queue for retry
                     this.queue.shift();
