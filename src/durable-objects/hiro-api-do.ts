@@ -1,17 +1,22 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { APP_CONFIG } from '../config';
+import { RateLimitedFetcher } from '../rate-limiter';
 
 /**
  * Durable Object class for the Hiro API
  */
 export class HiroApiDO extends DurableObject<Env> {
-	// can override cache here for all endpoints
+	// can override values here for all endpoints
 	private readonly CACHE_TTL: number = APP_CONFIG.CACHE_TTL;
+	private readonly MAX_REQUESTS_PER_MINUTE = APP_CONFIG.MAX_REQUESTS_PER_MINUTE;
+	private readonly INTERVAL_MS = APP_CONFIG.INTERVAL_MS;
 	// settings specific to this Durable Object
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address/'];
+	// custom fetcher with KV cache logic and rate limiting
+	private fetcher: RateLimitedFetcher;
 
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
@@ -23,65 +28,12 @@ export class HiroApiDO extends DurableObject<Env> {
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
 		this.env = env;
+		this.fetcher = new RateLimitedFetcher(this.MAX_REQUESTS_PER_MINUTE, this.INTERVAL_MS, this.env, this.BASE_API_URL, this.CACHE_TTL);
 	}
 
-	// helper to fetch data from KV first
-	// - value is returned as JSON from KV or fetched from API
-	// - CACHE_TTL can be overwritten for specific endpoints
-	// - cache key generated from the endpoint path
-	private async fetchWithCache(endpoint: string, cacheKey: string, cacheTtl: number = this.CACHE_TTL): Promise<Response> {
-		// try to get value from KV first
-		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
-		if (cached) {
-			console.log('Found value in KV');
-			return new Response(cached, {
-				headers: { 'Content-Type': 'application/json' },
-			});
-		}
-
-		// if not in KV, try to fetch from API
-		try {
-			// set up the query based on matching endpoint
-			const url = new URL(endpoint, this.BASE_API_URL);
-			const response = await fetch(url);
-			// pass along errors if any
-			if (!response.ok) {
-				return new Response(
-					JSON.stringify({
-						error: `Error fetching data from Hiro API: ${response.statusText}`,
-					}),
-					{
-						status: response.status,
-						headers: { 'Content-Type': 'application/json' },
-					}
-				);
-			}
-			// parse the response and cache it
-			const data = await response.text();
-			await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, data, { expirationTtl: cacheTtl });
-			return new Response(data, { headers: { 'Content-Type': 'application/json' } });
-		} catch (error) {
-			if (error instanceof Error) {
-				return new Response(
-					JSON.stringify({
-						error: `Error fetching data from Hiro API: ${error.message}`,
-					}),
-					{
-						status: 500,
-						headers: { 'Content-Type': 'application/json' },
-					}
-				);
-			}
-			return new Response(
-				JSON.stringify({
-					error: 'Unknown error fetching data from Hiro API',
-				}),
-				{
-					status: 500,
-					headers: { 'Content-Type': 'application/json' },
-				}
-			);
-		}
+	// helper function to fetch data from KV cache with rate limiting for API calls
+	private async fetchWithCache(endpoint: string, cacheKey: string): Promise<Response> {
+		return this.fetcher.fetch(endpoint, cacheKey);
 	}
 
 	async fetch(request: Request): Promise<Response> {
