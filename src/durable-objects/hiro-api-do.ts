@@ -14,7 +14,7 @@ export class HiroApiDO extends DurableObject<Env> {
 	// settings specific to this Durable Object
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
-	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address/'];
+	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/test-rate-limiter'];
 	// custom fetcher with KV cache logic and rate limiting
 	private fetcher: RateLimitedFetcher;
 
@@ -140,6 +140,47 @@ export class HiroApiDO extends DurableObject<Env> {
 			// Construct the endpoint path
 			const apiEndpoint = `/extended/v1/address/${address}/${action}`;
 			return this.fetchWithCache(apiEndpoint, cacheKey);
+		}
+
+		// handle /test-rate-limiter path
+		if (endpoint === '/test-rate-limiter') {
+			const testResults: any = {
+				timings: {},
+				totalTime: 0,
+				queueStats: {
+					currentQueueLength: this.fetcher.getQueueLength(),
+					currentWindowRequests: this.fetcher.getWindowRequestsCount()
+				}
+			};
+
+			const startTime = Date.now();
+			const testEndpoints = [
+				'/extended',
+				'/v2/info',
+				'/extended/v1/address/SP000000000000000000002Q6VF78/assets',
+				'/extended/v1/address/SP000000000000000000002Q6VF78/balances'
+			];
+
+			const requests = testEndpoints.map(async (testEndpoint) => {
+				const requestStart = Date.now();
+				const cacheKey = `hiro_api_${testEndpoint.replace('/', '_')}`;
+				const response = await this.fetchWithCache(testEndpoint, cacheKey);
+				const requestEnd = Date.now();
+				
+				testResults.timings[testEndpoint] = {
+					duration: requestEnd - requestStart,
+					timestamp: new Date(requestStart).toISOString()
+				};
+				
+				return response;
+			});
+
+			await Promise.all(requests);
+			testResults.totalTime = Date.now() - startTime;
+
+			return new Response(JSON.stringify(testResults, null, 2), {
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
 
 		// return 404 for any other endpoint

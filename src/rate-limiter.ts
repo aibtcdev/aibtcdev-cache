@@ -5,6 +5,15 @@ import { Env } from '../worker-configuration';
  * that uses a rolling window approach rather than setTimeout
  */
 export class RateLimitedFetcher {
+	public getQueueLength(): number {
+		return this.queue.length;
+	}
+
+	public getWindowRequestsCount(): number {
+		const now = Date.now();
+		return this.requestTimes.filter((time) => now - time < this.intervalMs).length;
+	}
+
 	private queue: Array<{
 		resolve: (value: Response | PromiseLike<Response>) => void;
 		reject: (reason?: any) => void;
