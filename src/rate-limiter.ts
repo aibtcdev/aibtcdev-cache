@@ -109,18 +109,7 @@ export class RateLimitedFetcher {
 
     private async processRequest(request: QueuedRequest): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
         try {
-            // Try cache first
-            const cached = await this.env.AIBTCDEV_CACHE_KV.get(request.cacheKey);
-            if (cached) {
-                request.resolve(
-                    new Response(cached, {
-                        headers: { 'Content-Type': 'application/json' },
-                    })
-                );
-                return { success: true };
-            }
-
-            // Make API request
+            // Make API request (cache was already checked)
             const url = new URL(request.endpoint, this.baseApiUrl);
             const response = await fetch(url);
 
@@ -159,6 +148,15 @@ export class RateLimitedFetcher {
      * Enqueues a fetch request with rate limiting
      */
     public async fetch(endpoint: string, cacheKey: string): Promise<Response> {
+        // Check cache first - bypass rate limiting for cached responses
+        const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
+        if (cached) {
+            return new Response(cached, {
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        // If not cached, go through rate limiting queue
         return new Promise((resolve, reject) => {
             this.queue.push({ resolve, reject, endpoint, cacheKey, retryCount: 0 });
             void this.processQueue();
