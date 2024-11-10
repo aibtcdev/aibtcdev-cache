@@ -143,22 +143,43 @@ export class HiroApiDO extends DurableObject<Env> {
 		}
 
 		// handle /test-rate-limiter path
+		// this will test the rate limiter and return the timings for each request
+		// as well as the total time taken for all requests
+		// and the current queue length and window requests count
 		if (endpoint === '/test-rate-limiter') {
 			const testResults: any = {
 				timings: {},
 				totalTime: 0,
 				queueStats: {
 					currentQueueLength: this.fetcher.getQueueLength(),
-					currentWindowRequests: this.fetcher.getWindowRequestsCount()
-				}
+					currentWindowRequests: this.fetcher.getWindowRequestsCount(),
+				},
 			};
 
 			const startTime = Date.now();
 			const testEndpoints = [
 				'/extended',
 				'/v2/info',
-				'/extended/v1/address/SP000000000000000000002Q6VF78/assets',
-				'/extended/v1/address/SP000000000000000000002Q6VF78/balances'
+				'/extended/v1/address/SP3NRRJS9BNEDJN9WG7CNVQ247N9DHFVSQRJ3RC8J/assets',
+				'/extended/v1/address/SP3NRRJS9BNEDJN9WG7CNVQ247N9DHFVSQRJ3RC8J/balances',
+				'/extended/v1/address/SP2E7W684Z809YQ9Q9JVDT0G8VJPQGDZPAGAJQ70A/assets',
+				'/extended/v1/address/SP2E7W684Z809YQ9Q9JVDT0G8VJPQGDZPAGAJQ70A/balances',
+				'/extended/v1/address/SP312TQ306SD7B7J2BPXKGBBYV780QGJJQSTVBT7N/assets',
+				'/extended/v1/address/SP312TQ306SD7B7J2BPXKGBBYV780QGJJQSTVBT7N/balances',
+				'/extended/v1/address/SPC2XBKQ3XCPS19MWNXM46QV801GAZ42JQGHJYM6/assets',
+				'/extended/v1/address/SPC2XBKQ3XCPS19MWNXM46QV801GAZ42JQGHJYM6/balances',
+				'/extended/v1/address/SP2F0DD3X3QDZW1AQS4SCM8N1BYKYAY0831JFDP9J/assets',
+				'/extended/v1/address/SP2F0DD3X3QDZW1AQS4SCM8N1BYKYAY0831JFDP9J/balances',
+				'/extended/v1/address/SPZC8995Q7DP1MFZFS2D6DY8A666E2GCDKV2QYYD/assets',
+				'/extended/v1/address/SPZC8995Q7DP1MFZFS2D6DY8A666E2GCDKV2QYYD/balances',
+				'/extended/v1/address/SP24YYHW29XPA1784W7CTD5PVPH0649PX7PEP5ZP6/assets',
+				'/extended/v1/address/SP24YYHW29XPA1784W7CTD5PVPH0649PX7PEP5ZP6/balances',
+				'/extended/v1/address/SPY1WRZ16ZCX6BP5FJTC1TS7BVXYCGTKDWFAS09J/assets',
+				'/extended/v1/address/SPY1WRZ16ZCX6BP5FJTC1TS7BVXYCGTKDWFAS09J/balances',
+				'/extended/v1/address/SP94EJNY5JS6XM2JJGFHPN4067X6FNKQ50ZM6BV5/assets',
+				'/extended/v1/address/SP94EJNY5JS6XM2JJGFHPN4067X6FNKQ50ZM6BV5/balances',
+				'/extended/v1/address/SP6PAMVVD7MY89G80B4CG8NS4M7VGYJZQYHANHH0/assets',
+				'/extended/v1/address/SP6PAMVVD7MY89G80B4CG8NS4M7VGYJZQYHANHH0/balances',
 			];
 
 			const requests = testEndpoints.map(async (testEndpoint) => {
@@ -166,12 +187,14 @@ export class HiroApiDO extends DurableObject<Env> {
 				const cacheKey = `hiro_api_${testEndpoint.replace('/', '_')}`;
 				const response = await this.fetchWithCache(testEndpoint, cacheKey);
 				const requestEnd = Date.now();
-				
+
 				testResults.timings[testEndpoint] = {
 					duration: requestEnd - requestStart,
-					timestamp: new Date(requestStart).toISOString()
+					timestamp: new Date(requestStart).toISOString(),
+					currentQueueLength: this.fetcher.getQueueLength(),
+					currentWindowRequests: this.fetcher.getWindowRequestsCount(),
 				};
-				
+
 				return response;
 			});
 
@@ -179,7 +202,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			testResults.totalTime = Date.now() - startTime;
 
 			return new Response(JSON.stringify(testResults, null, 2), {
-				headers: { 'Content-Type': 'application/json' }
+				headers: { 'Content-Type': 'application/json' },
 			});
 		}
 
