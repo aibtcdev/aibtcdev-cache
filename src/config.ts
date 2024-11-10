@@ -1,6 +1,7 @@
 export const APP_CONFIG = {
 	CACHE_TTL: 300,
 	SUPPORTED_SERVICES: ['/hiro-api'],
-	MAX_REQUESTS_PER_MINUTE: 250, // Hiro rate limit is 500 requests so halving that
-	INTERVAL_MS: 300000, // 5 minutes
+	// in any sliding window of 15 seconds, no more than 100 requests are processed
+	MAX_REQUESTS_PER_MINUTE: 100,
+	INTERVAL_MS: 15000,
 };
