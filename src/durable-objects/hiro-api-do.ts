@@ -1,11 +1,14 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
+import { APP_CONFIG } from '../config';
 
 /**
  * Durable Object class for the Hiro API
  */
 export class HiroApiDO extends DurableObject<Env> {
-	private readonly CACHE_TTL: number = 3600;
+	// can override cache here for all endpoints
+	private readonly CACHE_TTL: number = APP_CONFIG.CACHE_TTL;
+	// settings specific to this Durable Object
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address/'];
@@ -22,6 +25,10 @@ export class HiroApiDO extends DurableObject<Env> {
 		this.env = env;
 	}
 
+	// helper to fetch data from KV first
+	// - value is returned as JSON from KV or fetched from API
+	// - CACHE_TTL can be overwritten for specific endpoints
+	// - cache key generated from the endpoint path
 	private async fetchWithCache(endpoint: string, cacheKey: string, cacheTtl: number = this.CACHE_TTL): Promise<Response> {
 		// try to get value from KV first
 		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
@@ -52,7 +59,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			// parse the response and cache it
 			const data = await response.text();
 			await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, data, { expirationTtl: cacheTtl });
-			return new Response(data);
+			return new Response(data, { headers: { 'Content-Type': 'application/json' } });
 		} catch (error) {
 			if (error instanceof Error) {
 				return new Response(
@@ -159,6 +166,7 @@ export class HiroApiDO extends DurableObject<Env> {
 				);
 			}
 
+			// get address and action from parts
 			const address = pathParts[0];
 			const action = pathParts[1];
 

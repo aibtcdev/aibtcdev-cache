@@ -1,8 +1,9 @@
 import { Env } from '../worker-configuration';
+import { APP_CONFIG } from './config';
 import { HiroApiDO } from './durable-objects/hiro-api-do';
 export { HiroApiDO };
 
-const supportedServices = ['/hiro-api'];
+const supportedServices = APP_CONFIG.SUPPORTED_SERVICES;
 
 export default {
 	/**
