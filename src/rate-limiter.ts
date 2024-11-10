@@ -1,106 +1,156 @@
 import { Env } from '../worker-configuration';
 
+interface QueuedRequest {
+    resolve: (value: Response | PromiseLike<Response>) => void;
+    reject: (reason?: any) => void;
+    endpoint: string;
+    cacheKey: string;
+    retryCount: number;
+}
+
 /**
  * A rate-limited fetcher implementation for Cloudflare Workers
- * that uses a rolling window approach rather than setTimeout
+ * that uses a token bucket approach with consistent request spacing
  */
 export class RateLimitedFetcher {
-	public getQueueLength(): number {
-		return this.queue.length;
-	}
+    private queue: QueuedRequest[] = [];
+    private processing = false;
+    private lastRequestTime = 0;
+    private tokens: number;
+    private readonly minRequestSpacing: number;
+    private readonly maxRetries = 3;
+    private readonly retryDelay = 1000; // 1 second
 
-	public getWindowRequestsCount(): number {
-		const now = Date.now();
-		return this.requestTimes.filter((time) => now - time < this.intervalMs).length;
-	}
+    constructor(
+        private readonly maxRequestsPerInterval: number,
+        private readonly intervalMs: number,
+        private readonly env: Env,
+        private readonly baseApiUrl: string,
+        private readonly cacheTtl: number
+    ) {
+        this.tokens = maxRequestsPerInterval;
+        // Ensure at least 100ms between requests
+        this.minRequestSpacing = Math.max(100, Math.floor(intervalMs / maxRequestsPerInterval));
+        
+        // Start token replenishment
+        this.startTokenReplenishment();
+    }
 
-	private queue: Array<{
-		resolve: (value: Response | PromiseLike<Response>) => void;
-		reject: (reason?: any) => void;
-		endpoint: string;
-		cacheKey: string;
-	}> = [];
-	private requestTimes: number[] = [];
-	private processing = false;
+    public getQueueLength(): number {
+        return this.queue.length;
+    }
 
-	constructor(
-		private readonly maxRequestsPerInterval: number,
-		private readonly intervalMs: number,
-		private readonly env: Env,
-		private readonly baseApiUrl: string,
-		private readonly cacheTtl: number
-	) {}
+    public getTokenCount(): number {
+        return this.tokens;
+    }
 
-	/**
-	 * Processes the queue of requests while respecting rate limits
-	 */
-	private async processQueue() {
-		if (this.processing) return;
-		this.processing = true;
+    private startTokenReplenishment() {
+        const replenishInterval = this.intervalMs / this.maxRequestsPerInterval;
+        setInterval(() => {
+            if (this.tokens < this.maxRequestsPerInterval) {
+                this.tokens++;
+                void this.processQueue();
+            }
+        }, replenishInterval);
+    }
 
-		while (this.queue.length > 0) {
-			const now = Date.now();
-			// Remove timestamps outside the current window
-			this.requestTimes = this.requestTimes.filter((time) => now - time < this.intervalMs);
+    private async processQueue() {
+        if (this.processing || this.queue.length === 0 || this.tokens <= 0) return;
+        this.processing = true;
 
-			// Check if we can make another request
-			if (this.requestTimes.length < this.maxRequestsPerInterval) {
-				const request = this.queue.shift();
-				if (request) {
-					try {
-						// Add the current timestamp
-						this.requestTimes.push(now);
+        try {
+            while (this.queue.length > 0 && this.tokens > 0) {
+                const now = Date.now();
+                const timeSinceLastRequest = now - this.lastRequestTime;
+                
+                if (timeSinceLastRequest < this.minRequestSpacing) {
+                    await new Promise(resolve => setTimeout(resolve, this.minRequestSpacing - timeSinceLastRequest));
+                }
 
-						// Try to get from cache first
-						const cached = await this.env.AIBTCDEV_CACHE_KV.get(request.cacheKey);
-						if (cached) {
-							request.resolve(
-								new Response(cached, {
-									headers: { 'Content-Type': 'application/json' },
-								})
-							);
-							continue;
-						}
+                const request = this.queue[0];
+                const result = await this.processRequest(request);
+                
+                if (result.success) {
+                    this.queue.shift(); // Remove the request only if successful
+                    this.tokens--;
+                    this.lastRequestTime = Date.now();
+                } else if (result.retry && request.retryCount < this.maxRetries) {
+                    // Move to end of queue for retry
+                    this.queue.shift();
+                    request.retryCount++;
+                    this.queue.push(request);
+                    await new Promise(resolve => setTimeout(resolve, this.retryDelay * request.retryCount));
+                } else {
+                    // Max retries exceeded or non-retryable error
+                    this.queue.shift();
+                    request.reject(result.error);
+                }
+            }
+        } finally {
+            this.processing = false;
+            
+            // If there are still items in the queue and tokens available, continue processing
+            if (this.queue.length > 0 && this.tokens > 0) {
+                void this.processQueue();
+            }
+        }
+    }
 
-						// Fetch from API if not in cache
-						const url = new URL(request.endpoint, this.baseApiUrl);
-						const response = await fetch(url);
+    private async processRequest(request: QueuedRequest): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
+        try {
+            // Try cache first
+            const cached = await this.env.AIBTCDEV_CACHE_KV.get(request.cacheKey);
+            if (cached) {
+                request.resolve(
+                    new Response(cached, {
+                        headers: { 'Content-Type': 'application/json' },
+                    })
+                );
+                return { success: true };
+            }
 
-						if (!response.ok) {
-							throw new Error(`API request failed (${url}): ${response.statusText}`);
-						}
+            // Make API request
+            const url = new URL(request.endpoint, this.baseApiUrl);
+            const response = await fetch(url);
 
-						const data = await response.text();
-						// Cache the successful response
-						await this.env.AIBTCDEV_CACHE_KV.put(request.cacheKey, data, { expirationTtl: this.cacheTtl });
+            if (response.status === 429) {
+                return { success: false, retry: true, error: new Error('Rate limit exceeded') };
+            }
 
-						request.resolve(
-							new Response(data, {
-								headers: { 'Content-Type': 'application/json' },
-							})
-						);
-					} catch (error) {
-						request.reject(error);
-					}
-				}
-			} else {
-				// If we can't make a request now, wait until the oldest request expires
-				const oldestRequest = Math.min(...this.requestTimes);
-				const waitTime = this.intervalMs - (now - oldestRequest);
-				await new Promise((resolve) => setTimeout(resolve, waitTime));
-			}
-		}
+            if (!response.ok) {
+                return { 
+                    success: false, 
+                    retry: response.status >= 500, 
+                    error: new Error(`API request failed (${url}): ${response.statusText}`)
+                };
+            }
 
-		this.processing = false;
-	}
+            const data = await response.text();
+            await this.env.AIBTCDEV_CACHE_KV.put(request.cacheKey, data, { expirationTtl: this.cacheTtl });
 
-	/**
-	 * Enqueues a fetch request with rate limiting
-	 */
-	public async fetch(endpoint: string, cacheKey: string): Promise<Response> {
-		return new Promise((resolve, reject) => {
-			this.queue.push({ resolve, reject, endpoint, cacheKey });
-			void this.processQueue();
-		});
-	}
+            request.resolve(
+                new Response(data, {
+                    headers: { 'Content-Type': 'application/json' },
+                })
+            );
+            return { success: true };
+
+        } catch (error) {
+            return { 
+                success: false, 
+                retry: true, 
+                error: error instanceof Error ? error : new Error('Unknown error occurred')
+            };
+        }
+    }
+
+    /**
+     * Enqueues a fetch request with rate limiting
+     */
+    public async fetch(endpoint: string, cacheKey: string): Promise<Response> {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ resolve, reject, endpoint, cacheKey, retryCount: 0 });
+            void this.processQueue();
+        });
+    }
 }
