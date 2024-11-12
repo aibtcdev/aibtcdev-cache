@@ -1,7 +1,15 @@
 import { DurableObject } from 'cloudflare:workers';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Env } from '../../worker-configuration';
 import { APP_CONFIG } from '../config';
+
+interface StatsResponse {
+    total_jobs: number;
+    main_chat_jobs: number;
+    individual_crew_jobs: number;
+    top_profile_stacks_addresses: string[];
+    top_crew_names: string[];
+}
 
 /**
  * Durable Object class for Supabase queries
@@ -12,14 +20,25 @@ export class SupabaseDO extends DurableObject<Env> {
     private readonly BASE_PATH: string = '/supabase';
     private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
     private readonly SUPPORTED_PATHS: string[] = ['/stats'];
+    private supabase: SupabaseClient;
 
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
         this.ctx = ctx;
         this.env = env;
+        
+        // Initialize Supabase client
+        this.supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
 
         // Set up alarm to run at configured interval
         ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+    }
+
+    private async fetchStats(): Promise<StatsResponse> {
+        const { data, error } = await this.supabase.rpc('get_usage_stats');
+        
+        if (error) throw error;
+        return data[0] as StatsResponse;
     }
 
     async alarm(): Promise<void> {
