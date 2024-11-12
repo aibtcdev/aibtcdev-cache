@@ -66,34 +66,45 @@ export class HiroApiDO extends DurableObject<Env> {
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
-			// Get addresses from DO storage instead of KV
+			// Get addresses from DO storage
 			const addresses = await this.getKnownAddresses();
 			const addressFetchStartTime = Date.now();
-			console.log(`Starting update for ${addresses.length} known addresses`);
+			console.log(`Starting parallel update for ${addresses.length} known addresses`);
 
-			// Track success/failure for each address
-			const results = {
+			// Create fetch promises for all addresses
+			const fetchPromises = addresses.flatMap(address => {
+				const endpoints = [`/extended/v1/address/${address}/balances`];
+				return endpoints.map(endpoint => {
+					const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+					return {
+						address,
+						endpoint,
+						promise: this.fetchWithCache(endpoint, cacheKey, true)
+					};
+				});
+			});
+
+			// Execute all fetches in parallel and collect results
+			const results = await Promise.allSettled(fetchPromises.map(({ promise }) => promise));
+
+			// Analyze results
+			const stats = {
 				success: 0,
 				failed: 0,
-				errors: [] as string[],
+				errors: [] as string[]
 			};
 
-			// Update cache for each address
-			for (const address of addresses) {
-				const endpoints = [`/extended/v1/address/${address}/balances`]; // `/extended/v1/address/${address}/assets`
-				for (const endpoint of endpoints) {
-					try {
-						const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
-						await this.fetchWithCache(endpoint, cacheKey, true);
-						results.success++;
-					} catch (error) {
-						results.failed++;
-						results.errors.push(`Failed to update ${address} (${endpoint}): ${error instanceof Error ? error.message : String(error)}`);
-						// Continue with next endpoint despite error
-						continue;
-					}
+			results.forEach((result, index) => {
+				const { address, endpoint } = fetchPromises[index];
+				if (result.status === 'fulfilled') {
+					stats.success++;
+				} else {
+					stats.failed++;
+					stats.errors.push(
+						`Failed to update ${address} (${endpoint}): ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`
+					);
 				}
-			}
+			});
 
 			const endTime = Date.now();
 			const totalDuration = endTime - startTime;
@@ -101,8 +112,14 @@ export class HiroApiDO extends DurableObject<Env> {
 			const setupDuration = addressFetchStartTime - startTime;
 
 			console.log(
-				`hiro-api-do: alarm executed, ${addresses.length} addresses, setup ${setupDuration}ms, fetch: ${fetchDuration}ms, total ${totalDuration}ms, success: ${results.success}, failed: ${results.failed}`
+				`hiro-api-do: alarm executed, ${addresses.length} addresses (${fetchPromises.length} endpoints), ` +
+				`setup ${setupDuration}ms, fetch: ${fetchDuration}ms, total ${totalDuration}ms, ` +
+				`success: ${stats.success}, failed: ${stats.failed}`
 			);
+
+			if (stats.errors.length > 0) {
+				console.error('Errors during alarm execution:', stats.errors);
+			}
 		} catch (error) {
 			console.error(`Alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
