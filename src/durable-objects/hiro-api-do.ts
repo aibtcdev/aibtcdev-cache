@@ -53,7 +53,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		let cursor: string | null = null;
 
 		do {
-			const result = await this.env.AIBTCDEV_CACHE_KV.list({ cursor });
+			const result: KVNamespaceListResult<string> = await this.env.AIBTCDEV_CACHE_KV.list({ cursor });
 			cursor = result.cursor || null;
 
 			for (const key of result.keys) {
