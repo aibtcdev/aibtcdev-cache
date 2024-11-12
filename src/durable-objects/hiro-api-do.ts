@@ -70,12 +70,27 @@ export class HiroApiDO extends DurableObject<Env> {
 			const addresses = await this.getKnownAddresses();
 			const addressFetchStartTime = Date.now();
 
+			// Track success/failure for each address
+			const results = {
+				success: 0,
+				failed: 0,
+				errors: [] as string[]
+			};
+
 			// Update cache for each address
 			for (const address of addresses) {
 				const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
 				for (const endpoint of endpoints) {
-					const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
-					await this.fetchWithCache(endpoint, cacheKey, true);
+					try {
+						const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+						await this.fetchWithCache(endpoint, cacheKey, true);
+						results.success++;
+					} catch (error) {
+						results.failed++;
+						results.errors.push(`Failed to update ${address} (${endpoint}): ${error.message}`);
+						// Continue with next endpoint despite error
+						continue;
+					}
 				}
 			}
 
@@ -86,10 +101,16 @@ export class HiroApiDO extends DurableObject<Env> {
 			console.log(
 				`hiro-api-do: alarm executed`,
 				`\n- Updated cache for ${addresses.length} addresses`,
+				`\n- Successful updates: ${results.success}`,
+				`\n- Failed updates: ${results.failed}`,
 				`\n- Total duration: ${totalDuration}ms`,
 				`\n- Address fetch duration: ${fetchDuration}ms`,
 				`\n- Setup time: ${addressFetchStartTime - startTime}ms`
 			);
+
+			if (results.errors.length > 0) {
+				console.error('Alarm update errors:', results.errors);
+			}
 		} catch (error) {
 			console.error('Alarm execution failed:', error);
 		} finally {
