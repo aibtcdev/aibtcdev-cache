@@ -1,3 +1,5 @@
+import { Env } from '../worker-configuration';
+
 export const APP_CONFIG = {
 	// supported services for API caching
 	// each entry is a durable object that handles requests
@@ -13,6 +15,6 @@ export const APP_CONFIG = {
 	// how often to warm the cache, should be shorter than the cache TTL
 	ALARM_INTERVAL_MS: 300000, // 5 minutes
 	// supabase access settings - pulled from environment variables
-	SUPABASE_URL: env.SUPABASE_URL || '', // supabase project URL
-	SUPABASE_SERVICE_KEY: env.SUPABASE_SERVICE_KEY || '', // supabase service key
+	SUPABASE_URL: process.env.SUPABASE_URL!, // supabase project URL
+	SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY!, // supabase service key
 };
