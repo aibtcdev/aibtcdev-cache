@@ -28,7 +28,7 @@ export class SupabaseDO extends DurableObject<Env> {
         this.env = env;
         
         // Initialize Supabase client
-        this.supabase = createClient(APP_CONFIG.SUPABASE.URL, APP_CONFIG.SUPABASE.ANON_KEY);
+        this.supabase = createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_SERVICE_KEY);
 
         // Set up alarm to run at configured interval
         ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
