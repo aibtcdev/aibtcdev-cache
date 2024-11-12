@@ -106,13 +106,11 @@ export class SupabaseDO extends DurableObject<Env> {
                 });
             }
 
-            // TODO: Implement actual Supabase query here
-            const mockData = {
+            const stats = await this.fetchStats();
+            const data = JSON.stringify({
                 timestamp: new Date().toISOString(),
-                message: 'Stats endpoint placeholder - implement Supabase query',
-            };
-
-            const data = JSON.stringify(mockData);
+                ...stats
+            });
             await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, data, { 
                 expirationTtl: this.CACHE_TTL 
             });
