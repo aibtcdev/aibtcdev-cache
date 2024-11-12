@@ -19,8 +19,24 @@ export class HiroApiDO extends DurableObject<Env> {
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/test-rate-limiter', '/known-addresses'];
+	private readonly KNOWN_ADDRESSES_KEY = 'known_addresses';
 	// custom fetcher with KV cache logic and rate limiting
 	private fetcher: RateLimitedFetcher;
+
+	// Get all known addresses from DO storage
+	private async getKnownAddresses(): Promise<string[]> {
+		const addresses = await this.ctx.storage.get<string[]>(this.KNOWN_ADDRESSES_KEY);
+		return addresses || [];
+	}
+
+	// Store a new address if it doesn't exist
+	private async addKnownAddress(address: string): Promise<void> {
+		const addresses = await this.getKnownAddresses();
+		if (!addresses.includes(address)) {
+			addresses.push(address);
+			await this.ctx.storage.put(this.KNOWN_ADDRESSES_KEY, addresses);
+		}
+	}
 
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
@@ -48,23 +64,27 @@ export class HiroApiDO extends DurableObject<Env> {
 	}
 
 	async alarm(): Promise<void> {
-		// Get all unique addresses from KV cache
-		const addresses = await this.extractAddressesFromKV();
+		try {
+			// Get addresses from DO storage instead of KV
+			const addresses = await this.getKnownAddresses();
 
-		// Update cache for each address
-		for (const address of addresses) {
-			const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
-			for (const endpoint of endpoints) {
-				const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
-				await this.fetchWithCache(endpoint, cacheKey);
+			// Update cache for each address
+			for (const address of addresses) {
+				const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
+				for (const endpoint of endpoints) {
+					const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+					await this.fetchWithCache(endpoint, cacheKey);
+				}
 			}
+
+			console.log(`Updated cache for ${addresses.length} addresses at ${new Date().toISOString()}`);
+		} catch (error) {
+			console.error('Alarm execution failed:', error);
+		} finally {
+			// Always schedule next alarm
+			const nextAlarm = Date.now() + this.ALARM_INTERVAL_MS;
+			this.ctx.storage.setAlarm(nextAlarm);
 		}
-
-		// Log the number of addresses updated
-		console.log(`Updated cache for ${addresses.length} addresses`);
-
-		// Schedule next alarm
-		this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
 	private async extractAddressesFromKV(): Promise<string[]> {
@@ -182,6 +202,9 @@ export class HiroApiDO extends DurableObject<Env> {
 			const address = pathParts[0];
 			const action = pathParts[1];
 
+			// Store the address when it's requested
+			await this.addKnownAddress(address);
+
 			// Validate the action
 			const validActions = ['assets', 'balances'];
 			if (!validActions.includes(action)) {
@@ -268,8 +291,8 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle /known-addresses path
 		if (endpoint === '/known-addresses') {
-			const testAddresses = await this.extractAddressesFromKV();
-			return new Response(JSON.stringify(testAddresses, null, 2), {
+			const addresses = await this.getKnownAddresses();
+			return new Response(JSON.stringify(addresses, null, 2), {
 				headers: { 'Content-Type': 'application/json' },
 			});
 		}
