@@ -3,6 +3,7 @@ name = "aibtcdev-api-cache"
 main = "src/index.ts"
 compatibility_date = "2024-11-09"
 account_id = "6f54e90da6d1b280fe00a153cb394c68"
+routes = [{ pattern = "cache.aibtc.dev", custom_domain = true }]
 
 # Workers Logs
 # Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
@@ -28,7 +29,3 @@ new_classes = ["HiroApiDO"]
 [[kv_namespaces]]
 binding = "AIBTCDEV_CACHE_KV"
 id = "89a4331f4e0d47da934eb16d8b2229fa"
-
-# Production environment configuration
-[env.production]
-routes = [{ pattern = "cache.aibtc.dev", custom_domain = true }]
