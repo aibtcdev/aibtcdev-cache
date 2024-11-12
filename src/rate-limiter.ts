@@ -114,7 +114,7 @@ export class RateLimitedFetcher {
 			const response = await fetch(url);
 
 			if (response.status === 429) {
-				return { success: false, retry: true, error: new Error('Rate limit exceeded in Hiro API') };
+				return { success: false, retry: true, error: new Error('Rate limit exceeded, moving request to end of queue') };
 			}
 
 			if (!response.ok) {
