@@ -2,25 +2,22 @@ import { Env } from '../worker-configuration';
 
 export class AppConfig {
   private static instance: AppConfig;
-  private env: Env | null = null;
+  private env: Env;
 
-  private constructor() {}
+  private constructor(env: Env) {
+    this.env = env;
+  }
 
-  public static getInstance(): AppConfig {
-    if (!AppConfig.instance) {
-      AppConfig.instance = new AppConfig();
+  public static getInstance(env?: Env): AppConfig {
+    if (!AppConfig.instance && env) {
+      AppConfig.instance = new AppConfig(env);
+    } else if (!AppConfig.instance) {
+      throw new Error('AppConfig must be initialized with environment variables first');
     }
     return AppConfig.instance;
   }
 
-  public initialize(env: Env) {
-    this.env = env;
-  }
-
   public getConfig() {
-    if (!this.env) {
-      throw new Error('AppConfig not initialized with environment variables');
-    }
 
     return {
       // supported services for API caching

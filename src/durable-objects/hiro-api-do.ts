@@ -50,10 +50,8 @@ export class HiroApiDO extends DurableObject<Env> {
 		this.ctx = ctx;
 		this.env = env;
 
-		// Initialize AppConfig
-		const appConfig = AppConfig.getInstance();
-		appConfig.initialize(env);
-		const config = appConfig.getConfig();
+		// Initialize AppConfig with environment
+		const config = AppConfig.getInstance(env).getConfig();
 
 		// Set configuration values
 		this.CACHE_TTL = config.CACHE_TTL;
