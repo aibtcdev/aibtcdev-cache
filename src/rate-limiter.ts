@@ -31,7 +31,7 @@ export class RateLimitedFetcher {
 	) {
 		this.tokens = maxRequestsPerInterval;
 		// Ensure at least 100ms between requests
-		this.minRequestSpacing = Math.max(100, Math.floor(intervalMs / maxRequestsPerInterval));
+		this.minRequestSpacing = Math.max(250, Math.floor(intervalMs / maxRequestsPerInterval));
 
 		// Start token replenishment
 		this.startTokenReplenishment();
