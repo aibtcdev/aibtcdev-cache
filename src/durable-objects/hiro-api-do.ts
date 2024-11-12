@@ -107,7 +107,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			console.error(`Alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			// Always schedule next alarm if one isn't set
-			const currentAlarm = this.ctx.storage.getAlarm();
+			const currentAlarm = await this.ctx.storage.getAlarm();
 			if (currentAlarm === null) {
 				this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 			}
@@ -148,7 +148,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		const path = url.pathname;
 
 		// Always schedule next alarm if one isn't set
-		const currentAlarm = this.ctx.storage.getAlarm();
+		const currentAlarm = await this.ctx.storage.getAlarm();
 		if (currentAlarm === null) {
 			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
