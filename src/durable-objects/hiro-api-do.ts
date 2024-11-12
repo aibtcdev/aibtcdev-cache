@@ -9,8 +9,11 @@ import { RateLimitedFetcher } from '../rate-limiter';
 export class HiroApiDO extends DurableObject<Env> {
 	// can override values here for all endpoints
 	private readonly CACHE_TTL: number = APP_CONFIG.CACHE_TTL;
-	private readonly MAX_REQUESTS_PER_MINUTE = APP_CONFIG.MAX_REQUESTS_PER_MINUTE;
+	private readonly MAX_REQUESTS_PER_MINUTE = APP_CONFIG.MAX_REQUESTS_PER_INTERVAL;
 	private readonly INTERVAL_MS = APP_CONFIG.INTERVAL_MS;
+	private readonly MAX_RETRIES = APP_CONFIG.MAX_RETRIES;
+	private readonly RETRY_DELAY = APP_CONFIG.RETRY_DELAY;
+	private readonly ALARM_INTERVAL_MS = APP_CONFIG.ALARM_INTERVAL_MS;
 	// settings specific to this Durable Object
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
@@ -27,8 +30,64 @@ export class HiroApiDO extends DurableObject<Env> {
 	 */
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
+		this.ctx = ctx;
 		this.env = env;
-		this.fetcher = new RateLimitedFetcher(this.MAX_REQUESTS_PER_MINUTE, this.INTERVAL_MS, this.env, this.BASE_API_URL, this.CACHE_TTL);
+		this.fetcher = new RateLimitedFetcher(
+			this.env,
+			this.BASE_API_URL,
+			this.CACHE_TTL,
+			this.MAX_REQUESTS_PER_MINUTE,
+			this.INTERVAL_MS,
+			this.MAX_RETRIES,
+			this.RETRY_DELAY
+		);
+
+		// Set up alarm to run at configured interval
+		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+	}
+
+	async alarm(): Promise<void> {
+		// Get all unique addresses from KV cache
+		const addresses = await this.extractAddressesFromKV();
+
+		// Update cache for each address
+		for (const address of addresses) {
+			const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
+			for (const endpoint of endpoints) {
+				const cacheKey = `hiro_api_${endpoint.replace('/', '_')}`;
+				await this.fetchWithCache(endpoint, cacheKey);
+			}
+		}
+
+		// Log the number of addresses updated
+		console.log(`Updated cache for ${addresses.length} addresses`);
+
+		// Schedule next alarm
+		this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+	}
+
+	private async extractAddressesFromKV(): Promise<string[]> {
+		const addresses = new Set<string>();
+		let cursor: string | null = null;
+
+		do {
+			const result: KVNamespaceListResult<string, string> = await this.env.AIBTCDEV_CACHE_KV.list({ cursor });
+			if (result.list_complete === false && result.cursor) {
+				cursor = result.cursor;
+			} else {
+				cursor = null;
+			}
+
+			for (const key of result.keys) {
+				// Look for keys matching address pattern
+				const match = key.name.match(/hiro_api_extended_v1_address_([A-Z0-9]+)_(assets|balances)/);
+				if (match) {
+					addresses.add(match[1]);
+				}
+			}
+		} while (cursor != null);
+
+		return Array.from(addresses);
 	}
 
 	// helper function to fetch data from KV cache with rate limiting for API calls
