@@ -29,11 +29,16 @@ export class SupabaseDO extends DurableObject<Env> {
 
 		// Initialize AppConfig with environment
 		const config = AppConfig.getInstance(env).getConfig();
-
+		
+		// Set configuration values
 		this.CACHE_TTL = config.CACHE_TTL;
-
-		// Initialize Supabase client
-		this.supabase = createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_KEY);
+		
+		// Initialize Supabase client with config values
+		this.supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY, {
+			auth: {
+				persistSession: false
+			}
+		});
 
 		// Set up alarm to run at configured interval
 		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
