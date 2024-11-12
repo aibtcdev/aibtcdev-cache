@@ -11,6 +11,7 @@ export class HiroApiDO extends DurableObject<Env> {
 	private readonly CACHE_TTL: number = APP_CONFIG.CACHE_TTL;
 	private readonly MAX_REQUESTS_PER_MINUTE = APP_CONFIG.MAX_REQUESTS_PER_MINUTE;
 	private readonly INTERVAL_MS = APP_CONFIG.INTERVAL_MS;
+	private readonly ALARM_INTERVAL_MS = APP_CONFIG.ALARM_INTERVAL_MS;
 	// settings specific to this Durable Object
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
@@ -31,8 +32,8 @@ export class HiroApiDO extends DurableObject<Env> {
 		this.env = env;
 		this.fetcher = new RateLimitedFetcher(this.MAX_REQUESTS_PER_MINUTE, this.INTERVAL_MS, this.env, this.BASE_API_URL, this.CACHE_TTL);
 
-		// Set up alarm to run every 6 hours
-		ctx.storage.setAlarm(Date.now() + 6 * 60 * 60 * 1000);
+		// Set up alarm to run at configured interval
+		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
 	async alarm(): Promise<void> {
@@ -49,7 +50,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		}
 
 		// Schedule next alarm
-		this.ctx.storage.setAlarm(Date.now() + 6 * 60 * 60 * 1000);
+		this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
 	private async extractAddressesFromKV(): Promise<string[]> {
