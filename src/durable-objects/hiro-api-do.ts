@@ -27,9 +27,10 @@ export class HiroApiDO extends DurableObject<Env> {
 	 */
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
+		this.ctx = ctx;
 		this.env = env;
 		this.fetcher = new RateLimitedFetcher(this.MAX_REQUESTS_PER_MINUTE, this.INTERVAL_MS, this.env, this.BASE_API_URL, this.CACHE_TTL);
-		
+
 		// Set up alarm to run every 6 hours
 		ctx.storage.setAlarm(Date.now() + 6 * 60 * 60 * 1000);
 	}
@@ -37,20 +38,20 @@ export class HiroApiDO extends DurableObject<Env> {
 	async alarm(): Promise<void> {
 		// Get all unique addresses from KV cache
 		const addresses = await this.extractAddressesFromKV();
-		
+
 		// Update cache for each address
 		for (const address of addresses) {
 			await this.updateAddressCache(address);
 		}
 
 		// Schedule next alarm
-		this.state.storage.setAlarm(Date.now() + 6 * 60 * 60 * 1000);
+		this.ctx.storage.setAlarm(Date.now() + 6 * 60 * 60 * 1000);
 	}
 
 	private async extractAddressesFromKV(): Promise<string[]> {
 		const addresses = new Set<string>();
 		let cursor: string | null = null;
-		
+
 		do {
 			const result = await this.env.AIBTCDEV_CACHE_KV.list({ cursor });
 			cursor = result.cursor || null;
@@ -68,10 +69,7 @@ export class HiroApiDO extends DurableObject<Env> {
 	}
 
 	private async updateAddressCache(address: string): Promise<void> {
-		const endpoints = [
-			`/extended/v1/address/${address}/assets`,
-			`/extended/v1/address/${address}/balances`
-		];
+		const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
 
 		for (const endpoint of endpoints) {
 			const cacheKey = `hiro_api_${endpoint.replace('/', '_')}`;
