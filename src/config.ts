@@ -7,9 +7,9 @@ export const APP_CONFIG = {
 	CACHE_TTL: 300, // 5 minutes
 	// default rate limiting settings
 	MAX_REQUESTS_PER_INTERVAL: 60, // no more than 60 requests
-	INTERVAL_MS: 60000, // in a span of 60 seconds
+	INTERVAL_MS: 15000, // in a span of 15 seconds
 	MAX_RETRIES: 3, // max retries for failed fetches
-	RETRY_DELAY: 1000, // 1s, multiplied by retry number
+	RETRY_DELAY: 2000, // multiplied by retry attempt number
 	// how often to warm the cache, should be shorter than the cache TTL
 	ALARM_INTERVAL_MS: 180000, // 3 minutes
 };
