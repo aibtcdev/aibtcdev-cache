@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Env } from '../../worker-configuration';
-import { APP_CONFIG } from '../config';
+import { AppConfig } from '../config';
 
 interface StatsResponse {
 	total_jobs: number;
@@ -15,7 +15,7 @@ interface StatsResponse {
  * Durable Object class for Supabase queries
  */
 export class SupabaseDO extends DurableObject<Env> {
-	private readonly CACHE_TTL: number = APP_CONFIG.CACHE_TTL;
+	private readonly CACHE_TTL: number;
 	private readonly ALARM_INTERVAL_MS = 60000; // 1 minute
 	private readonly BASE_PATH: string = '/supabase';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
@@ -27,8 +27,15 @@ export class SupabaseDO extends DurableObject<Env> {
 		this.ctx = ctx;
 		this.env = env;
 
+		// Initialize AppConfig
+		const appConfig = AppConfig.getInstance();
+		appConfig.initialize(env);
+		const config = appConfig.getConfig();
+		
+		this.CACHE_TTL = config.CACHE_TTL;
+		
 		// Initialize Supabase client
-		this.supabase = createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_SERVICE_KEY);
+		this.supabase = createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_KEY);
 
 		// Set up alarm to run at configured interval
 		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);

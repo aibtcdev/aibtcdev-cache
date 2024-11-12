@@ -1,20 +1,44 @@
 import { Env } from '../worker-configuration';
 
-export const APP_CONFIG = {
-	// supported services for API caching
-	// each entry is a durable object that handles requests
-	SUPPORTED_SERVICES: ['/hiro-api', '/supabase'],
-	// VALUES BELOW CAN BE OVERRIDDEN BY DURABLE OBJECTS
-	// default cache TTL used for KV
-	CACHE_TTL: 900, // 15 minutes
-	// default rate limiting settings
-	MAX_REQUESTS_PER_INTERVAL: 30, // no more than 30 requests
-	INTERVAL_MS: 15000, // in a span of 15 seconds
-	MAX_RETRIES: 3, // max retries for failed fetches
-	RETRY_DELAY: 1000, // multiplied by retry attempt number
-	// how often to warm the cache, should be shorter than the cache TTL
-	ALARM_INTERVAL_MS: 300000, // 5 minutes
-	// supabase access settings - pulled from environment variables
-	SUPABASE_URL: process.env.SUPABASE_URL!, // supabase project URL
-	SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY!, // supabase service key
-};
+export class AppConfig {
+  private static instance: AppConfig;
+  private env: Env | null = null;
+
+  private constructor() {}
+
+  public static getInstance(): AppConfig {
+    if (!AppConfig.instance) {
+      AppConfig.instance = new AppConfig();
+    }
+    return AppConfig.instance;
+  }
+
+  public initialize(env: Env) {
+    this.env = env;
+  }
+
+  public getConfig() {
+    if (!this.env) {
+      throw new Error('AppConfig not initialized with environment variables');
+    }
+
+    return {
+      // supported services for API caching
+      // each entry is a durable object that handles requests
+      SUPPORTED_SERVICES: ['/hiro-api', '/supabase'],
+      // VALUES BELOW CAN BE OVERRIDDEN BY DURABLE OBJECTS
+      // default cache TTL used for KV
+      CACHE_TTL: 900, // 15 minutes
+      // default rate limiting settings
+      MAX_REQUESTS_PER_INTERVAL: 30, // no more than 30 requests
+      INTERVAL_MS: 15000, // in a span of 15 seconds
+      MAX_RETRIES: 3, // max retries for failed fetches
+      RETRY_DELAY: 1000, // multiplied by retry attempt number
+      // how often to warm the cache, should be shorter than the cache TTL
+      ALARM_INTERVAL_MS: 300000, // 5 minutes
+      // environment variables
+      SUPABASE_URL: this.env.SUPABASE_URL,
+      SUPABASE_SERVICE_KEY: this.env.SUPABASE_SERVICE_KEY,
+    };
+  }
+}
