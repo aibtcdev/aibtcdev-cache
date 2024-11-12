@@ -1,7 +1,7 @@
 export const APP_CONFIG = {
 	// supported services for API caching
 	// each entry is a durable object that handles requests
-	SUPPORTED_SERVICES: ['/hiro-api'],
+	SUPPORTED_SERVICES: ['/hiro-api', '/supabase'],
 	// VALUES BELOW CAN BE OVERRIDDEN BY DURABLE OBJECTS
 	// default cache TTL used for KV
 	CACHE_TTL: 900, // 15 minutes
