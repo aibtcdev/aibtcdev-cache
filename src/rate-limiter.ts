@@ -146,10 +146,10 @@ export class RateLimitedFetcher {
 	/**
 	 * Enqueues a fetch request with rate limiting
 	 */
-	public async fetch(endpoint: string, cacheKey: string): Promise<Response> {
+	public async fetch(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
 		// Check cache first - bypass rate limiting for cached responses
 		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
-		if (cached) {
+		if (cached && !bustCache) {
 			return new Response(cached, {
 				headers: { 'Content-Type': 'application/json' },
 			});

@@ -75,7 +75,7 @@ export class HiroApiDO extends DurableObject<Env> {
 				const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
 				for (const endpoint of endpoints) {
 					const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
-					await this.fetchWithCache(endpoint, cacheKey);
+					await this.fetchWithCache(endpoint, cacheKey, true);
 				}
 			}
 
@@ -124,8 +124,8 @@ export class HiroApiDO extends DurableObject<Env> {
 	}
 
 	// helper function to fetch data from KV cache with rate limiting for API calls
-	private async fetchWithCache(endpoint: string, cacheKey: string): Promise<Response> {
-		return this.fetcher.fetch(endpoint, cacheKey);
+	private async fetchWithCache(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
+		return this.fetcher.fetch(endpoint, cacheKey, bustCache);
 	}
 
 	async fetch(request: Request): Promise<Response> {
