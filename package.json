@@ -1,6 +1,7 @@
 {
 	"name": "aibtcdev-api-cache",
 	"version": "0.0.1",
+	"type": "module",
 	"private": true,
 	"scripts": {
 		"deploy": "wrangler deploy",

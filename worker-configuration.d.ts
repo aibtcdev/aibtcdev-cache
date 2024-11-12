@@ -2,6 +2,9 @@
 
 interface Env {
 	AIBTCDEV_CACHE_KV: KVNamespace;
+	HIRO_API_KEY: string;
+	SUPABASE_URL: string;
+	SUPABASE_SERVICE_KEY: string;
 	HIRO_API_DO: DurableObjectNamespace<import("./src/index").HiroApiDO>;
-	SUPABASE_DO: DurableObjectNamespace /* SupabaseDO */;
+	SUPABASE_DO: DurableObjectNamespace<import("./src/index").SupabaseDO>;
 }

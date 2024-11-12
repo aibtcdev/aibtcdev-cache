@@ -1,7 +1,10 @@
 import { Env } from '../worker-configuration';
 import { APP_CONFIG } from './config';
 import { HiroApiDO } from './durable-objects/hiro-api-do';
-export { HiroApiDO };
+import { SupabaseDO } from './durable-objects/supabase-do';
+
+// export the Durable Object classes we're using
+export { HiroApiDO, SupabaseDO };
 
 const supportedServices = APP_CONFIG.SUPPORTED_SERVICES;
 
@@ -35,6 +38,17 @@ export default {
 
 			// Get the stub for communication
 			let stub = env.HIRO_API_DO.get(id);
+
+			// Forward the request to the Durable Object
+			return await stub.fetch(request);
+		}
+
+		if (path.startsWith('/supabase')) {
+			// Create a DurableObjectId for our instance
+			let id: DurableObjectId = env.SUPABASE_DO.idFromName('supabase-do');
+
+			// Get the stub for communication
+			let stub = env.SUPABASE_DO.get(id);
 
 			// Forward the request to the Durable Object
 			return await stub.fetch(request);
