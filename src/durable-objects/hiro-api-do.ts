@@ -41,7 +41,11 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// Update cache for each address
 		for (const address of addresses) {
-			await this.updateAddressCache(address);
+			const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
+			for (const endpoint of endpoints) {
+				const cacheKey = `hiro_api_${endpoint.replace('/', '_')}`;
+				await this.fetchWithCache(endpoint, cacheKey);
+			}
 		}
 
 		// Schedule next alarm
@@ -53,8 +57,12 @@ export class HiroApiDO extends DurableObject<Env> {
 		let cursor: string | null = null;
 
 		do {
-			const result: KVNamespaceListResult<string> = await this.env.AIBTCDEV_CACHE_KV.list({ cursor });
-			cursor = result.cursor || null;
+			const result: KVNamespaceListResult<string, string> = await this.env.AIBTCDEV_CACHE_KV.list({ cursor });
+			if (result.list_complete === false && result.cursor) {
+				cursor = result.cursor;
+			} else {
+				cursor = null;
+			}
 
 			for (const key of result.keys) {
 				// Look for keys matching address pattern
@@ -66,15 +74,6 @@ export class HiroApiDO extends DurableObject<Env> {
 		} while (cursor != null);
 
 		return Array.from(addresses);
-	}
-
-	private async updateAddressCache(address: string): Promise<void> {
-		const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
-
-		for (const endpoint of endpoints) {
-			const cacheKey = `hiro_api_${endpoint.replace('/', '_')}`;
-			await this.fetchWithCache(endpoint, cacheKey);
-		}
 	}
 
 	// helper function to fetch data from KV cache with rate limiting for API calls
