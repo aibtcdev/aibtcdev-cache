@@ -29,9 +29,9 @@ export class SupabaseDO extends DurableObject<Env> {
 
 		// Initialize AppConfig with environment
 		const config = AppConfig.getInstance(env).getConfig();
-		
+
 		this.CACHE_TTL = config.CACHE_TTL;
-		
+
 		// Initialize Supabase client
 		this.supabase = createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_KEY);
 
@@ -39,18 +39,24 @@ export class SupabaseDO extends DurableObject<Env> {
 		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
-	private async fetchStats(): Promise<StatsResponse> {
-		const { data, error } = await this.supabase.rpc('get_stats', {}, {
-			count: 'exact'
-		});
+	private async fetchStats(): Promise<StatsResponse | undefined> {
+		const { data, error } = await this.supabase.rpc(
+			'get_stats',
+			{},
+			{
+				count: 'exact',
+				get: true,
+			}
+		);
 
 		if (error) {
 			console.error('Error fetching stats:', error);
-			throw new Error(`Failed to fetch stats: ${error.message}`);
+			return undefined;
 		}
 
 		if (!data) {
-			throw new Error('No stats data returned from database');
+			console.error('No stats data returned from database');
+			return undefined;
 		}
 
 		return data as StatsResponse;
@@ -62,6 +68,10 @@ export class SupabaseDO extends DurableObject<Env> {
 			console.log('Updating Supabase stats cache...');
 
 			const stats = await this.fetchStats();
+			if (!stats) {
+				console.error('Failed to fetch stats from Supabase');
+				return;
+			}
 			const data = JSON.stringify({
 				timestamp: new Date().toISOString(),
 				...stats,
@@ -132,6 +142,20 @@ export class SupabaseDO extends DurableObject<Env> {
 			}
 
 			const stats = await this.fetchStats();
+			// verify that stats were fetched
+			if (!stats) {
+				return new Response(
+					JSON.stringify({
+						error: 'Failed to fetch stats from Supabase',
+					}),
+					{
+						status: 500,
+						headers: { 'Content-Type': 'application/json' },
+					}
+				);
+			}
+
+			// format the data, store it, and return it
 			const data = JSON.stringify({
 				timestamp: new Date().toISOString(),
 				...stats,
