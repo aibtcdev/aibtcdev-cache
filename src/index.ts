@@ -1,12 +1,15 @@
 import { Env } from '../worker-configuration';
-import { APP_CONFIG } from './config';
+import { AppConfig } from './config';
 import { HiroApiDO } from './durable-objects/hiro-api-do';
 import { SupabaseDO } from './durable-objects/supabase-do';
 
 // export the Durable Object classes we're using
 export { HiroApiDO, SupabaseDO };
 
-const supportedServices = APP_CONFIG.SUPPORTED_SERVICES;
+// Initialize AppConfig
+const appConfig = AppConfig.getInstance();
+const config = appConfig.getConfig();
+const supportedServices = config.SUPPORTED_SERVICES;
 
 export default {
 	/**
@@ -17,7 +20,9 @@ export default {
 	 * @param ctx - The execution context of the Worker
 	 * @returns The response to be sent back to the client
 	 */
-	async fetch(request, env, ctx): Promise<Response> {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		// Initialize config with environment
+		AppConfig.getInstance().initialize(env);
 		const url = new URL(request.url);
 		const path = url.pathname;
 
