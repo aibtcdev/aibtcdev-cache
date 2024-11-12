@@ -304,6 +304,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		// handle /known-addresses path
 		if (endpoint === '/known-addresses') {
 			const [storageAddresses, cacheAddresses] = await Promise.all([this.getKnownAddresses(), this.extractAddressesFromKV()]);
+			const uncachedAddresses = storageAddresses.filter((address) => !cacheAddresses.includes(address));
 
 			return new Response(
 				JSON.stringify(
@@ -311,11 +312,12 @@ export class HiroApiDO extends DurableObject<Env> {
 						addresses: {
 							storage: storageAddresses,
 							cache: cacheAddresses,
+							uncached: uncachedAddresses,
 						},
 						stats: {
 							storage: storageAddresses.length,
 							cached: cacheAddresses.length,
-							uncached: storageAddresses.filter((address) => !cacheAddresses.includes(address)),
+							uncached: uncachedAddresses.length,
 						},
 					},
 					null,
