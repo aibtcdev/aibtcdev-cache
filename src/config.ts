@@ -4,7 +4,7 @@ export const APP_CONFIG = {
 	SUPPORTED_SERVICES: ['/hiro-api'],
 	// VALUES BELOW CAN BE OVERRIDDEN BY DURABLE OBJECTS
 	// default cache TTL used for KV
-	CACHE_TTL: 300, // 5 minutes
+	CACHE_TTL: 600, // 10 minutes
 	// default rate limiting settings
 	MAX_REQUESTS_PER_INTERVAL: 30, // no more than 30 requests
 	INTERVAL_MS: 15000, // in a span of 15 seconds
