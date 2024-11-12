@@ -7,8 +7,6 @@ import { SupabaseDO } from './durable-objects/supabase-do';
 export { HiroApiDO, SupabaseDO };
 
 export default {
-	// Initialize these at the top level when needed
-	supportedServices: [] as string[],
 	/**
 	 * This is the standard fetch handler for a Cloudflare Worker
 	 *
@@ -20,14 +18,13 @@ export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		// Initialize config with environment
 		const config = AppConfig.getInstance(env).getConfig();
-		this.supportedServices = config.SUPPORTED_SERVICES;
 		const url = new URL(request.url);
 		const path = url.pathname;
 
 		if (path === '/') {
 			return new Response(
 				JSON.stringify({
-					message: `Welcome to the aibtcdev-api-cache! Supported services: ${this.supportedServices.join(', ')}`,
+					message: `Welcome to the aibtcdev-api-cache! Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
 				}),
 				{
 					headers: { 'Content-Type': 'application/json' },
@@ -50,7 +47,7 @@ export default {
 		// Return 404 for any other path
 		return new Response(
 			JSON.stringify({
-				error: `Invalid path: ${path}. Supported services: ${this.supportedServices.join(', ')}`,
+				error: `Invalid path: ${path}. Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
 			}),
 			{
 				status: 404,
