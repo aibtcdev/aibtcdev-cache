@@ -42,11 +42,11 @@ export class SupabaseDO extends DurableObject<Env> {
 			throw new Error(`Failed to fetch stats: ${error.message}`);
 		}
 
-		if (!data || data.length === 0) {
+		if (!data) {
 			throw new Error('No stats data returned from database');
 		}
 
-		return data[0];
+		return data;
 	}
 
 	async alarm(): Promise<void> {
