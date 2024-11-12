@@ -1,5 +1,4 @@
 import { Env } from '../worker-configuration';
-import { APP_CONFIG } from './config';
 
 interface QueuedRequest {
 	resolve: (value: Response | PromiseLike<Response>) => void;
@@ -115,7 +114,7 @@ export class RateLimitedFetcher {
 			const response = await fetch(url);
 
 			if (response.status === 429) {
-				return { success: false, retry: true, error: new Error('Rate limit exceeded') };
+				return { success: false, retry: true, error: new Error('Rate limit exceeded in Hiro API') };
 			}
 
 			if (!response.ok) {
