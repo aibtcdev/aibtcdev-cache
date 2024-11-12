@@ -9,8 +9,10 @@ import { RateLimitedFetcher } from '../rate-limiter';
 export class HiroApiDO extends DurableObject<Env> {
 	// can override values here for all endpoints
 	private readonly CACHE_TTL: number = APP_CONFIG.CACHE_TTL;
-	private readonly MAX_REQUESTS_PER_MINUTE = APP_CONFIG.MAX_REQUESTS_PER_MINUTE;
+	private readonly MAX_REQUESTS_PER_MINUTE = APP_CONFIG.MAX_REQUESTS_PER_INTERVAL;
 	private readonly INTERVAL_MS = APP_CONFIG.INTERVAL_MS;
+	private readonly MAX_RETRIES = APP_CONFIG.MAX_RETRIES;
+	private readonly RETRY_DELAY = APP_CONFIG.RETRY_DELAY;
 	private readonly ALARM_INTERVAL_MS = APP_CONFIG.ALARM_INTERVAL_MS;
 	// settings specific to this Durable Object
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
@@ -30,7 +32,15 @@ export class HiroApiDO extends DurableObject<Env> {
 		super(ctx, env);
 		this.ctx = ctx;
 		this.env = env;
-		this.fetcher = new RateLimitedFetcher(this.MAX_REQUESTS_PER_MINUTE, this.INTERVAL_MS, this.env, this.BASE_API_URL, this.CACHE_TTL);
+		this.fetcher = new RateLimitedFetcher(
+			this.env,
+			this.BASE_API_URL,
+			this.CACHE_TTL,
+			this.MAX_REQUESTS_PER_MINUTE,
+			this.INTERVAL_MS,
+			this.MAX_RETRIES,
+			this.RETRY_DELAY
+		);
 
 		// Set up alarm to run at configured interval
 		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
