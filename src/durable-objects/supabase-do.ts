@@ -35,17 +35,37 @@ export class SupabaseDO extends DurableObject<Env> {
     }
 
     private async fetchStats(): Promise<StatsResponse> {
-        const { data, error } = await this.supabase.rpc('get_usage_stats');
+        const { data, error } = await this.supabase
+            .rpc('get_usage_stats')
+            .returns<StatsResponse>();
         
-        if (error) throw error;
-        return data[0] as StatsResponse;
+        if (error) {
+            console.error('Error fetching stats:', error);
+            throw new Error(`Failed to fetch stats: ${error.message}`);
+        }
+        
+        if (!data || data.length === 0) {
+            throw new Error('No stats data returned from database');
+        }
+        
+        return data[0];
     }
 
     async alarm(): Promise<void> {
         const startTime = Date.now();
         try {
-            // TODO: Implement Supabase query and cache update
             console.log('Updating Supabase stats cache...');
+            
+            const stats = await this.fetchStats();
+            const data = JSON.stringify({
+                timestamp: new Date().toISOString(),
+                ...stats
+            });
+            
+            const cacheKey = `${this.CACHE_PREFIX}_stats`;
+            await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, data, { 
+                expirationTtl: this.CACHE_TTL 
+            });
             
             const endTime = Date.now();
             console.log(`supabase-do: alarm executed in ${endTime - startTime}ms`);
