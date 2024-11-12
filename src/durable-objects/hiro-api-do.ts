@@ -74,7 +74,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			const results = {
 				success: 0,
 				failed: 0,
-				errors: [] as string[]
+				errors: [] as string[],
 			};
 
 			// Update cache for each address
@@ -87,7 +87,7 @@ export class HiroApiDO extends DurableObject<Env> {
 						results.success++;
 					} catch (error) {
 						results.failed++;
-						results.errors.push(`Failed to update ${address} (${endpoint}): ${error.message}`);
+						results.errors.push(`Failed to update ${address} (${endpoint}): ${error instanceof Error ? error.message : String(error)}`);
 						// Continue with next endpoint despite error
 						continue;
 					}
@@ -99,13 +99,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			const fetchDuration = endTime - addressFetchStartTime;
 
 			console.log(
-				`hiro-api-do: alarm executed`,
-				`\n- Updated cache for ${addresses.length} addresses`,
-				`\n- Successful updates: ${results.success}`,
-				`\n- Failed updates: ${results.failed}`,
-				`\n- Total duration: ${totalDuration}ms`,
-				`\n- Address fetch duration: ${fetchDuration}ms`,
-				`\n- Setup time: ${addressFetchStartTime - startTime}ms`
+				`hiro-api-do: alarm executed, updated ${addresses.length} addresses, took ${totalDuration}ms (fetch: ${fetchDuration}ms), success: ${results.success}, failed: ${results.failed}`
 			);
 
 			if (results.errors.length > 0) {
