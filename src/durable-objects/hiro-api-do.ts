@@ -69,6 +69,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			// Get addresses from DO storage instead of KV
 			const addresses = await this.getKnownAddresses();
 			const addressFetchStartTime = Date.now();
+			console.log(`Starting update for ${addresses.length} known addresses`);
 
 			// Track success/failure for each address
 			const results = {
@@ -105,9 +106,11 @@ export class HiroApiDO extends DurableObject<Env> {
 		} catch (error) {
 			console.error(`Alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
-			// Always schedule next alarm
-			const nextAlarm = Date.now() + this.ALARM_INTERVAL_MS;
-			this.ctx.storage.setAlarm(nextAlarm);
+			// Always schedule next alarm if one isn't set
+			const currentAlarm = this.ctx.storage.getAlarm();
+			if (currentAlarm === null) {
+				this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+			}
 		}
 	}
 
@@ -143,6 +146,12 @@ export class HiroApiDO extends DurableObject<Env> {
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname;
+
+		// Always schedule next alarm if one isn't set
+		const currentAlarm = this.ctx.storage.getAlarm();
+		if (currentAlarm === null) {
+			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+		}
 
 		// handle requests that don't match the base path
 		if (!path.startsWith(this.BASE_PATH)) {
