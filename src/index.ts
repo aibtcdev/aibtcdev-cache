@@ -1,9 +1,10 @@
 import { Env } from '../worker-configuration';
-import { APP_CONFIG } from './config';
+import { AppConfig } from './config';
 import { HiroApiDO } from './durable-objects/hiro-api-do';
-export { HiroApiDO };
+import { SupabaseDO } from './durable-objects/supabase-do';
 
-const supportedServices = APP_CONFIG.SUPPORTED_SERVICES;
+// export the Durable Object classes we're using
+export { HiroApiDO, SupabaseDO };
 
 export default {
 	/**
@@ -14,14 +15,16 @@ export default {
 	 * @param ctx - The execution context of the Worker
 	 * @returns The response to be sent back to the client
 	 */
-	async fetch(request, env, ctx): Promise<Response> {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		// Initialize config with environment
+		const config = AppConfig.getInstance(env).getConfig();
 		const url = new URL(request.url);
 		const path = url.pathname;
 
 		if (path === '/') {
 			return new Response(
 				JSON.stringify({
-					message: `Welcome to the aibtcdev-api-cache! Supported services: ${supportedServices.join(', ')}`,
+					message: `Welcome to the aibtcdev-api-cache! Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
 				}),
 				{
 					headers: { 'Content-Type': 'application/json' },
@@ -30,20 +33,21 @@ export default {
 		}
 
 		if (path.startsWith('/hiro-api')) {
-			// Create a DurableObjectId for our instance
-			let id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do');
+			const id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do'); // create the instance
+			const stub = env.HIRO_API_DO.get(id); // get the stub for communication
+			return await stub.fetch(request); // forward the request to the Durable Object
+		}
 
-			// Get the stub for communication
-			let stub = env.HIRO_API_DO.get(id);
-
-			// Forward the request to the Durable Object
-			return await stub.fetch(request);
+		if (path.startsWith('/supabase')) {
+			let id: DurableObjectId = env.SUPABASE_DO.idFromName('supabase-do'); // create the instance
+			let stub = env.SUPABASE_DO.get(id); // get the stub for communication
+			return await stub.fetch(request); // forward the request to the Durable Object
 		}
 
 		// Return 404 for any other path
 		return new Response(
 			JSON.stringify({
-				error: `Invalid path: ${path}. Supported services: ${supportedServices.join(', ')}`,
+				error: `Invalid path: ${path}. Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
 			}),
 			{
 				status: 404,

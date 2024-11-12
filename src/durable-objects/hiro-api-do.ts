@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
-import { APP_CONFIG } from '../config';
+import { AppConfig } from '../config';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 /**
@@ -8,12 +8,12 @@ import { RateLimitedFetcher } from '../rate-limiter';
  */
 export class HiroApiDO extends DurableObject<Env> {
 	// can override values here for all endpoints
-	private readonly CACHE_TTL: number = APP_CONFIG.CACHE_TTL;
-	private readonly MAX_REQUESTS_PER_MINUTE = APP_CONFIG.MAX_REQUESTS_PER_INTERVAL;
-	private readonly INTERVAL_MS = APP_CONFIG.INTERVAL_MS;
-	private readonly MAX_RETRIES = APP_CONFIG.MAX_RETRIES;
-	private readonly RETRY_DELAY = APP_CONFIG.RETRY_DELAY;
-	private readonly ALARM_INTERVAL_MS = APP_CONFIG.ALARM_INTERVAL_MS;
+	private readonly CACHE_TTL: number;
+	private readonly MAX_REQUESTS_PER_MINUTE: number;
+	private readonly INTERVAL_MS: number;
+	private readonly MAX_RETRIES: number;
+	private readonly RETRY_DELAY: number;
+	private readonly ALARM_INTERVAL_MS: number;
 	// settings specific to this Durable Object
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
@@ -49,6 +49,18 @@ export class HiroApiDO extends DurableObject<Env> {
 		super(ctx, env);
 		this.ctx = ctx;
 		this.env = env;
+
+		// Initialize AppConfig with environment
+		const config = AppConfig.getInstance(env).getConfig();
+
+		// Set configuration values
+		this.CACHE_TTL = config.CACHE_TTL;
+		this.MAX_REQUESTS_PER_MINUTE = config.MAX_REQUESTS_PER_INTERVAL;
+		this.INTERVAL_MS = config.INTERVAL_MS;
+		this.MAX_RETRIES = config.MAX_RETRIES;
+		this.RETRY_DELAY = config.RETRY_DELAY;
+		this.ALARM_INTERVAL_MS = config.ALARM_INTERVAL_MS;
+
 		this.fetcher = new RateLimitedFetcher(
 			this.env,
 			this.BASE_API_URL,
