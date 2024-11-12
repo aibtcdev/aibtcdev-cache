@@ -267,7 +267,7 @@ export class HiroApiDO extends DurableObject<Env> {
 						},
 						addresses: {
 							storage: storageAddresses,
-							cache: cacheAddresses,
+							cached: cacheAddresses,
 							uncached: uncachedAddresses,
 						},
 					},
