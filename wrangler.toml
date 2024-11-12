@@ -31,7 +31,11 @@ class_name = "SupabaseDO"
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#migrations
 [[migrations]]
 tag = "v1"
-new_classes = ["HiroApiDO", "SupabaseDO"]
+new_classes = ["HiroApiDO"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["SupabaseDO"]
 
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#kv-namespaces

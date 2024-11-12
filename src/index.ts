@@ -4,7 +4,8 @@ import { HiroApiDO } from './durable-objects/hiro-api-do';
 import { SupabaseDO } from './durable-objects/supabase-do';
 
 // export the Durable Object classes we're using
-export { HiroApiDO, SupabaseDO };
+export { HiroApiDO };
+export { SupabaseDO };
 
 export default {
 	/**
