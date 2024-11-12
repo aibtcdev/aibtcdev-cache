@@ -79,7 +79,7 @@ export class HiroApiDO extends DurableObject<Env> {
 
 			// Update cache for each address
 			for (const address of addresses) {
-				const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
+				const endpoints = [`/extended/v1/address/${address}/balances`]; // `/extended/v1/address/${address}/assets`
 				for (const endpoint of endpoints) {
 					try {
 						const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
