@@ -12,7 +12,7 @@ export const APP_CONFIG = {
 	RETRY_DELAY: 1000, // multiplied by retry attempt number
 	// how often to warm the cache, should be shorter than the cache TTL
 	ALARM_INTERVAL_MS: 300000, // 5 minutes
-	// supabase access settings
-	SUPABASE_URL: 'https://your-project.supabase.co', // supabase project URL
-	SUPABASE_SERVICE_KEY: 'your-service-key', // supabase service key
+	// supabase access settings - pulled from environment variables
+	SUPABASE_URL: env.SUPABASE_URL || '', // supabase project URL
+	SUPABASE_SERVICE_KEY: env.SUPABASE_SERVICE_KEY || '', // supabase service key
 };
