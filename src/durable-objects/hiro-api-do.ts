@@ -64,9 +64,11 @@ export class HiroApiDO extends DurableObject<Env> {
 	}
 
 	async alarm(): Promise<void> {
+		const startTime = Date.now();
 		try {
 			// Get addresses from DO storage instead of KV
 			const addresses = await this.getKnownAddresses();
+			const addressFetchStartTime = Date.now();
 
 			// Update cache for each address
 			for (const address of addresses) {
@@ -77,7 +79,17 @@ export class HiroApiDO extends DurableObject<Env> {
 				}
 			}
 
-			console.log(`Updated cache for ${addresses.length} addresses at ${new Date().toISOString()}`);
+			const endTime = Date.now();
+			const totalDuration = endTime - startTime;
+			const fetchDuration = endTime - addressFetchStartTime;
+
+			console.log(
+				`Alarm completed at ${new Date().toISOString()}:`,
+				`\n- Updated cache for ${addresses.length} addresses`,
+				`\n- Total duration: ${totalDuration}ms`,
+				`\n- Address fetch duration: ${fetchDuration}ms`,
+				`\n- Setup time: ${addressFetchStartTime - startTime}ms`
+			);
 		} catch (error) {
 			console.error('Alarm execution failed:', error);
 		} finally {
