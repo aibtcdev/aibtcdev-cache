@@ -27,7 +27,7 @@ export default {
 		if (path === '/') {
 			return new Response(
 				JSON.stringify({
-					message: `Welcome to the aibtcdev-api-cache! Supported services: ${supportedServices.join(', ')}`,
+					message: `Welcome to the aibtcdev-api-cache! Supported services: ${this.supportedServices.join(', ')}`,
 				}),
 				{
 					headers: { 'Content-Type': 'application/json' },
@@ -50,7 +50,7 @@ export default {
 		// Return 404 for any other path
 		return new Response(
 			JSON.stringify({
-				error: `Invalid path: ${path}. Supported services: ${supportedServices.join(', ')}`,
+				error: `Invalid path: ${path}. Supported services: ${this.supportedServices.join(', ')}`,
 			}),
 			{
 				status: 404,
