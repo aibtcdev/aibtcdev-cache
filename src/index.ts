@@ -1,12 +1,13 @@
 import { Env } from '../worker-configuration';
 import { AppConfig } from './config';
 import { corsHeaders, createJsonResponse } from './utils';
+import { BnsApiDO } from './durable-objects/bns-do';
 import { HiroApiDO } from './durable-objects/hiro-api-do';
 import { StxCityDO } from './durable-objects/stx-city-do';
 import { SupabaseDO } from './durable-objects/supabase-do';
 
 // export the Durable Object classes we're using
-export { HiroApiDO, StxCityDO, SupabaseDO };
+export { BnsApiDO, HiroApiDO, StxCityDO, SupabaseDO };
 
 export default {
 	/**
