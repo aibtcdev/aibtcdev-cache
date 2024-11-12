@@ -6,10 +6,9 @@ import { SupabaseDO } from './durable-objects/supabase-do';
 // export the Durable Object classes we're using
 export { HiroApiDO, SupabaseDO };
 
-// Initialize AppConfig
+// Initialize AppConfig with environment in the global scope
 const appConfig = AppConfig.getInstance();
-const config = appConfig.getConfig();
-const supportedServices = config.SUPPORTED_SERVICES;
+let supportedServices: string[] = [];
 
 export default {
 	/**
@@ -23,6 +22,8 @@ export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		// Initialize config with environment
 		AppConfig.getInstance().initialize(env);
+		const config = appConfig.getConfig();
+		supportedServices = config.SUPPORTED_SERVICES;
 		const url = new URL(request.url);
 		const path = url.pathname;
 
