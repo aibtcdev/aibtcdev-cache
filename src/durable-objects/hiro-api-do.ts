@@ -17,7 +17,7 @@ export class HiroApiDO extends DurableObject<Env> {
 	// settings specific to this Durable Object
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
-	private readonly CACHE_PREFIX: string = this.BASE_PATH.replace('/', '');
+	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/test-rate-limiter', '/known-addresses'];
 	// custom fetcher with KV cache logic and rate limiting
 	private fetcher: RateLimitedFetcher;
@@ -55,7 +55,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		for (const address of addresses) {
 			const endpoints = [`/extended/v1/address/${address}/assets`, `/extended/v1/address/${address}/balances`];
 			for (const endpoint of endpoints) {
-				const cacheKey = `${this.CACHE_PREFIX}${endpoint.replace('/', '_')}`;
+				const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
 				await this.fetchWithCache(endpoint, cacheKey);
 			}
 		}
@@ -244,7 +244,7 @@ export class HiroApiDO extends DurableObject<Env> {
 
 			const requests = testEndpoints.map(async (testEndpoint) => {
 				const requestStart = Date.now();
-				const cacheKey = `${this.CACHE_PREFIX}${testEndpoint.replace('/', '_')}`;
+				const cacheKey = `${this.CACHE_PREFIX}${testEndpoint.replaceAll('/', '_')}`;
 				const response = await this.fetchWithCache(testEndpoint, cacheKey);
 				const requestEnd = Date.now();
 
