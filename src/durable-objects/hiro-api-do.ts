@@ -84,7 +84,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			const fetchDuration = endTime - addressFetchStartTime;
 
 			console.log(
-				`Alarm completed at ${new Date().toISOString()}:`,
+				`hiro-api-do: alarm executed`,
 				`\n- Updated cache for ${addresses.length} addresses`,
 				`\n- Total duration: ${totalDuration}ms`,
 				`\n- Address fetch duration: ${fetchDuration}ms`,
