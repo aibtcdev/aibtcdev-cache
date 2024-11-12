@@ -47,9 +47,11 @@ export class SupabaseDO extends DurableObject<Env> {
 	private async fetchStats(): Promise<StatsResponse | undefined> {
 		try {
 			const { data, error } = await this.supabase
-				.rpc('get_stats')
-				.returns<StatsResponse>()
-				.single();
+				.rpc('get_stats', undefined, {
+					count: 'exact'
+				})
+				.select('*')
+				.maybeSingle();
 
 			if (error) {
 				console.error('Error fetching stats:', error);
