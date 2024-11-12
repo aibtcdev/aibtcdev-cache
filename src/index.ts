@@ -33,25 +33,15 @@ export default {
 		}
 
 		if (path.startsWith('/hiro-api')) {
-			// Create a DurableObjectId for our instance
-			let id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do');
-
-			// Get the stub for communication
-			let stub = env.HIRO_API_DO.get(id);
-
-			// Forward the request to the Durable Object
-			return await stub.fetch(request);
+			const id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do'); // create the instance
+			const stub = env.HIRO_API_DO.get(id); // get the stub for communication
+			return await stub.fetch(request); // forward the request to the Durable Object
 		}
 
 		if (path.startsWith('/supabase')) {
-			// Create a DurableObjectId for our instance
-			let id: DurableObjectId = env.SUPABASE_DO.idFromName('supabase-do');
-
-			// Get the stub for communication
-			let stub = env.SUPABASE_DO.get(id);
-
-			// Forward the request to the Durable Object
-			return await stub.fetch(request);
+			let id: DurableObjectId = env.SUPABASE_DO.idFromName('supabase-do'); // create the instance
+			let stub = env.SUPABASE_DO.get(id); // get the stub for communication
+			return await stub.fetch(request); // forward the request to the Durable Object
 		}
 
 		// Return 404 for any other path
