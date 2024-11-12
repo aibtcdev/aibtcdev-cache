@@ -18,11 +18,15 @@ enabled = true
 name = "HIRO_API_DO"
 class_name = "HiroApiDO"
 
+[[durable_objects.bindings]]
+name = "SUPABASE_DO" 
+class_name = "SupabaseDO"
+
 # Durable Object migrations.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#migrations
 [[migrations]]
 tag = "v1"
-new_classes = ["HiroApiDO"]
+new_classes = ["HiroApiDO", "SupabaseDO"]
 
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#kv-namespaces
