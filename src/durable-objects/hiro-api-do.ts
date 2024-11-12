@@ -49,6 +49,9 @@ export class HiroApiDO extends DurableObject<Env> {
 			}
 		}
 
+		// Log the number of addresses updated
+		console.log(`Updated cache for ${addresses.length} addresses`);
+
 		// Schedule next alarm
 		this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
