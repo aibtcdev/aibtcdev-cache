@@ -40,7 +40,9 @@ export class SupabaseDO extends DurableObject<Env> {
 	}
 
 	private async fetchStats(): Promise<StatsResponse> {
-		const { data, error } = await this.supabase.rpc('get_stats').returns<StatsResponse>();
+		const { data, error } = await this.supabase.rpc('get_stats', {}, {
+			count: 'exact'
+		});
 
 		if (error) {
 			console.error('Error fetching stats:', error);
@@ -51,7 +53,7 @@ export class SupabaseDO extends DurableObject<Env> {
 			throw new Error('No stats data returned from database');
 		}
 
-		return data;
+		return data as StatsResponse;
 	}
 
 	async alarm(): Promise<void> {
