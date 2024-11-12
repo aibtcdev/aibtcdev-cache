@@ -97,16 +97,13 @@ export class HiroApiDO extends DurableObject<Env> {
 			const endTime = Date.now();
 			const totalDuration = endTime - startTime;
 			const fetchDuration = endTime - addressFetchStartTime;
+			const setupDuration = addressFetchStartTime - startTime;
 
 			console.log(
-				`hiro-api-do: alarm executed, updated ${addresses.length} addresses, took ${totalDuration}ms (fetch: ${fetchDuration}ms), success: ${results.success}, failed: ${results.failed}`
+				`hiro-api-do: alarm executed, ${addresses.length} addresses, setup ${setupDuration}ms, fetch: ${fetchDuration}ms, total ${totalDuration}ms, success: ${results.success}, failed: ${results.failed}`
 			);
-
-			if (results.errors.length > 0) {
-				console.error('Alarm update errors:', results.errors);
-			}
 		} catch (error) {
-			console.error('Alarm execution failed:', error);
+			console.error(`Alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			// Always schedule next alarm
 			const nextAlarm = Date.now() + this.ALARM_INTERVAL_MS;
