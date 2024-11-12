@@ -291,8 +291,15 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle /known-addresses path
 		if (endpoint === '/known-addresses') {
-			const addresses = await this.getKnownAddresses();
-			return new Response(JSON.stringify(addresses, null, 2), {
+			const [storageAddresses, cacheAddresses] = await Promise.all([
+				this.getKnownAddresses(),
+				this.extractAddressesFromKV()
+			]);
+			
+			return new Response(JSON.stringify({
+				storage: storageAddresses,
+				cache: cacheAddresses
+			}, null, 2), {
 				headers: { 'Content-Type': 'application/json' },
 			});
 		}
