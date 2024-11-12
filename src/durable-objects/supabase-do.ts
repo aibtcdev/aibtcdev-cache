@@ -45,22 +45,27 @@ export class SupabaseDO extends DurableObject<Env> {
 	}
 
 	private async fetchStats(): Promise<StatsResponse | undefined> {
-		const { data, error } = await this.supabase.rpc('get_stats', {}, {
-			head: false,
-			count: null
-		});
+		try {
+			const { data, error } = await this.supabase
+				.rpc('get_stats')
+				.returns<StatsResponse>()
+				.single();
 
-		if (error) {
-			console.error('Error fetching stats:', error);
+			if (error) {
+				console.error('Error fetching stats:', error);
+				return undefined;
+			}
+
+			if (!data) {
+				console.error('No stats data returned from database');
+				return undefined;
+			}
+
+			return data;
+		} catch (err) {
+			console.error('Exception in fetchStats:', err);
 			return undefined;
 		}
-
-		if (!data) {
-			console.error('No stats data returned from database');
-			return undefined;
-		}
-
-		return data as StatsResponse;
 	}
 
 	async alarm(): Promise<void> {
