@@ -6,7 +6,7 @@ export const APP_CONFIG = {
 	// default cache TTL used for KV
 	CACHE_TTL: 300, // 5 minutes
 	// default rate limiting settings
-	MAX_REQUESTS_PER_INTERVAL: 60, // no more than 60 requests
+	MAX_REQUESTS_PER_INTERVAL: 30, // no more than 30 requests
 	INTERVAL_MS: 15000, // in a span of 15 seconds
 	MAX_RETRIES: 3, // max retries for failed fetches
 	RETRY_DELAY: 2000, // multiplied by retry attempt number
