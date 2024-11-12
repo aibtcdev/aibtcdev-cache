@@ -245,15 +245,15 @@ export class HiroApiDO extends DurableObject<Env> {
 			return new Response(
 				JSON.stringify(
 					{
-						addresses: {
-							storage: storageAddresses,
-							cache: cacheAddresses,
-							uncached: uncachedAddresses,
-						},
 						stats: {
 							storage: storageAddresses.length,
 							cached: cacheAddresses.length,
 							uncached: uncachedAddresses.length,
+						},
+						addresses: {
+							storage: storageAddresses,
+							cache: cacheAddresses,
+							uncached: uncachedAddresses,
 						},
 					},
 					null,
