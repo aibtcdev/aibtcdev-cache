@@ -5,14 +5,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-# Check if URL argument is provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 <API_URL>"
-    echo "Example: $0 http://localhost:8787"
-    exit 1
-fi
-
-API_URL=$1
+# Set default API URL or use provided argument
+API_URL=${1:-"http://localhost:8787"}
 FAILED_TESTS=0
 TOTAL_TESTS=0
 
