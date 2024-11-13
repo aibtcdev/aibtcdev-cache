@@ -11,11 +11,11 @@ routes = [{ pattern = "cache.aibtc.dev", custom_domain = true }]
 [observability]
 enabled = true
 
-[vars]
-# Blank so we can use secrets from the dashboard
-HIRO_API_KEY = ""
-SUPABASE_URL = ""
-SUPABASE_SERVICE_KEY = ""
+# Want to use this with `npm run cf-typegen` but it overwrites the secrets
+# [vars]
+# HIRO_API_KEY = ""
+# SUPABASE_URL = ""
+# SUPABASE_SERVICE_KEY = ""
 
 # Bind a Durable Object. Durable objects are a scale-to-zero compute primitive based on the actor model.
 # Durable Objects can live for as long as needed. Use these when you need a long-running "server", such as in realtime apps.
