@@ -112,6 +112,7 @@ export class RateLimitedFetcher {
 		try {
 			// Make API request (cache was already checked)
 			const url = new URL(request.endpoint, this.baseApiUrl);
+			console.log(`Processing request: ${url.toString()}`);
 			const response = await fetch(url);
 
 			if (response.status === 429) {
