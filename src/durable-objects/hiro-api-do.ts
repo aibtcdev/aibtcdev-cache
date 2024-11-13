@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { corsHeaders } from '../utils';
+import { createJsonResponse } from '../utils';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 interface KnownAddressInfo {
@@ -21,15 +21,6 @@ interface KnownAddressInfo {
  * Durable Object class for the Hiro API
  */
 export class HiroApiDO extends DurableObject<Env> {
-	private jsonResponse(body: unknown, status = 200): Response {
-		return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
-			status,
-			headers: {
-				'Content-Type': 'application/json',
-				...corsHeaders(),
-			},
-		});
-	}
 	// can override values here for all endpoints
 	private readonly CACHE_TTL: number;
 	private readonly MAX_REQUESTS_PER_MINUTE: number;
@@ -190,7 +181,7 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle requests that don't match the base path
 		if (!path.startsWith(this.BASE_PATH)) {
-			return this.jsonResponse(
+			return createJsonResponse(
 				{
 					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
 				},
@@ -203,7 +194,7 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle root route
 		if (endpoint === '' || endpoint === '/') {
-			return this.jsonResponse({
+			return createJsonResponse({
 				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			});
 		}
@@ -216,7 +207,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		);
 
 		if (!isSupported) {
-			return this.jsonResponse(
+			return createJsonResponse(
 				{
 					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 				},
@@ -243,7 +234,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
 
 			if (pathParts.length < 2) {
-				return this.jsonResponse(
+				return createJsonResponse(
 					{
 						error: 'Invalid address path format, expected: /extended/v1/address/{address}/{action}',
 					},
@@ -261,7 +252,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			// Validate the action
 			const validActions = ['assets', 'balances'];
 			if (!validActions.includes(action)) {
-				return this.jsonResponse(
+				return createJsonResponse(
 					{
 						error: `Invalid action: ${action}, valid actions: ${validActions.join(', ')}`,
 					},
@@ -292,11 +283,11 @@ export class HiroApiDO extends DurableObject<Env> {
 				},
 			};
 
-			return this.jsonResponse(knownAddressInfo);
+			return createJsonResponse(knownAddressInfo);
 		}
 
 		// return 404 for any other endpoint
-		return this.jsonResponse(
+		return createJsonResponse(
 			{
 				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			},

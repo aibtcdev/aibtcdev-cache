@@ -1,6 +1,6 @@
 import { Env } from '../worker-configuration';
 import { AppConfig } from './config';
-import { corsHeaders } from './utils';
+import { corsHeaders, createJsonResponse } from './utils';
 import { HiroApiDO } from './durable-objects/hiro-api-do';
 import { SupabaseDO } from './durable-objects/supabase-do';
 
@@ -30,21 +30,10 @@ export default {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		// Add CORS headers to all responses
-		const responseInit = {
-			headers: {
-				'Content-Type': 'application/json',
-				...corsHeaders(request.headers.get('Origin') || undefined),
-			},
-		};
-
 		if (path === '/') {
-			return new Response(
-				JSON.stringify({
-					message: `Welcome to the aibtcdev-api-cache! Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
-				}),
-				responseInit
-			);
+			return createJsonResponse({
+				message: `Welcome to the aibtcdev-api-cache! Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
+			});
 		}
 
 		// For the Durable Object responses, the CORS headers will be added by the DO handlers
@@ -61,14 +50,11 @@ export default {
 		}
 
 		// Return 404 for any other path
-		return new Response(
-			JSON.stringify({
-				error: `Unsupported service at: ${path}, supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
-			}),
+		return createJsonResponse(
 			{
-				status: 404,
-				...responseInit,
-			}
+				error: `Unsupported service at: ${path}, supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
+			},
+			404
 		);
 	},
 } satisfies ExportedHandler<Env>;
