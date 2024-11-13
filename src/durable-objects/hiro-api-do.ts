@@ -22,7 +22,7 @@ interface KnownAddressInfo {
  */
 export class HiroApiDO extends DurableObject<Env> {
 	private jsonResponse(body: unknown, status = 200): Response {
-		return new Response(JSON.stringify(body), {
+		return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
 			status,
 			headers: {
 				'Content-Type': 'application/json',
