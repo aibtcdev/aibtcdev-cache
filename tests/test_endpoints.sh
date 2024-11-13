@@ -88,21 +88,31 @@ test_cors() {
 echo "Testing API at: $API_URL"
 echo "----------------------------------------"
 
-# Test root endpoint
-test_endpoint "/" 200 "Root endpoint"
-test_cors "/" "Root endpoint CORS"
+# Test Index endpoints
+test_endpoint "/" 200 "Index - Root endpoint"
+test_cors "/" "Index - Root endpoint CORS"
+test_endpoint "/invalid" 404 "Index - Invalid endpoint"
+test_cors "/invalid" "Index - Invalid endpoint CORS"
 
-# Test Hiro API endpoint
-test_endpoint "/hiro-api" 200 "Hiro API base endpoint"
-test_cors "/hiro-api" "Hiro API CORS"
+# Test Hiro API endpoints
+test_endpoint "/hiro-api" 200 "HiroApiDO - Base endpoint"
+test_cors "/hiro-api" "HiroApiDO - Base endpoint CORS"
+test_endpoint "/hiro-api/extended" 200 "HiroApiDO - Extended info"
+test_cors "/hiro-api/extended" "HiroApiDO - Extended info CORS"
+test_endpoint "/hiro-api/v2/info" 200 "HiroApiDO - API info"
+test_cors "/hiro-api/v2/info" "HiroApiDO - API info CORS"
+test_endpoint "/hiro-api/known-addresses" 200 "HiroApiDO - Known addresses"
+test_cors "/hiro-api/known-addresses" "HiroApiDO - Known addresses CORS"
+test_endpoint "/hiro-api/invalid" 404 "HiroApiDO - Invalid endpoint"
+test_cors "/hiro-api/invalid" "HiroApiDO - Invalid endpoint CORS"
 
-# Test Supabase endpoint
-test_endpoint "/supabase" 200 "Supabase base endpoint"
-test_cors "/supabase" "Supabase CORS"
-
-# Test invalid endpoint
-test_endpoint "/invalid" 404 "Invalid endpoint"
-test_cors "/invalid" "Invalid endpoint CORS"
+# Test Supabase endpoints
+test_endpoint "/supabase" 200 "SupabaseDO - Base endpoint"
+test_cors "/supabase" "SupabaseDO - Base endpoint CORS"
+test_endpoint "/supabase/stats" 200 "SupabaseDO - Stats endpoint"
+test_cors "/supabase/stats" "SupabaseDO - Stats endpoint CORS"
+test_endpoint "/supabase/invalid" 404 "SupabaseDO - Invalid endpoint"
+test_cors "/supabase/invalid" "SupabaseDO - Invalid endpoint CORS"
 
 # Summary
 echo "Test Summary:"
