@@ -93,11 +93,11 @@ test_endpoint "/" 200 "Root endpoint"
 test_cors "/" "Root endpoint CORS"
 
 # Test Hiro API endpoint
-test_endpoint "/hiro-api" 404 "Hiro API base endpoint"
+test_endpoint "/hiro-api" 200 "Hiro API base endpoint"
 test_cors "/hiro-api" "Hiro API CORS"
 
 # Test Supabase endpoint
-test_endpoint "/supabase" 404 "Supabase base endpoint"
+test_endpoint "/supabase" 200 "Supabase base endpoint"
 test_cors "/supabase" "Supabase CORS"
 
 # Test invalid endpoint
