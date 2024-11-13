@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
+import { corsHeaders } from '../utils';
 
 interface StatsResponse {
 	total_jobs: number;
@@ -15,6 +16,15 @@ interface StatsResponse {
  * Durable Object class for Supabase queries
  */
 export class SupabaseDO extends DurableObject<Env> {
+	private jsonResponse(body: unknown, status = 200): Response {
+		return new Response(JSON.stringify(body), {
+			status,
+			headers: {
+				'Content-Type': 'application/json',
+				...corsHeaders(),
+			},
+		});
+	}
 	private readonly CACHE_TTL: number;
 	private readonly ALARM_INTERVAL_MS = 60000; // 1 minute
 	private readonly BASE_PATH: string = '/supabase';
@@ -29,15 +39,15 @@ export class SupabaseDO extends DurableObject<Env> {
 
 		// Initialize AppConfig with environment
 		const config = AppConfig.getInstance(env).getConfig();
-		
+
 		// Set configuration values
 		this.CACHE_TTL = config.CACHE_TTL;
-		
+
 		// Initialize Supabase client with config values
 		this.supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY, {
 			auth: {
-				persistSession: false
-			}
+				persistSession: false,
+			},
 		});
 
 		// Set up alarm to run at configured interval
@@ -48,7 +58,7 @@ export class SupabaseDO extends DurableObject<Env> {
 		try {
 			const { data, error } = await this.supabase
 				.rpc('get_stats', undefined, {
-					count: 'exact'
+					count: 'exact',
 				})
 				.select('*')
 				.maybeSingle();
@@ -112,14 +122,11 @@ export class SupabaseDO extends DurableObject<Env> {
 
 		// Handle requests that don't match the base path
 		if (!path.startsWith(this.BASE_PATH)) {
-			return new Response(
-				JSON.stringify({
-					error: `Unrecognized path passed to SupabaseDO: ${path}`,
-				}),
+			return this.jsonResponse(
 				{
-					status: 404,
-					headers: { 'Content-Type': 'application/json' },
-				}
+					error: `Unrecognized path passed to SupabaseDO: ${path}`,
+				},
+				404
 			);
 		}
 
@@ -128,14 +135,9 @@ export class SupabaseDO extends DurableObject<Env> {
 
 		// Handle root route
 		if (endpoint === '' || endpoint === '/') {
-			return new Response(
-				JSON.stringify({
-					message: `Welcome to the Supabase cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
-				}),
-				{
-					headers: { 'Content-Type': 'application/json' },
-				}
-			);
+			return this.jsonResponse({
+				message: `Welcome to the Supabase cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+			});
 		}
 
 		// Handle /stats endpoint
@@ -144,22 +146,17 @@ export class SupabaseDO extends DurableObject<Env> {
 			const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
 
 			if (cached) {
-				return new Response(cached, {
-					headers: { 'Content-Type': 'application/json' },
-				});
+				return this.jsonResponse(cached);
 			}
 
 			const stats = await this.fetchStats();
 			// verify that stats were fetched
 			if (!stats) {
-				return new Response(
-					JSON.stringify({
-						error: 'Failed to fetch stats from Supabase',
-					}),
+				return this.jsonResponse(
 					{
-						status: 500,
-						headers: { 'Content-Type': 'application/json' },
-					}
+						error: 'Failed to fetch stats from Supabase',
+					},
+					500
 				);
 			}
 
@@ -172,20 +169,15 @@ export class SupabaseDO extends DurableObject<Env> {
 				expirationTtl: this.CACHE_TTL,
 			});
 
-			return new Response(data, {
-				headers: { 'Content-Type': 'application/json' },
-			});
+			return this.jsonResponse(data);
 		}
 
 		// Return 404 for any other endpoint
-		return new Response(
-			JSON.stringify({
-				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
-			}),
+		return this.jsonResponse(
 			{
-				status: 404,
-				headers: { 'Content-Type': 'application/json' },
-			}
+				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+			},
+			404
 		);
 	}
 }

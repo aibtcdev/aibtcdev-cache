@@ -1,4 +1,5 @@
 import { Env } from '../worker-configuration';
+import { corsHeaders } from './utils';
 
 interface QueuedRequest {
 	resolve: (value: Response | PromiseLike<Response>) => void;
@@ -47,6 +48,16 @@ export class RateLimitedFetcher {
 
 	public getWindowRequestsCount(): number {
 		return this.windowRequests;
+	}
+
+	private jsonResponse(body: unknown, status = 200): Response {
+		return new Response(JSON.stringify(body), {
+			status,
+			headers: {
+				'Content-Type': 'application/json',
+				...corsHeaders(),
+			},
+		});
 	}
 
 	private startTokenReplenishment() {
@@ -128,11 +139,7 @@ export class RateLimitedFetcher {
 			const data = await response.text();
 			await this.env.AIBTCDEV_CACHE_KV.put(request.cacheKey, data, { expirationTtl: this.cacheTtl });
 
-			request.resolve(
-				new Response(data, {
-					headers: { 'Content-Type': 'application/json' },
-				})
-			);
+			request.resolve(this.jsonResponse(data, response.status));
 			return { success: true };
 		} catch (error) {
 			return {
@@ -150,9 +157,7 @@ export class RateLimitedFetcher {
 		// Check cache first - bypass rate limiting for cached responses
 		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
 		if (cached && !bustCache) {
-			return new Response(cached, {
-				headers: { 'Content-Type': 'application/json' },
-			});
+			return this.jsonResponse(cached);
 		}
 
 		// If not cached, go through rate limiting queue
