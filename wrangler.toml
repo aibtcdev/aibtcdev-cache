@@ -12,9 +12,10 @@ routes = [{ pattern = "cache.aibtc.dev", custom_domain = true }]
 enabled = true
 
 [vars]
-HIRO_API_KEY = "available on the Hiro platform https://platform.hiro.so"
-SUPABASE_URL = "from Supabase project dashboard"
-SUPABASE_SERVICE_KEY = "from Supabase project dashboard"
+# Blank so we can use secrets from the dashboard
+HIRO_API_KEY = ""
+SUPABASE_URL = ""
+SUPABASE_SERVICE_KEY = ""
 
 # Bind a Durable Object. Durable objects are a scale-to-zero compute primitive based on the actor model.
 # Durable Objects can live for as long as needed. Use these when you need a long-running "server", such as in realtime apps.
@@ -24,7 +25,7 @@ name = "HIRO_API_DO"
 class_name = "HiroApiDO"
 
 [[durable_objects.bindings]]
-name = "SUPABASE_DO" 
+name = "SUPABASE_DO"
 class_name = "SupabaseDO"
 
 # Durable Object migrations.
