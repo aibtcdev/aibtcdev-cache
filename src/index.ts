@@ -2,11 +2,11 @@ import { Env } from '../worker-configuration';
 import { AppConfig } from './config';
 import { corsHeaders, createJsonResponse } from './utils';
 import { HiroApiDO } from './durable-objects/hiro-api-do';
+import { StxCityDO } from './durable-objects/stx-city-do';
 import { SupabaseDO } from './durable-objects/supabase-do';
 
 // export the Durable Object classes we're using
-export { HiroApiDO };
-export { SupabaseDO };
+export { HiroApiDO, StxCityDO, SupabaseDO };
 
 export default {
 	/**
@@ -40,6 +40,12 @@ export default {
 		if (path.startsWith('/hiro-api')) {
 			const id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do'); // create the instance
 			const stub = env.HIRO_API_DO.get(id); // get the stub for communication
+			return await stub.fetch(request); // forward the request to the Durable Object
+		}
+
+		if (path.startsWith('/stx-city')) {
+			const id: DurableObjectId = env.STX_CITY_DO.idFromName('stx-city-do'); // create the instance
+			const stub = env.STX_CITY_DO.get(id); // get the stub for communication
 			return await stub.fetch(request); // forward the request to the Durable Object
 		}
 

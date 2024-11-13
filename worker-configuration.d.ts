@@ -6,5 +6,6 @@ export interface Env {
 	SUPABASE_URL: string;
 	SUPABASE_SERVICE_KEY: string;
 	HIRO_API_DO: DurableObjectNamespace<import('./src/index').HiroApiDO>;
+	STX_CITY_DO: DurableObjectNamespace<import('./src/index').StxCityDO>;
 	SUPABASE_DO: DurableObjectNamespace<import('./src/index').SupabaseDO>;
 }
