@@ -15,3 +15,11 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Run API Tests
+        run: |
+          chmod +x tests/test_endpoints.sh
+          ./tests/test_endpoints.sh https://cache.aibtc.dev
