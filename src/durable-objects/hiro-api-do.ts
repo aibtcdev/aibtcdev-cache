@@ -8,6 +8,15 @@ import { RateLimitedFetcher } from '../rate-limiter';
  * Durable Object class for the Hiro API
  */
 export class HiroApiDO extends DurableObject<Env> {
+	private jsonResponse(body: unknown, status = 200): Response {
+		return new Response(JSON.stringify(body), {
+			status,
+			headers: {
+				'Content-Type': 'application/json',
+				...corsHeaders(this.ctx.request?.headers.get('Origin') || undefined)
+			}
+		});
+	}
 	// can override values here for all endpoints
 	private readonly CACHE_TTL: number;
 	private readonly MAX_REQUESTS_PER_MINUTE: number;
@@ -168,18 +177,9 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle requests that don't match the base path
 		if (!path.startsWith(this.BASE_PATH)) {
-			return new Response(
-				JSON.stringify({
-					error: `Unrecognized path passed to HiroApiDO: ${path}`,
-				}),
-				{
-					status: 404,
-					headers: { 
-						'Content-Type': 'application/json',
-						...corsHeaders(request.headers.get('Origin') || undefined)
-					},
-				}
-			);
+			return this.jsonResponse({
+				error: `Unrecognized path passed to HiroApiDO: ${path}`,
+			}, 404);
 		}
 
 		// parse requested endpoint from base path

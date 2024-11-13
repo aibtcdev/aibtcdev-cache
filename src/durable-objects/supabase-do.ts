@@ -16,6 +16,15 @@ interface StatsResponse {
  * Durable Object class for Supabase queries
  */
 export class SupabaseDO extends DurableObject<Env> {
+	private jsonResponse(body: unknown, status = 200): Response {
+		return new Response(JSON.stringify(body), {
+			status,
+			headers: {
+				'Content-Type': 'application/json',
+				...corsHeaders(this.ctx.request?.headers.get('Origin') || undefined)
+			}
+		});
+	}
 	private readonly CACHE_TTL: number;
 	private readonly ALARM_INTERVAL_MS = 60000; // 1 minute
 	private readonly BASE_PATH: string = '/supabase';
@@ -113,18 +122,9 @@ export class SupabaseDO extends DurableObject<Env> {
 
 		// Handle requests that don't match the base path
 		if (!path.startsWith(this.BASE_PATH)) {
-			return new Response(
-				JSON.stringify({
-					error: `Unrecognized path passed to SupabaseDO: ${path}`,
-				}),
-				{
-					status: 404,
-					headers: { 
-						'Content-Type': 'application/json',
-						...corsHeaders(request.headers.get('Origin') || undefined)
-					},
-				}
-			);
+			return this.jsonResponse({
+				error: `Unrecognized path passed to SupabaseDO: ${path}`,
+			}, 404);
 		}
 
 		// Parse requested endpoint from base path
