@@ -174,7 +174,10 @@ export class HiroApiDO extends DurableObject<Env> {
 				}),
 				{
 					status: 404,
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 
+						'Content-Type': 'application/json',
+						...corsHeaders(request.headers.get('Origin') || undefined)
+					},
 				}
 			);
 		}
@@ -189,7 +192,10 @@ export class HiroApiDO extends DurableObject<Env> {
 					message: `Welcome to the hiro-api cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
 				}),
 				{
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 
+						'Content-Type': 'application/json',
+						...corsHeaders(request.headers.get('Origin') || undefined)
+					},
 				}
 			);
 		}
@@ -209,7 +215,10 @@ export class HiroApiDO extends DurableObject<Env> {
 				}),
 				{
 					status: 404,
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 
+						'Content-Type': 'application/json',
+						...corsHeaders(request.headers.get('Origin') || undefined)
+					},
 				}
 			);
 		}

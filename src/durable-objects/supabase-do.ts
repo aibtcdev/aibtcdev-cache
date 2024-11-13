@@ -119,7 +119,10 @@ export class SupabaseDO extends DurableObject<Env> {
 				}),
 				{
 					status: 404,
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 
+						'Content-Type': 'application/json',
+						...corsHeaders(request.headers.get('Origin') || undefined)
+					},
 				}
 			);
 		}
@@ -134,7 +137,10 @@ export class SupabaseDO extends DurableObject<Env> {
 					message: `Welcome to the Supabase cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
 				}),
 				{
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 
+						'Content-Type': 'application/json',
+						...corsHeaders(request.headers.get('Origin') || undefined)
+					},
 				}
 			);
 		}
@@ -146,7 +152,10 @@ export class SupabaseDO extends DurableObject<Env> {
 
 			if (cached) {
 				return new Response(cached, {
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 
+						'Content-Type': 'application/json',
+						...corsHeaders(request.headers.get('Origin') || undefined)
+					},
 				});
 			}
 
