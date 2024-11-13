@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
+import { corsHeaders } from '../utils';
 
 interface StatsResponse {
 	total_jobs: number;
@@ -173,7 +174,10 @@ export class SupabaseDO extends DurableObject<Env> {
 			});
 
 			return new Response(data, {
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 
+					'Content-Type': 'application/json',
+					...corsHeaders(request.headers.get('Origin') || undefined)
+				},
 			});
 		}
 

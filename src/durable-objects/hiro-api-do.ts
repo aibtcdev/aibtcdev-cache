@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
+import { corsHeaders } from '../utils';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 /**
@@ -305,7 +306,10 @@ export class HiroApiDO extends DurableObject<Env> {
 			}),
 			{
 				status: 404,
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 
+					'Content-Type': 'application/json',
+					...corsHeaders(request.headers.get('Origin') || undefined)
+				},
 			}
 		);
 	}

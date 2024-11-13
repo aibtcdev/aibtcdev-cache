@@ -1,5 +1,6 @@
 import { Env } from '../worker-configuration';
 import { AppConfig } from './config';
+import { corsHeaders } from './utils';
 import { HiroApiDO } from './durable-objects/hiro-api-do';
 import { SupabaseDO } from './durable-objects/supabase-do';
 
@@ -17,22 +18,36 @@ export default {
 	 * @returns The response to be sent back to the client
 	 */
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		// Handle CORS preflight requests
+		if (request.method === 'OPTIONS') {
+			return new Response(null, {
+				headers: corsHeaders(request.headers.get('Origin') || undefined)
+			});
+		}
+
 		// Initialize config with environment
 		const config = AppConfig.getInstance(env).getConfig();
 		const url = new URL(request.url);
 		const path = url.pathname;
+
+		// Add CORS headers to all responses
+		const responseInit = {
+			headers: {
+				'Content-Type': 'application/json',
+				...corsHeaders(request.headers.get('Origin') || undefined)
+			}
+		};
 
 		if (path === '/') {
 			return new Response(
 				JSON.stringify({
 					message: `Welcome to the aibtcdev-api-cache! Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
 				}),
-				{
-					headers: { 'Content-Type': 'application/json' },
-				}
+				responseInit
 			);
 		}
 
+		// For the Durable Object responses, the CORS headers will be added by the DO handlers
 		if (path.startsWith('/hiro-api')) {
 			const id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do'); // create the instance
 			const stub = env.HIRO_API_DO.get(id); // get the stub for communication
@@ -52,7 +67,7 @@ export default {
 			}),
 			{
 				status: 404,
-				headers: { 'Content-Type': 'application/json' },
+				...responseInit
 			}
 		);
 	},
