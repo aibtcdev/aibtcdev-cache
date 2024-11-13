@@ -24,13 +24,13 @@ test_endpoint() {
     
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
     
-    # Make the request and capture headers and body
-    response=$(curl -s -w "\n%{http_code}\n%{http_headers_curl}" -X GET "${API_URL}${endpoint}")
+    # Make the request and capture headers and body using -i
+    response=$(curl -s -i -w "\n%{http_code}" -X GET "${API_URL}${endpoint}")
     
-    # Parse response
-    body=$(echo "$response" | sed -n '1p')
-    status=$(echo "$response" | sed -n '2p')
-    headers=$(echo "$response" | sed -n '3,$p')
+    # Parse response (modified to handle -i output)
+    status=$(echo "$response" | tail -n1)
+    headers=$(echo "$response" | grep -i "^[a-z-]*:" || true)
+    body=$(echo "$response" | awk 'BEGIN{RS="\r\n\r\n"} NR==2')
     
     # Check status code
     if [ "$status" -eq "$expected_status" ]; then
