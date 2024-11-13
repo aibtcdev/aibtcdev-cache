@@ -29,7 +29,7 @@ export class HiroApiDO extends DurableObject<Env> {
 	private readonly RETRY_DELAY: number;
 	private readonly ALARM_INTERVAL_MS: number;
 	// settings specific to this Durable Object
-	private readonly BASE_API_URL: string = 'https://api.hiro.so';
+	private readonly BASE_API_URL: string = 'https://api.hiro.so/';
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/known-addresses'];
