@@ -4,6 +4,19 @@ import { AppConfig } from '../config';
 import { corsHeaders } from '../utils';
 import { RateLimitedFetcher } from '../rate-limiter';
 
+interface KnownAddressInfo {
+	stats: {
+		storage: number;
+		cached: number;
+		uncached: number;
+	};
+	addresses: {
+		storage: string[];
+		cached: string[];
+		uncached: string[];
+	};
+}
+
 /**
  * Durable Object class for the Hiro API
  */
@@ -13,8 +26,8 @@ export class HiroApiDO extends DurableObject<Env> {
 			status,
 			headers: {
 				'Content-Type': 'application/json',
-				...corsHeaders(this.ctx.request?.headers.get('Origin') || undefined)
-			}
+				...corsHeaders(),
+			},
 		});
 	}
 	// can override values here for all endpoints
@@ -177,9 +190,12 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle requests that don't match the base path
 		if (!path.startsWith(this.BASE_PATH)) {
-			return this.jsonResponse({
-				error: `Unrecognized path passed to HiroApiDO: ${path}`,
-			}, 404);
+			return this.jsonResponse(
+				{
+					error: `Unrecognized path passed to HiroApiDO: ${path}`,
+				},
+				404
+			);
 		}
 
 		// parse requested endpoint from base path
@@ -187,17 +203,9 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle requests to the root route
 		if (endpoint === '' || endpoint === '/') {
-			return new Response(
-				JSON.stringify({
-					message: `Welcome to the hiro-api cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
-				}),
-				{
-					headers: { 
-						'Content-Type': 'application/json',
-						...corsHeaders(request.headers.get('Origin') || undefined)
-					},
-				}
-			);
+			return this.jsonResponse({
+				message: `Welcome to the hiro-api cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+			});
 		}
 
 		// handle unsupported endpoints
@@ -208,18 +216,12 @@ export class HiroApiDO extends DurableObject<Env> {
 		);
 
 		if (!isSupported) {
-			return new Response(
-				JSON.stringify({
+			return this.jsonResponse(
+				{
 					error: `Unsupported endpoint: ${endpoint}`,
 					supportedEndpoints: this.SUPPORTED_PATHS,
-				}),
-				{
-					status: 404,
-					headers: { 
-						'Content-Type': 'application/json',
-						...corsHeaders(request.headers.get('Origin') || undefined)
-					},
-				}
+				},
+				404
 			);
 		}
 
@@ -242,14 +244,11 @@ export class HiroApiDO extends DurableObject<Env> {
 			const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
 
 			if (pathParts.length < 2) {
-				return new Response(
-					JSON.stringify({
-						error: 'Invalid address path format',
-					}),
+				return this.jsonResponse(
 					{
-						status: 400,
-						headers: { 'Content-Type': 'application/json' },
-					}
+						error: 'Invalid address path format',
+					},
+					400
 				);
 			}
 
@@ -263,15 +262,12 @@ export class HiroApiDO extends DurableObject<Env> {
 			// Validate the action
 			const validActions = ['assets', 'balances'];
 			if (!validActions.includes(action)) {
-				return new Response(
-					JSON.stringify({
+				return this.jsonResponse(
+					{
 						error: `Invalid action: ${action}`,
 						validActions: validActions,
-					}),
-					{
-						status: 400,
-						headers: { 'Content-Type': 'application/json' },
-					}
+					},
+					400
 				);
 			}
 
@@ -285,41 +281,28 @@ export class HiroApiDO extends DurableObject<Env> {
 			const [storageAddresses, cacheAddresses] = await Promise.all([this.getKnownAddresses(), this.extractAddressesFromKV()]);
 			const uncachedAddresses = storageAddresses.filter((address) => !cacheAddresses.includes(address));
 
-			return new Response(
-				JSON.stringify(
-					{
-						stats: {
-							storage: storageAddresses.length,
-							cached: cacheAddresses.length,
-							uncached: uncachedAddresses.length,
-						},
-						addresses: {
-							storage: storageAddresses,
-							cached: cacheAddresses,
-							uncached: uncachedAddresses,
-						},
-					},
-					null,
-					2
-				),
-				{
-					headers: { 'Content-Type': 'application/json' },
-				}
-			);
+			const knownAddressInfo: KnownAddressInfo = {
+				stats: {
+					storage: storageAddresses.length,
+					cached: cacheAddresses.length,
+					uncached: uncachedAddresses.length,
+				},
+				addresses: {
+					storage: storageAddresses,
+					cached: cacheAddresses,
+					uncached: uncachedAddresses,
+				},
+			};
+
+			return this.jsonResponse(knownAddressInfo);
 		}
 
 		// return 404 for any other endpoint
-		return new Response(
-			JSON.stringify({
-				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
-			}),
+		return this.jsonResponse(
 			{
-				status: 404,
-				headers: { 
-					'Content-Type': 'application/json',
-					...corsHeaders(request.headers.get('Origin') || undefined)
-				},
-			}
+				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+			},
+			404
 		);
 	}
 }
