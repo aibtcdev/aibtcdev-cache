@@ -110,11 +110,11 @@ export class RateLimitedFetcher {
 
 	private async processRequest(request: QueuedRequest): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
 		try {
-			// Make API request (cache was already checked)
-			// Ensure we preserve the /api/ path from baseApiUrl while adding the endpoint
+			// separate the path from the base URL, if there is one
 			const baseUrl = new URL(this.baseApiUrl);
-			const url = new URL(baseUrl.pathname + request.endpoint, baseUrl.origin);
-			console.log(`Processing request: ${url.toString()}`);
+			const basePath = baseUrl.pathname === '/' ? '' : baseUrl.pathname;
+			const url = new URL(`${basePath}${request.endpoint}`, baseUrl.origin);
+			// Make API request (cache was already checked)
 			const response = await fetch(url);
 
 			if (response.status === 429) {
