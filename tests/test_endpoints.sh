@@ -40,14 +40,14 @@ test_endpoint() {
         FAILED_TESTS=$((FAILED_TESTS + 1))
     fi
     
-    # Check CORS headers
-    if ! echo "$headers" | grep -q "access-control-allow-origin"; then
+    # Check CORS headers (case-insensitive)
+    if ! echo "$headers" | grep -qi "access-control-allow-origin:"; then
         echo -e "${RED}✗${NC} Missing CORS headers for $endpoint"
         FAILED_TESTS=$((FAILED_TESTS + 1))
     fi
     
-    # Check content type
-    if ! echo "$headers" | grep -q "content-type: application/json"; then
+    # Check content type (case-insensitive)
+    if ! echo "$headers" | grep -qi "content-type:.*application/json"; then
         echo -e "${RED}✗${NC} Missing or incorrect Content-Type header for $endpoint"
         FAILED_TESTS=$((FAILED_TESTS + 1))
     fi
