@@ -1,5 +1,5 @@
 import { Env } from '../worker-configuration';
-import { corsHeaders } from './utils';
+import { createJsonResponse } from './utils';
 
 interface QueuedRequest {
 	resolve: (value: Response | PromiseLike<Response>) => void;
@@ -48,16 +48,6 @@ export class RateLimitedFetcher {
 
 	public getWindowRequestsCount(): number {
 		return this.windowRequests;
-	}
-
-	private jsonResponse(body: unknown, status = 200): Response {
-		return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
-			status,
-			headers: {
-				'Content-Type': 'application/json',
-				...corsHeaders(),
-			},
-		});
 	}
 
 	private startTokenReplenishment() {
@@ -120,8 +110,11 @@ export class RateLimitedFetcher {
 
 	private async processRequest(request: QueuedRequest): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
 		try {
+			// separate the path from the base URL, if there is one
+			const baseUrl = new URL(this.baseApiUrl);
+			const basePath = baseUrl.pathname === '/' ? '' : baseUrl.pathname;
+			const url = new URL(`${basePath}${request.endpoint}`, baseUrl.origin);
 			// Make API request (cache was already checked)
-			const url = new URL(request.endpoint, this.baseApiUrl);
 			const response = await fetch(url);
 
 			if (response.status === 429) {
@@ -139,7 +132,7 @@ export class RateLimitedFetcher {
 			const data = await response.text();
 			await this.env.AIBTCDEV_CACHE_KV.put(request.cacheKey, data, { expirationTtl: this.cacheTtl });
 
-			request.resolve(this.jsonResponse(data, response.status));
+			request.resolve(createJsonResponse(data, response.status));
 			return { success: true };
 		} catch (error) {
 			return {
@@ -157,7 +150,7 @@ export class RateLimitedFetcher {
 		// Check cache first - bypass rate limiting for cached responses
 		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
 		if (cached && !bustCache) {
-			return this.jsonResponse(cached);
+			return createJsonResponse(cached);
 		}
 
 		// If not cached, go through rate limiting queue

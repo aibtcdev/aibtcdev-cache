@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { corsHeaders } from '../utils';
+import { createJsonResponse } from '../utils';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 interface KnownAddressInfo {
@@ -21,15 +21,6 @@ interface KnownAddressInfo {
  * Durable Object class for the Hiro API
  */
 export class HiroApiDO extends DurableObject<Env> {
-	private jsonResponse(body: unknown, status = 200): Response {
-		return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
-			status,
-			headers: {
-				'Content-Type': 'application/json',
-				...corsHeaders(),
-			},
-		});
-	}
 	// can override values here for all endpoints
 	private readonly CACHE_TTL: number;
 	private readonly MAX_REQUESTS_PER_MINUTE: number;
@@ -38,10 +29,10 @@ export class HiroApiDO extends DurableObject<Env> {
 	private readonly RETRY_DELAY: number;
 	private readonly ALARM_INTERVAL_MS: number;
 	// settings specific to this Durable Object
-	private readonly BASE_API_URL: string = 'https://api.hiro.so';
+	private readonly BASE_API_URL: string = 'https://api.hiro.so/';
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
-	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/known-addresses'];
+	private readonly SUPPORTED_ENDPOINTS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/known-addresses'];
 	private readonly KNOWN_ADDRESSES_KEY = 'known_addresses';
 	// custom fetcher with KV cache logic and rate limiting
 	private fetcher: RateLimitedFetcher;
@@ -103,8 +94,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		try {
 			// Get addresses from DO storage instead of KV
 			const addresses = await this.getKnownAddresses();
-			const addressFetchStartTime = Date.now();
-			console.log(`Starting update for ${addresses.length} known addresses`);
+			console.log(`HiroApiDO: updating ${addresses.length} known addresses`);
 
 			// Track success/failure for each address
 			const results = {
@@ -123,7 +113,9 @@ export class HiroApiDO extends DurableObject<Env> {
 						results.success++;
 					} catch (error) {
 						results.failed++;
-						results.errors.push(`Failed to update ${address} (${endpoint}): ${error instanceof Error ? error.message : String(error)}`);
+						results.errors.push(
+							`HiroApiDO: failed to update ${address} (${endpoint}): ${error instanceof Error ? error.message : String(error)}`
+						);
 						// Continue with next endpoint despite error
 						continue;
 					}
@@ -132,14 +124,12 @@ export class HiroApiDO extends DurableObject<Env> {
 
 			const endTime = Date.now();
 			const totalDuration = endTime - startTime;
-			const fetchDuration = endTime - addressFetchStartTime;
-			const setupDuration = addressFetchStartTime - startTime;
 
 			console.log(
-				`hiro-api-do: alarm executed, ${addresses.length} addresses, setup ${setupDuration}ms, fetch: ${fetchDuration}ms, total ${totalDuration}ms, success: ${results.success}, failed: ${results.failed}`
+				`HiroApiDO: ${addresses.length} addresses updated in ${totalDuration}ms, success: ${results.success}, failed: ${results.failed}`
 			);
 		} catch (error) {
-			console.error(`Alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
+			console.error(`HiroApiDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			// Always schedule next alarm if one isn't set
 			const currentAlarm = await this.ctx.storage.getAlarm();
@@ -190,9 +180,9 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle requests that don't match the base path
 		if (!path.startsWith(this.BASE_PATH)) {
-			return this.jsonResponse(
+			return createJsonResponse(
 				{
-					error: `Unrecognized path passed to HiroApiDO: ${path}`,
+					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
 				},
 				404
 			);
@@ -201,25 +191,24 @@ export class HiroApiDO extends DurableObject<Env> {
 		// parse requested endpoint from base path
 		const endpoint = path.replace(this.BASE_PATH, '');
 
-		// handle requests to the root route
+		// handle root route
 		if (endpoint === '' || endpoint === '/') {
-			return this.jsonResponse({
-				message: `Welcome to the hiro-api cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+			return createJsonResponse({
+				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			});
 		}
 
 		// handle unsupported endpoints
-		const isSupported = this.SUPPORTED_PATHS.some(
+		const isSupported = this.SUPPORTED_ENDPOINTS.some(
 			(path) =>
 				endpoint === path || // exact match
 				(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
 		);
 
 		if (!isSupported) {
-			return this.jsonResponse(
+			return createJsonResponse(
 				{
-					error: `Unsupported endpoint: ${endpoint}`,
-					supportedEndpoints: this.SUPPORTED_PATHS,
+					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 				},
 				404
 			);
@@ -244,9 +233,9 @@ export class HiroApiDO extends DurableObject<Env> {
 			const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
 
 			if (pathParts.length < 2) {
-				return this.jsonResponse(
+				return createJsonResponse(
 					{
-						error: 'Invalid address path format',
+						error: 'Invalid address path format, expected: /extended/v1/address/{address}/{action}',
 					},
 					400
 				);
@@ -262,10 +251,9 @@ export class HiroApiDO extends DurableObject<Env> {
 			// Validate the action
 			const validActions = ['assets', 'balances'];
 			if (!validActions.includes(action)) {
-				return this.jsonResponse(
+				return createJsonResponse(
 					{
-						error: `Invalid action: ${action}`,
-						validActions: validActions,
+						error: `Invalid action: ${action}, valid actions: ${validActions.join(', ')}`,
 					},
 					400
 				);
@@ -294,13 +282,13 @@ export class HiroApiDO extends DurableObject<Env> {
 				},
 			};
 
-			return this.jsonResponse(knownAddressInfo);
+			return createJsonResponse(knownAddressInfo);
 		}
 
 		// return 404 for any other endpoint
-		return this.jsonResponse(
+		return createJsonResponse(
 			{
-				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			},
 			404
 		);

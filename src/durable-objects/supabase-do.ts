@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { corsHeaders } from '../utils';
+import { createJsonResponse } from '../utils';
 
 interface StatsResponse {
 	total_jobs: number;
@@ -16,20 +16,11 @@ interface StatsResponse {
  * Durable Object class for Supabase queries
  */
 export class SupabaseDO extends DurableObject<Env> {
-	private jsonResponse(body: unknown, status = 200): Response {
-		return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
-			status,
-			headers: {
-				'Content-Type': 'application/json',
-				...corsHeaders(),
-			},
-		});
-	}
 	private readonly CACHE_TTL: number;
 	private readonly ALARM_INTERVAL_MS = 60000; // 1 minute
 	private readonly BASE_PATH: string = '/supabase';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
-	private readonly SUPPORTED_PATHS: string[] = ['/stats'];
+	private readonly SUPPORTED_ENDPOINTS: string[] = ['/stats'];
 	private supabase: SupabaseClient;
 
 	constructor(ctx: DurableObjectState, env: Env) {
@@ -83,11 +74,11 @@ export class SupabaseDO extends DurableObject<Env> {
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
-			console.log('Updating Supabase stats cache...');
+			console.log('SupabaseDO: updating cached database queries');
 
 			const stats = await this.fetchStats();
 			if (!stats) {
-				console.error('Failed to fetch stats from Supabase');
+				console.error('SupabaseDO: failed to fetch stats from Supabase');
 				return;
 			}
 			const data = JSON.stringify({
@@ -101,9 +92,10 @@ export class SupabaseDO extends DurableObject<Env> {
 			});
 
 			const endTime = Date.now();
-			console.log(`supabase-do: alarm executed in ${endTime - startTime}ms`);
+			const totalDuration = endTime - startTime;
+			console.log(`SupabaseDO: cache updated in ${totalDuration}ms`);
 		} catch (error) {
-			console.error(`Alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
+			console.error(`SupabaseDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			// Schedule next alarm
 			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
@@ -122,9 +114,9 @@ export class SupabaseDO extends DurableObject<Env> {
 
 		// Handle requests that don't match the base path
 		if (!path.startsWith(this.BASE_PATH)) {
-			return this.jsonResponse(
+			return createJsonResponse(
 				{
-					error: `Unrecognized path passed to SupabaseDO: ${path}`,
+					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
 				},
 				404
 			);
@@ -135,24 +127,42 @@ export class SupabaseDO extends DurableObject<Env> {
 
 		// Handle root route
 		if (endpoint === '' || endpoint === '/') {
-			return this.jsonResponse({
-				message: `Welcome to the Supabase cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+			return createJsonResponse({
+				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			});
 		}
 
+		// handle unsupported endpoints
+		const isSupported = this.SUPPORTED_ENDPOINTS.some(
+			(path) =>
+				endpoint === path || // exact match
+				(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
+		);
+
+		if (!isSupported) {
+			return createJsonResponse(
+				{
+					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+				},
+				404
+			);
+		}
+
+		// create cache key from endpoint
+		const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+
 		// Handle /stats endpoint
 		if (endpoint === '/stats') {
-			const cacheKey = `${this.CACHE_PREFIX}_stats`;
 			const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
 
 			if (cached) {
-				return this.jsonResponse(cached);
+				return createJsonResponse(cached);
 			}
 
 			const stats = await this.fetchStats();
 			// verify that stats were fetched
 			if (!stats) {
-				return this.jsonResponse(
+				return createJsonResponse(
 					{
 						error: 'Failed to fetch stats from Supabase',
 					},
@@ -169,13 +179,13 @@ export class SupabaseDO extends DurableObject<Env> {
 				expirationTtl: this.CACHE_TTL,
 			});
 
-			return this.jsonResponse(data);
+			return createJsonResponse(data);
 		}
 
 		// Return 404 for any other endpoint
-		return this.jsonResponse(
+		return createJsonResponse(
 			{
-				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			},
 			404
 		);

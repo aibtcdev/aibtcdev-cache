@@ -12,6 +12,7 @@ routes = [{ pattern = "cache.aibtc.dev", custom_domain = true }]
 enabled = true
 
 # Want to use this with `npm run cf-typegen` but it overwrites the secrets
+# Will manage manually for now
 # [vars]
 # HIRO_API_KEY = ""
 # SUPABASE_URL = ""
@@ -23,6 +24,10 @@ enabled = true
 [[durable_objects.bindings]]
 name = "HIRO_API_DO"
 class_name = "HiroApiDO"
+
+[[durable_objects.bindings]]
+name = "STX_CITY_DO"
+class_name = "StxCityDO"
 
 [[durable_objects.bindings]]
 name = "SUPABASE_DO"
@@ -37,6 +42,10 @@ new_classes = ["HiroApiDO"]
 [[migrations]]
 tag = "v2"
 new_classes = ["SupabaseDO"]
+
+[[migrations]]
+tag = "v3"
+new_classes = ["StxCityDO"]
 
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#kv-namespaces
