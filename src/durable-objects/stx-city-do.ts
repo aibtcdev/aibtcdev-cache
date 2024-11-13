@@ -90,10 +90,11 @@ export class StxCityDO extends DurableObject<Env> {
 		try {
 			console.log('StxCityDO: updating cache');
 
-			const endpoints = this.SUPPORTED_ENDPOINTS.map((path) => `${this.BASE_API_URL}${path}`);
+			const endpoints = this.SUPPORTED_ENDPOINTS.map((path) => path);
 
 			for (const endpoint of endpoints) {
 				const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+				console.log(`fetching: ${endpoint} stored at ${cacheKey}`);
 				await this.fetchWithCache(endpoint, cacheKey, true);
 			}
 
