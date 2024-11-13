@@ -93,7 +93,7 @@ export class StxCityDO extends DurableObject<Env> {
 			const endpoints = this.SUPPORTED_ENDPOINTS.map((path) => `${this.BASE_API_URL}${path}`);
 
 			for (const endpoint of endpoints) {
-				const cacheKey = `${this.CACHE_PREFIX}_${endpoint.replaceAll('/', '_')}`;
+				const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
 				await this.fetchWithCache(endpoint, cacheKey, true);
 			}
 
@@ -164,7 +164,8 @@ export class StxCityDO extends DurableObject<Env> {
 
 		// handle /tokens/tradable-full-details-tokens path
 		if (endpoint === '/tokens/tradable-full-details-tokens') {
-			return this.fetchWithCache(endpoint, cacheKey);
+			console.log(`fetching: ${endpoint} stored at ${cacheKey}`);
+			return await this.fetchWithCache(endpoint, cacheKey);
 		}
 
 		// Return 404 for any other endpoint
