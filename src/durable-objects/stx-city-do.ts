@@ -61,7 +61,7 @@ export class StxCityDO extends DurableObject<Env> {
 	private readonly BASE_API_URL: string = 'https://stx.city/api';
 	private readonly BASE_PATH: string = '/stx-city';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
-	private readonly SUPPORTED_PATHS: string[] = ['/tokens/tradable-full-details-tokens'];
+	private readonly SUPPORTED_ENDPOINTS: string[] = ['/tokens/tradable-full-details-tokens'];
 	// custom fetcher with KV cache logic and rate limiting
 	private fetcher: RateLimitedFetcher;
 
@@ -99,7 +99,7 @@ export class StxCityDO extends DurableObject<Env> {
 		try {
 			console.log('StxCityDO: updating cache');
 
-			const endpoints = this.SUPPORTED_PATHS.map((path) => `${this.BASE_API_URL}${path}`);
+			const endpoints = this.SUPPORTED_ENDPOINTS.map((path) => `${this.BASE_API_URL}${path}`);
 
 			for (const endpoint of endpoints) {
 				const cacheKey = `${this.CACHE_PREFIX}_${endpoint.replaceAll('/', '_')}`;
@@ -136,7 +136,7 @@ export class StxCityDO extends DurableObject<Env> {
 		if (!path.startsWith(this.BASE_PATH)) {
 			return this.jsonResponse(
 				{
-					error: `Unrecognized path passed to StxCityDO: ${path}`,
+					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
 				},
 				404
 			);
@@ -148,12 +148,12 @@ export class StxCityDO extends DurableObject<Env> {
 		// Handle root route
 		if (endpoint === '' || endpoint === '/') {
 			return this.jsonResponse({
-				message: `Welcome to the STXCITY cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			});
 		}
 
 		// handle unsupported endpoints
-		const isSupported = this.SUPPORTED_PATHS.some(
+		const isSupported = this.SUPPORTED_ENDPOINTS.some(
 			(path) =>
 				endpoint === path || // exact match
 				(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
@@ -162,8 +162,7 @@ export class StxCityDO extends DurableObject<Env> {
 		if (!isSupported) {
 			return this.jsonResponse(
 				{
-					error: `Unsupported endpoint: ${endpoint}`,
-					supportedEndpoints: this.SUPPORTED_PATHS,
+					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 				},
 				404
 			);
@@ -180,7 +179,7 @@ export class StxCityDO extends DurableObject<Env> {
 		// Return 404 for any other endpoint
 		return this.jsonResponse(
 			{
-				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			},
 			404
 		);

@@ -41,7 +41,7 @@ export class HiroApiDO extends DurableObject<Env> {
 	private readonly BASE_API_URL: string = 'https://api.hiro.so';
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
-	private readonly SUPPORTED_PATHS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/known-addresses'];
+	private readonly SUPPORTED_ENDPOINTS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/known-addresses'];
 	private readonly KNOWN_ADDRESSES_KEY = 'known_addresses';
 	// custom fetcher with KV cache logic and rate limiting
 	private fetcher: RateLimitedFetcher;
@@ -192,7 +192,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		if (!path.startsWith(this.BASE_PATH)) {
 			return this.jsonResponse(
 				{
-					error: `Unrecognized path passed to HiroApiDO: ${path}`,
+					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
 				},
 				404
 			);
@@ -201,15 +201,15 @@ export class HiroApiDO extends DurableObject<Env> {
 		// parse requested endpoint from base path
 		const endpoint = path.replace(this.BASE_PATH, '');
 
-		// handle requests to the root route
+		// handle root route
 		if (endpoint === '' || endpoint === '/') {
 			return this.jsonResponse({
-				message: `Welcome to the hiro-api cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			});
 		}
 
 		// handle unsupported endpoints
-		const isSupported = this.SUPPORTED_PATHS.some(
+		const isSupported = this.SUPPORTED_ENDPOINTS.some(
 			(path) =>
 				endpoint === path || // exact match
 				(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
@@ -218,8 +218,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		if (!isSupported) {
 			return this.jsonResponse(
 				{
-					error: `Unsupported endpoint: ${endpoint}`,
-					supportedEndpoints: this.SUPPORTED_PATHS,
+					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 				},
 				404
 			);
@@ -246,7 +245,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			if (pathParts.length < 2) {
 				return this.jsonResponse(
 					{
-						error: 'Invalid address path format',
+						error: 'Invalid address path format, expected: /extended/v1/address/{address}/{action}',
 					},
 					400
 				);
@@ -264,8 +263,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			if (!validActions.includes(action)) {
 				return this.jsonResponse(
 					{
-						error: `Invalid action: ${action}`,
-						validActions: validActions,
+						error: `Invalid action: ${action}, valid actions: ${validActions.join(', ')}`,
 					},
 					400
 				);
@@ -300,7 +298,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		// return 404 for any other endpoint
 		return this.jsonResponse(
 			{
-				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			},
 			404
 		);

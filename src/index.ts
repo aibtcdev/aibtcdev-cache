@@ -21,7 +21,7 @@ export default {
 		// Handle CORS preflight requests
 		if (request.method === 'OPTIONS') {
 			return new Response(null, {
-				headers: corsHeaders(request.headers.get('Origin') || undefined)
+				headers: corsHeaders(request.headers.get('Origin') || undefined),
 			});
 		}
 
@@ -34,8 +34,8 @@ export default {
 		const responseInit = {
 			headers: {
 				'Content-Type': 'application/json',
-				...corsHeaders(request.headers.get('Origin') || undefined)
-			}
+				...corsHeaders(request.headers.get('Origin') || undefined),
+			},
 		};
 
 		if (path === '/') {
@@ -63,11 +63,11 @@ export default {
 		// Return 404 for any other path
 		return new Response(
 			JSON.stringify({
-				error: `Invalid path: ${path}. Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
+				error: `Unsupported service at: ${path}, supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
 			}),
 			{
 				status: 404,
-				...responseInit
+				...responseInit,
 			}
 		);
 	},

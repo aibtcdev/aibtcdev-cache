@@ -29,7 +29,7 @@ export class SupabaseDO extends DurableObject<Env> {
 	private readonly ALARM_INTERVAL_MS = 60000; // 1 minute
 	private readonly BASE_PATH: string = '/supabase';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
-	private readonly SUPPORTED_PATHS: string[] = ['/stats'];
+	private readonly SUPPORTED_ENDPOINTS: string[] = ['/stats'];
 	private supabase: SupabaseClient;
 
 	constructor(ctx: DurableObjectState, env: Env) {
@@ -124,7 +124,7 @@ export class SupabaseDO extends DurableObject<Env> {
 		if (!path.startsWith(this.BASE_PATH)) {
 			return this.jsonResponse(
 				{
-					error: `Unrecognized path passed to SupabaseDO: ${path}`,
+					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
 				},
 				404
 			);
@@ -136,13 +136,31 @@ export class SupabaseDO extends DurableObject<Env> {
 		// Handle root route
 		if (endpoint === '' || endpoint === '/') {
 			return this.jsonResponse({
-				message: `Welcome to the Supabase cache! Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			});
 		}
 
+		// handle unsupported endpoints
+		const isSupported = this.SUPPORTED_ENDPOINTS.some(
+			(path) =>
+				endpoint === path || // exact match
+				(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
+		);
+
+		if (!isSupported) {
+			return this.jsonResponse(
+				{
+					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+				},
+				404
+			);
+		}
+
+		// create cache key from endpoint
+		const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+
 		// Handle /stats endpoint
 		if (endpoint === '/stats') {
-			const cacheKey = `${this.CACHE_PREFIX}_stats`;
 			const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
 
 			if (cached) {
@@ -175,7 +193,7 @@ export class SupabaseDO extends DurableObject<Env> {
 		// Return 404 for any other endpoint
 		return this.jsonResponse(
 			{
-				error: `Unrecognized endpoint: ${endpoint}. Supported endpoints: ${this.SUPPORTED_PATHS.join(', ')}`,
+				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
 			},
 			404
 		);
