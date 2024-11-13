@@ -88,13 +88,12 @@ export class StxCityDO extends DurableObject<Env> {
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
-			console.log('StxCityDO: updating cache');
+			console.log('StxCityDO: updating cached endpoints');
 
 			const endpoints = this.SUPPORTED_ENDPOINTS.map((path) => path);
 
 			for (const endpoint of endpoints) {
 				const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
-				console.log(`fetching: ${endpoint} stored at ${cacheKey}`);
 				await this.fetchWithCache(endpoint, cacheKey, true);
 			}
 
@@ -102,7 +101,7 @@ export class StxCityDO extends DurableObject<Env> {
 			const totalDuration = endTime - startTime;
 			console.log(`StxCityDO: cache updated in ${totalDuration}ms`);
 		} catch (error) {
-			console.error(`Alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
+			console.error(`StxCityDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			// Schedule next alarm
 			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);

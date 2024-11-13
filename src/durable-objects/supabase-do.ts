@@ -74,11 +74,11 @@ export class SupabaseDO extends DurableObject<Env> {
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
-			console.log('Updating Supabase stats cache...');
+			console.log('SupabaseDO: updating cached database queries');
 
 			const stats = await this.fetchStats();
 			if (!stats) {
-				console.error('Failed to fetch stats from Supabase');
+				console.error('SupabaseDO: failed to fetch stats from Supabase');
 				return;
 			}
 			const data = JSON.stringify({
@@ -92,9 +92,10 @@ export class SupabaseDO extends DurableObject<Env> {
 			});
 
 			const endTime = Date.now();
-			console.log(`supabase-do: alarm executed in ${endTime - startTime}ms`);
+			const totalDuration = endTime - startTime;
+			console.log(`SupabaseDO: cache updated in ${totalDuration}ms`);
 		} catch (error) {
-			console.error(`Alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
+			console.error(`SupabaseDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			// Schedule next alarm
 			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);

@@ -94,8 +94,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		try {
 			// Get addresses from DO storage instead of KV
 			const addresses = await this.getKnownAddresses();
-			const addressFetchStartTime = Date.now();
-			console.log(`Starting update for ${addresses.length} known addresses`);
+			console.log(`HiroApiDO: updating ${addresses.length} known addresses`);
 
 			// Track success/failure for each address
 			const results = {
@@ -114,7 +113,9 @@ export class HiroApiDO extends DurableObject<Env> {
 						results.success++;
 					} catch (error) {
 						results.failed++;
-						results.errors.push(`Failed to update ${address} (${endpoint}): ${error instanceof Error ? error.message : String(error)}`);
+						results.errors.push(
+							`HiroApiDO: failed to update ${address} (${endpoint}): ${error instanceof Error ? error.message : String(error)}`
+						);
 						// Continue with next endpoint despite error
 						continue;
 					}
@@ -123,14 +124,12 @@ export class HiroApiDO extends DurableObject<Env> {
 
 			const endTime = Date.now();
 			const totalDuration = endTime - startTime;
-			const fetchDuration = endTime - addressFetchStartTime;
-			const setupDuration = addressFetchStartTime - startTime;
 
 			console.log(
-				`hiro-api-do: alarm executed, ${addresses.length} addresses, setup ${setupDuration}ms, fetch: ${fetchDuration}ms, total ${totalDuration}ms, success: ${results.success}, failed: ${results.failed}`
+				`HiroApiDO: ${addresses.length} addresses updated in ${totalDuration}ms, success: ${results.success}, failed: ${results.failed}`
 			);
 		} catch (error) {
-			console.error(`Alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
+			console.error(`HiroApiDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			// Always schedule next alarm if one isn't set
 			const currentAlarm = await this.ctx.storage.getAlarm();
