@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { createJsonResponse } from '../utils';
+import { extractAddressesFromKV } from '../utils/address-store';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 /**
@@ -52,7 +53,7 @@ export class BnsApiDO extends DurableObject<Env> {
 
     async alarm(): Promise<void> {
         // Get all unique addresses from KV cache
-        const addresses = await this.extractAddressesFromKV();
+        const addresses = await extractAddressesFromKV(this.env);
 
         // Update BNS names for each address
         for (const address of addresses) {
@@ -70,29 +71,6 @@ export class BnsApiDO extends DurableObject<Env> {
         }
     }
 
-    private async extractAddressesFromKV(): Promise<string[]> {
-        const addresses = new Set<string>();
-        let cursor: string | null = null;
-
-        do {
-            const result: KVNamespaceListResult<string, string> = await this.env.AIBTCDEV_CACHE_KV.list({ cursor });
-            if (result.list_complete === false && result.cursor) {
-                cursor = result.cursor;
-            } else {
-                cursor = null;
-            }
-
-            for (const key of result.keys) {
-                // Look for keys matching address pattern
-                const match = key.name.match(/hiro_api_extended_v1_address_([A-Z0-9]+)_(assets|balances)/);
-                if (match) {
-                    addresses.add(match[1]);
-                }
-            }
-        } while (cursor != null);
-
-        return Array.from(addresses);
-    }
 
     private async fetchWithCache(endpoint: string, cacheKey: string): Promise<Response> {
         return this.fetcher.fetch(endpoint, cacheKey);

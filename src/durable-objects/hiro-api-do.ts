@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { createJsonResponse } from '../utils';
+import { getKnownAddresses, addKnownAddress, extractAddressesFromKV } from '../utils/address-store';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 interface KnownAddressInfo {
@@ -33,24 +34,8 @@ export class HiroApiDO extends DurableObject<Env> {
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/known-addresses'];
-	private readonly KNOWN_ADDRESSES_KEY = 'known_addresses';
 	// custom fetcher with KV cache logic and rate limiting
 	private fetcher: RateLimitedFetcher;
-
-	// Get all known addresses from DO storage
-	private async getKnownAddresses(): Promise<string[]> {
-		const addresses = await this.ctx.storage.get<string[]>(this.KNOWN_ADDRESSES_KEY);
-		return addresses || [];
-	}
-
-	// Store a new address if it doesn't exist
-	private async addKnownAddress(address: string): Promise<void> {
-		const addresses = await this.getKnownAddresses();
-		if (!addresses.includes(address)) {
-			addresses.push(address);
-			await this.ctx.storage.put(this.KNOWN_ADDRESSES_KEY, addresses);
-		}
-	}
 
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
@@ -92,8 +77,8 @@ export class HiroApiDO extends DurableObject<Env> {
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
-			// Get addresses from DO storage instead of KV
-			const addresses = await this.getKnownAddresses();
+			// Get addresses from KV storage
+			const addresses = await getKnownAddresses(this.env);
 			console.log(`HiroApiDO: updating ${addresses.length} known addresses`);
 
 			// Track success/failure for each address
@@ -139,29 +124,6 @@ export class HiroApiDO extends DurableObject<Env> {
 		}
 	}
 
-	private async extractAddressesFromKV(): Promise<string[]> {
-		const addresses = new Set<string>();
-		let cursor: string | null = null;
-
-		do {
-			const result: KVNamespaceListResult<string, string> = await this.env.AIBTCDEV_CACHE_KV.list({ cursor });
-			if (result.list_complete === false && result.cursor) {
-				cursor = result.cursor;
-			} else {
-				cursor = null;
-			}
-
-			for (const key of result.keys) {
-				// Look for keys matching address pattern
-				const match = key.name.match(/hiro-api_extended_v1_address_([A-Z0-9]+)_(assets|balances)/);
-				if (match) {
-					addresses.add(match[1]);
-				}
-			}
-		} while (cursor != null);
-
-		return Array.from(addresses);
-	}
 
 	// helper function to fetch data from KV cache with rate limiting for API calls
 	private async fetchWithCache(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
@@ -246,7 +208,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			const action = pathParts[1];
 
 			// Store the address when it's requested
-			await this.addKnownAddress(address);
+			await addKnownAddress(this.env, address);
 
 			// Validate the action
 			const validActions = ['assets', 'balances'];
@@ -266,7 +228,10 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle /known-addresses path
 		if (endpoint === '/known-addresses') {
-			const [storageAddresses, cacheAddresses] = await Promise.all([this.getKnownAddresses(), this.extractAddressesFromKV()]);
+			const [storageAddresses, cacheAddresses] = await Promise.all([
+				getKnownAddresses(this.env),
+				extractAddressesFromKV(this.env)
+			]);
 			const uncachedAddresses = storageAddresses.filter((address) => !cacheAddresses.includes(address));
 
 			const knownAddressInfo: KnownAddressInfo = {
