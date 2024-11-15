@@ -4,22 +4,17 @@ import { AppConfig } from '../config';
 import { createJsonResponse } from '../utils/requests-responses';
 import { getKnownAddresses } from '../utils/address-store';
 import { RateLimitedFetcher } from '../rate-limiter';
+import { getNameFromAddress } from '../utils/bns-v2';
 
 /**
  * Durable Object class for the BNS API
  */
 export class BnsApiDO extends DurableObject<Env> {
 	private readonly CACHE_TTL: number;
-	private readonly MAX_REQUESTS_PER_MINUTE: number;
-	private readonly INTERVAL_MS: number;
-	private readonly MAX_RETRIES: number;
-	private readonly RETRY_DELAY: number;
 	private readonly ALARM_INTERVAL_MS: number;
-	private readonly BASE_API_URL: string = 'https://api.bns.xyz';
 	private readonly BASE_PATH: string = '/bns';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/names/{address}'];
-	private fetcher: RateLimitedFetcher;
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -28,24 +23,8 @@ export class BnsApiDO extends DurableObject<Env> {
 
 		// Initialize AppConfig with environment
 		const config = AppConfig.getInstance(env).getConfig();
-
-		// Set configuration values
 		this.CACHE_TTL = config.CACHE_TTL;
-		this.MAX_REQUESTS_PER_MINUTE = config.MAX_REQUESTS_PER_INTERVAL;
-		this.INTERVAL_MS = config.INTERVAL_MS;
-		this.MAX_RETRIES = config.MAX_RETRIES;
-		this.RETRY_DELAY = config.RETRY_DELAY;
 		this.ALARM_INTERVAL_MS = config.ALARM_INTERVAL_MS;
-
-		this.fetcher = new RateLimitedFetcher(
-			this.env,
-			this.BASE_API_URL,
-			this.CACHE_TTL,
-			this.MAX_REQUESTS_PER_MINUTE,
-			this.INTERVAL_MS,
-			this.MAX_RETRIES,
-			this.RETRY_DELAY
-		);
 
 		// Set up alarm to run at configured interval
 		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
@@ -67,22 +46,17 @@ export class BnsApiDO extends DurableObject<Env> {
 
 			// Update BNS names for each address
 			for (const address of addresses) {
-				const endpoint = `/v2/names/${address}`;
 				try {
+					const name = await getNameFromAddress(address);
 					const cacheKey = `${this.CACHE_PREFIX}_names_${address}`;
-					await this.fetchWithCache(endpoint, cacheKey);
+					await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, name, { expirationTtl: this.CACHE_TTL });
 					results.success++;
 				} catch (error) {
 					results.failed++;
-					results.errors.push(
-						`BnsApiDO: failed to update ${address} (${endpoint}): ${error instanceof Error ? error.message : String(error)}`
-					);
-					// Continue to next address on error
+					results.errors.push(`BnsApiDO: failed to update ${address}: ${error instanceof Error ? error.message : String(error)}`);
 					continue;
 				}
 			}
-
-			console.log(`Updated BNS cache for ${addresses.length} addresses`);
 
 			const endTime = Date.now();
 			const totalDuration = endTime - startTime;
@@ -99,10 +73,6 @@ export class BnsApiDO extends DurableObject<Env> {
 				this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 			}
 		}
-	}
-
-	private async fetchWithCache(endpoint: string, cacheKey: string): Promise<Response> {
-		return this.fetcher.fetch(endpoint, cacheKey);
 	}
 
 	async fetch(request: Request): Promise<Response> {
@@ -128,11 +98,23 @@ export class BnsApiDO extends DurableObject<Env> {
 			});
 		}
 
+		if (endpoint === '/names') {
+			return createJsonResponse({
+				message: `Please provide an address to look up the name for, e.g. /names/SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF`,
+			});
+		}
+
 		// Handle name lookups
 		if (endpoint.startsWith('/names/')) {
 			const address = endpoint.replace('/names/', '');
 			const cacheKey = `${this.CACHE_PREFIX}_names_${address}`;
-			return await this.fetchWithCache(`/v2/names/${address}`, cacheKey);
+			const cachedName = await this.env.AIBTCDEV_CACHE_KV.get<string>(cacheKey);
+			if (cachedName) {
+				return createJsonResponse(cachedName);
+			}
+			const name = await getNameFromAddress(address);
+			await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, name, { expirationTtl: this.CACHE_TTL });
+			return createJsonResponse(name);
 		}
 
 		return createJsonResponse(

@@ -33,9 +33,9 @@ export async function getNameFromAddress(address: string, network: ValidNetworks
 	}
 	if (response.type === ClarityType.ResponseOk) {
 		const nameResponse = response.value as TupleCV<NameResponse>;
-		const { name, namespace } = nameResponse.data;
-		const nameStr = hexToAscii(name.buffer);
-		const namespaceStr = hexToAscii(namespace.buffer);
+		const { name, namespace } = nameResponse.value;
+		const nameStr = name.value;
+		const namespaceStr = namespace.value;
 		return `${nameStr}.${namespaceStr}`;
 	}
 	throw new Error('getNameFromAddress: unexpected response type');
