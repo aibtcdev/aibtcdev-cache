@@ -1,5 +1,5 @@
 import { Env } from '../worker-configuration';
-import { fetchCallReadOnlyFunction } from '@stacks/transactions';
+import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
 import { ValidNetworks } from './utils/stacks';
 
 interface QueuedContractCall<T> {
@@ -15,7 +15,7 @@ interface QueuedContractCall<T> {
 	retryCount: number;
 }
 
-export class StacksContractFetcher<T> {
+export class StacksContractFetcher<T extends ClarityValue> {
 	private queue: QueuedContractCall<T>[] = [];
 	private processing = false;
 	private lastRequestTime = 0;

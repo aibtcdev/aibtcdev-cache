@@ -50,7 +50,7 @@ type BnsNameSuccessResponse = {
 	};
 };
 
-let stacksFetcher: StacksContractFetcher<BnsNameResponse>;
+let stacksFetcher: StacksContractFetcher<ClarityValue>;
 
 export function initStacksFetcher(env: Env) {
 	const config = AppConfig.getInstance(env).getConfig();
