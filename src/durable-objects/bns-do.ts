@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
+import { createJsonResponse } from '../utils';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 /**
@@ -97,14 +98,11 @@ export class BnsApiDO extends DurableObject<Env> {
         const path = url.pathname;
 
         if (!path.startsWith(this.BASE_PATH)) {
-            return new Response(
-                JSON.stringify({
-                    error: `Unrecognized path passed to BnsApiDO: ${path}`,
-                }),
+            return createJsonResponse(
                 {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' },
-                }
+                    error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
+                },
+                404
             );
         }
 
@@ -113,14 +111,9 @@ export class BnsApiDO extends DurableObject<Env> {
 
         // Handle root path
         if (endpoint === '' || endpoint === '/') {
-            return new Response(
-                JSON.stringify({
-                    message: 'BNS API cache endpoint',
-                }),
-                {
-                    headers: { 'Content-Type': 'application/json' },
-                }
-            );
+            return createJsonResponse({
+                message: `Supported endpoints: ${['/names/{address}'].join(', ')}`,
+            });
         }
 
         // Handle name lookups
@@ -130,14 +123,11 @@ export class BnsApiDO extends DurableObject<Env> {
             return this.fetchWithCache(`/v2/names/${address}`, cacheKey);
         }
 
-        return new Response(
-            JSON.stringify({
-                error: 'Invalid endpoint',
-            }),
+        return createJsonResponse(
             {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' },
-            }
+                error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${['/names/{address}'].join(', ')}`,
+            },
+            404
         );
     }
 }
