@@ -1,4 +1,5 @@
 import { getFetchOptions, setFetchOptions } from '@stacks/common';
+import { AppConfig } from '../config';
 import { BufferCV, ClarityType, fetchCallReadOnlyFunction, principalCV, SomeCV, TupleCV } from '@stacks/transactions';
 import { StacksContractFetcher } from '../stacks-rate-limiter';
 import { Env } from '../../worker-configuration';
@@ -35,13 +36,14 @@ function hexToAscii(hexString: string | bigint): string {
 let stacksFetcher: StacksContractFetcher;
 
 export function initStacksFetcher(env: Env) {
+    const config = AppConfig.getInstance(env).getConfig();
     stacksFetcher = new StacksContractFetcher(
         env,
-        300,  // cacheTtl
-        30,   // maxRequestsPerInterval
-        60000, // intervalMs (1 minute)
-        3,     // maxRetries
-        1000   // retryDelay
+        config.STACKS_CACHE_TTL,
+        config.STACKS_MAX_REQUESTS_PER_INTERVAL,
+        config.STACKS_INTERVAL_MS,
+        config.STACKS_MAX_RETRIES,
+        config.STACKS_RETRY_DELAY
     );
 }
 

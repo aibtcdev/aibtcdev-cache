@@ -35,6 +35,12 @@ export class AppConfig {
 			// environment variables
 			SUPABASE_URL: this.env.SUPABASE_URL,
 			SUPABASE_SERVICE_KEY: this.env.SUPABASE_SERVICE_KEY,
+			// Stacks contract call rate limiting
+			STACKS_CACHE_TTL: 300, // 5 minutes
+			STACKS_MAX_REQUESTS_PER_INTERVAL: 30,
+			STACKS_INTERVAL_MS: 60000, // 1 minute
+			STACKS_MAX_RETRIES: 3,
+			STACKS_RETRY_DELAY: 1000,
 		};
 	}
 }
