@@ -1,5 +1,5 @@
 import { getFetchOptions, setFetchOptions } from '@stacks/common';
-import { BufferCV, ClarityType, fetchCallReadOnlyFunction, principalCV, TupleCV } from '@stacks/transactions';
+import { BufferCV, ClarityType, fetchCallReadOnlyFunction, principalCV, SomeCV, TupleCV } from '@stacks/transactions';
 
 const BNS_CONTRACT_ADDRESS = 'SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF';
 const BNS_CONTRACT_NAME = 'BNS-V2';
@@ -16,14 +16,16 @@ type StacksRequestInit = RequestInit & {
 	referrerPolicy?: string;
 };
 const fetchOptions: StacksRequestInit = getFetchOptions();
-console.log(`fetchOptions: ${JSON.stringify(fetchOptions)}`);
 delete fetchOptions.referrerPolicy;
 setFetchOptions(fetchOptions);
 
-function hexToAscii(bytes: Uint8Array) {
+function hexToAscii(hexString: string | bigint): string {
+	// Convert BigInt to hex string if needed
+	const hex = typeof hexString === 'bigint' ? hexString.toString(16) : hexString.replace('0x', '');
+	// Convert each pair of hex digits directly to ASCII
 	let str = '';
-	for (let n = 0; n < bytes.length; n += 1) {
-		str += String.fromCharCode(bytes[n]);
+	for (let i = 0; i < hex.length; i += 2) {
+		str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
 	}
 	return str;
 }
@@ -40,22 +42,25 @@ export async function getNameFromAddress(address: string, network: ValidNetworks
 			network: network,
 		});
 		if (response.type === ClarityType.ResponseErr) {
-			throw new Error(`Failed to get name for address ${address}`);
+			// name doesn't exist, return a blank string
+			// console.log(`getNameFromAddress: name not found for address ${address}`);
+			return '';
 		}
-		if (response.type === ClarityType.ResponseOk) {
-			const nameResponse = response.value as TupleCV<NameResponse>;
+		if (
+			response.type === ClarityType.ResponseOk &&
+			response.value.type === ClarityType.OptionalSome &&
+			response.value.value.type === ClarityType.Tuple
+		) {
+			const nameResponse = response.value.value as TupleCV<NameResponse>;
 			const { name, namespace } = nameResponse.value;
-			const nameStr = name.value;
-			const namespaceStr = namespace.value;
+			const nameStr = hexToAscii(name.value);
+			const namespaceStr = hexToAscii(namespace.value);
 			return `${nameStr}.${namespaceStr}`;
 		}
-		console.log(`response: ${JSON.stringify(response)}`);
-		throw new Error('getNameFromAddress: unexpected response type');
+		throw new Error(`getNameFromAddress: unexpected response type ${response.type}`);
 	} catch (error) {
-		console.log(`getNameFromAddress error: ${error}`);
-		if (error instanceof Error) {
-			throw error;
-		}
-		throw new Error(String(error));
+		throw new Error(
+			`Failed to get name for address ${address}, error: ${error ? (error instanceof Error ? error.message : String(error)) : 'unknown'}`
+		);
 	}
 }
