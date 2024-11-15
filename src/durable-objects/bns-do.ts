@@ -57,7 +57,7 @@ export class BnsApiDO extends DurableObject<Env> {
         // Update BNS names for each address
         for (const address of addresses) {
             const endpoint = `/v2/names/${address}`;
-            const cacheKey = `bns_${address}`;
+            const cacheKey = `${this.CACHE_PREFIX}_names_${address}`;
             await this.fetchWithCache(endpoint, cacheKey);
         }
 
