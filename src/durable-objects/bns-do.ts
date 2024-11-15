@@ -5,6 +5,7 @@ import { createJsonResponse } from '../utils/requests-responses';
 import { getKnownAddresses } from '../utils/address-store';
 import { RateLimitedFetcher } from '../rate-limiter';
 import { getNameFromAddress } from '../utils/bns-v2';
+import { validateStacksAddress } from '@stacks/transactions';
 
 /**
  * Durable Object class for the BNS API
@@ -107,6 +108,10 @@ export class BnsApiDO extends DurableObject<Env> {
 		// Handle name lookups
 		if (endpoint.startsWith('/names/')) {
 			const address = endpoint.replace('/names/', '');
+			const validAddress = validateStacksAddress(address);
+			if (!validAddress) {
+				return createJsonResponse({ error: `Invalid address ${address}, valid Stacks address required` }, 400);
+			}
 			const cacheKey = `${this.CACHE_PREFIX}_names_${address}`;
 			const cachedName = await this.env.AIBTCDEV_CACHE_KV.get<string>(cacheKey);
 			if (cachedName) {
