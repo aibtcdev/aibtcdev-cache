@@ -5,10 +5,17 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-# Set default API URL or use provided argument
+# Set default API URL and sleep flag from arguments
 API_URL=${1:-"http://localhost:8787"}
+SLEEP_BEFORE_START=${2:-false}
 FAILED_TESTS=0
 TOTAL_TESTS=0
+
+# If sleep flag is true, wait 10 seconds before starting tests
+if [ "$SLEEP_BEFORE_START" = true ]; then
+    echo "Waiting 10 seconds for deployment to stabilize..."
+    sleep 10
+fi
 
 # Shared test addresses
 TEST_ADDRESSES=(
