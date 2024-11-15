@@ -86,7 +86,7 @@ export class SupabaseDO extends DurableObject<Env> {
 				...stats,
 			});
 
-			const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+			const cacheKey = `${this.CACHE_PREFIX}_stats`;
 			await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, data, {
 				expirationTtl: this.CACHE_TTL,
 			});
