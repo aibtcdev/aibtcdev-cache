@@ -10,7 +10,16 @@ API_URL=${1:-"http://localhost:8787"}
 FAILED_TESTS=0
 TOTAL_TESTS=0
 
-# Test function
+# Shared test addresses
+TEST_ADDRESSES=(
+    "SP3GEF4KYM4V41FHC9NX0F7K0GW1VC6A4WNJ855X3"
+    "SP2733BAJCTWBM0790KC9GZYMP73S0VDYPRSAF95"
+    "SP2CZP2W4PCD22GWXFYYKV40JXZBWVFN692T0FJQH"
+    "SP22JJ7N9RN6ZDY2F6M2DHSDTYN4P768AHF3AG90A"
+    "SPK0PEGF4Z37H0D6V1JEMGTD7BE36MHT75P8548J"
+)
+
+# tests an endpoint against several criteria
 test_endpoint() {
     local endpoint=$1
     local expected_status=$2
@@ -94,64 +103,58 @@ test_cors "/invalid" "Invalid endpoint CORS"
 echo "===================="
 echo "HiroApiDO Tests"
 echo "===================="
-test_endpoint "/hiro-api" 200 "HiroApiDO - Base endpoint"
-test_cors "/hiro-api" "HiroApiDO - Base endpoint CORS"
-test_endpoint "/hiro-api/extended" 200 "HiroApiDO - Extended info"
-test_cors "/hiro-api/extended" "HiroApiDO - Extended info CORS"
-test_endpoint "/hiro-api/v2/info" 200 "HiroApiDO - API info"
-test_cors "/hiro-api/v2/info" "HiroApiDO - API info CORS"
-test_endpoint "/hiro-api/known-addresses" 200 "HiroApiDO - Known addresses"
-test_cors "/hiro-api/known-addresses" "HiroApiDO - Known addresses CORS"
+test_endpoint "/hiro-api" 200 "Base endpoint"
+test_cors "/hiro-api" "Base endpoint CORS"
+test_endpoint "/hiro-api/extended" 200 "Extended info"
+test_cors "/hiro-api/extended" "Extended info CORS"
+test_endpoint "/hiro-api/v2/info" 200 "API info"
+test_cors "/hiro-api/v2/info" "API info CORS"
+test_endpoint "/hiro-api/known-addresses" 200 "Known addresses"
+test_cors "/hiro-api/known-addresses" "Known addresses CORS"
 # Test each address for Hiro API
 for address in "${TEST_ADDRESSES[@]}"; do
-    test_endpoint "/hiro-api/extended/v1/address/${address}/balances" 200 "HiroApiDO - Address balances for ${address}"
-    test_cors "/hiro-api/extended/v1/address/${address}/balances" "HiroApiDO - Address balances CORS for ${address}"
+    test_endpoint "/hiro-api/extended/v1/address/${address}/balances" 200 "Address balances for ${address}"
+    test_cors "/hiro-api/extended/v1/address/${address}/balances" "Address balances CORS for ${address}"
+    test_endpoint "/hiro-api/extended/v1/address/${address}/assets" 200 "Address assets for ${address}"
+    test_cors "/hiro-api/extended/v1/address/${address}/assets" "Address assets CORS for ${address}"
 done
-
-test_endpoint "/hiro-api/invalid" 404 "HiroApiDO - Invalid endpoint"
-test_cors "/hiro-api/invalid" "HiroApiDO - Invalid endpoint CORS"
+test_endpoint "/hiro-api/invalid" 404 "Invalid endpoint"
+test_cors "/hiro-api/invalid" "Invalid endpoint CORS"
 echo "===================="
 echo "StxCityDO Tests"
 echo "===================="
-test_endpoint "/stx-city" 200 "StxCityDO - Base endpoint"
-test_cors "/stx-city" "StxCityDO - Base endpoint CORS"
-test_endpoint "/stx-city/tokens/tradable-full-details-tokens" 200 "StxCityDO - Token details"
-test_cors "/stx-city/tokens/tradable-full-details-tokens" "StxCityDO - Token details CORS"
-test_endpoint "/stx-city/invalid" 404 "StxCityDO - Invalid endpoint"
-test_cors "/stx-city/invalid" "StxCityDO - Invalid endpoint CORS"
+test_endpoint "/stx-city" 200 "Base endpoint"
+test_cors "/stx-city" "Base endpoint CORS"
+test_endpoint "/stx-city/tokens/tradable-full-details-tokens" 200 "Token details"
+test_cors "/stx-city/tokens/tradable-full-details-tokens" "Token details CORS"
+test_endpoint "/stx-city/invalid" 404 "Invalid endpoint"
+test_cors "/stx-city/invalid" "Invalid endpoint CORS"
 echo "===================="
 echo "SupabaseDO Tests"
 echo "===================="
-test_endpoint "/supabase" 200 "SupabaseDO - Base endpoint"
-test_cors "/supabase" "SupabaseDO - Base endpoint CORS"
-test_endpoint "/supabase/stats" 200 "SupabaseDO - Stats endpoint"
-test_cors "/supabase/stats" "SupabaseDO - Stats endpoint CORS"
-test_endpoint "/supabase/invalid" 404 "SupabaseDO - Invalid endpoint"
-test_cors "/supabase/invalid" "SupabaseDO - Invalid endpoint CORS"
+test_endpoint "/supabase" 200 "Base endpoint"
+test_cors "/supabase" "Base endpoint CORS"
+test_endpoint "/supabase/stats" 200 "Stats endpoint"
+test_cors "/supabase/stats" "Stats endpoint CORS"
+test_endpoint "/supabase/invalid" 404 "Invalid endpoint"
+test_cors "/supabase/invalid" "Invalid endpoint CORS"
 echo "===================="
 echo "BnsApiDO Tests"
 echo "===================="
-test_endpoint "/bns" 200 "BnsApiDO - Base endpoint"
-test_cors "/bns" "BnsApiDO - Base endpoint CORS"
-# Shared test addresses
-TEST_ADDRESSES=(
-    "SP3GEF4KYM4V41FHC9NX0F7K0GW1VC6A4WNJ855X3"
-    "SP2733BAJCTWBM0790KC9GZYMP73S0VDYPRSAF95"
-    "SP2CZP2W4PCD22GWXFYYKV40JXZBWVFN692T0FJQH"
-    "SP22JJ7N9RN6ZDY2F6M2DHSDTYN4P768AHF3AG90A"
-    "SPK0PEGF4Z37H0D6V1JEMGTD7BE36MHT75P8548J"
-)
-
+test_endpoint "/bns" 200 "Base endpoint"
+test_cors "/bns" "Base endpoint CORS"
 # Test each address for BNS
 for address in "${TEST_ADDRESSES[@]}"; do
-    test_endpoint "/bns/names/$address" 200 "BnsApiDO - Names lookup for $address"
-    test_cors "/bns/names/$address" "BnsApiDO - Names lookup CORS for $address"
+    test_endpoint "/bns/names/$address" 200 "Names lookup for $address"
+    test_cors "/bns/names/$address" "Names lookup CORS for $address"
 done
-test_endpoint "/bns/invalid" 404 "BnsApiDO - Invalid endpoint"
-test_cors "/bns/invalid" "BnsApiDO - Invalid endpoint CORS"
+test_endpoint "/bns/invalid" 404 "Invalid endpoint"
+test_cors "/bns/invalid" "Invalid endpoint CORS"
 echo "===================="
 echo "Test Summary"
 echo "===================="
+echo "Passed tests: $((TOTAL_TESTS - FAILED_TESTS))"
+echo "Failed tests: $FAILED_TESTS"
 echo "Total tests: $TOTAL_TESTS"
 
 if [ $FAILED_TESTS -eq 0 ]; then
