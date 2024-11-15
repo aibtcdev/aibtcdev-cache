@@ -202,12 +202,12 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle /extended path
 		if (endpoint === '/extended') {
-			return this.fetchWithCache(endpoint, cacheKey);
+			return await this.fetchWithCache(endpoint, cacheKey);
 		}
 
 		// handle /v2/info path
 		if (endpoint === '/v2/info') {
-			return this.fetchWithCache(endpoint, cacheKey);
+			return await this.fetchWithCache(endpoint, cacheKey);
 		}
 
 		// handle /extended/v1/address path
@@ -244,7 +244,7 @@ export class HiroApiDO extends DurableObject<Env> {
 
 			// Construct the endpoint path
 			const apiEndpoint = `/extended/v1/address/${address}/${action}`;
-			return this.fetchWithCache(apiEndpoint, cacheKey);
+			return await this.fetchWithCache(apiEndpoint, cacheKey);
 		}
 
 		// handle /known-addresses path

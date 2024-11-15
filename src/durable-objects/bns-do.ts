@@ -132,7 +132,7 @@ export class BnsApiDO extends DurableObject<Env> {
 		if (endpoint.startsWith('/names/')) {
 			const address = endpoint.replace('/names/', '');
 			const cacheKey = `${this.CACHE_PREFIX}_names_${address}`;
-			return this.fetchWithCache(`/v2/names/${address}`, cacheKey);
+			return await this.fetchWithCache(`/v2/names/${address}`, cacheKey);
 		}
 
 		return createJsonResponse(
