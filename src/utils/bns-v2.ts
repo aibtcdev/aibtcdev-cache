@@ -33,7 +33,18 @@ function hexToAscii(hexString: string | bigint): string {
 	return str;
 }
 
-let stacksFetcher: StacksContractFetcher<any>;
+type BnsNameResponse = {
+    type: ClarityType.ResponseOk;
+    value: {
+        type: ClarityType.OptionalSome;
+        value: TupleCV<{
+            name: BufferCV;
+            namespace: BufferCV;
+        }>;
+    };
+};
+
+let stacksFetcher: StacksContractFetcher<BnsNameResponse>;
 
 export function initStacksFetcher(env: Env) {
     const config = AppConfig.getInstance(env).getConfig();
@@ -54,7 +65,7 @@ export async function getNameFromAddress(address: string, network: ValidNetworks
 	try {
 		const addressCV = principalCV(address);
 		const cacheKey = `bns_get-primary_${address}`;
-		const response = await stacksFetcher.fetch(
+		const response: BnsNameResponse = await stacksFetcher.fetch(
 			BNS_CONTRACT_ADDRESS,
 			BNS_CONTRACT_NAME,
 			'get-primary',
