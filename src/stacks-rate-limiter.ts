@@ -129,6 +129,9 @@ export class StacksContractFetcher {
         cacheKey: string,
         bustCache = false
     ): Promise<any> {
+        if (!this.env) {
+            throw new Error('StacksContractFetcher not properly initialized');
+        }
         const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
         if (cached && !bustCache) {
             return JSON.parse(cached);
