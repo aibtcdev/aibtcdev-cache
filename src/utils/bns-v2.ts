@@ -1,13 +1,12 @@
 import { getFetchOptions, setFetchOptions } from '@stacks/common';
 import { AppConfig } from '../config';
-import { BufferCV, ClarityType, fetchCallReadOnlyFunction, principalCV, SomeCV, TupleCV } from '@stacks/transactions';
+import { BufferCV, ClarityType, principalCV, TupleCV } from '@stacks/transactions';
 import { StacksContractFetcher } from '../stacks-rate-limiter';
 import { Env } from '../../worker-configuration';
+import { ValidNetworks } from './stacks';
 
 const BNS_CONTRACT_ADDRESS = 'SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF';
 const BNS_CONTRACT_NAME = 'BNS-V2';
-
-type ValidNetworks = 'mainnet' | 'testnet';
 
 type NameResponse = {
 	name: BufferCV;
@@ -33,35 +32,42 @@ function hexToAscii(hexString: string | bigint): string {
 	return str;
 }
 
-type BnsNameResponse = {
-    type: ClarityType.ResponseOk;
-    value: {
-        type: ClarityType.OptionalSome;
-        value: TupleCV<{
-            name: BufferCV;
-            namespace: BufferCV;
-        }>;
-    };
+type BnsNameResponse = BnsNameErrResponse | BnsNameSuccessResponse;
+
+type BnsNameErrResponse = {
+	type: ClarityType.ResponseErr;
+	value: string;
+};
+
+type BnsNameSuccessResponse = {
+	type: ClarityType.ResponseOk;
+	value: {
+		type: ClarityType.OptionalSome;
+		value: TupleCV<{
+			name: BufferCV;
+			namespace: BufferCV;
+		}>;
+	};
 };
 
 let stacksFetcher: StacksContractFetcher<BnsNameResponse>;
 
 export function initStacksFetcher(env: Env) {
-    const config = AppConfig.getInstance(env).getConfig();
-    stacksFetcher = new StacksContractFetcher(
-        env,
-        config.CACHE_TTL,
-        config.MAX_REQUESTS_PER_INTERVAL,
-        config.INTERVAL_MS,
-        config.MAX_RETRIES,
-        config.RETRY_DELAY
-    );
+	const config = AppConfig.getInstance(env).getConfig();
+	stacksFetcher = new StacksContractFetcher(
+		env,
+		config.CACHE_TTL,
+		config.MAX_REQUESTS_PER_INTERVAL,
+		config.INTERVAL_MS,
+		config.MAX_RETRIES,
+		config.RETRY_DELAY
+	);
 }
 
 export async function getNameFromAddress(address: string, network: ValidNetworks = 'mainnet'): Promise<string> {
-    if (!stacksFetcher) {
-        throw new Error('StacksFetcher not initialized. Call initStacksFetcher first.');
-    }
+	if (!stacksFetcher) {
+		throw new Error('StacksFetcher not initialized. Call initStacksFetcher first.');
+	}
 	try {
 		const addressCV = principalCV(address);
 		const cacheKey = `bns_get-primary_${address}`;

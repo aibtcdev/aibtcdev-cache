@@ -11,7 +11,8 @@ import { validateStacksAddress } from '@stacks/transactions';
  */
 export class BnsApiDO extends DurableObject<Env> {
 	private readonly CACHE_TTL: number;
-	private readonly ALARM_INTERVAL_MS: number;
+	// private readonly ALARM_INTERVAL_MS: number;
+	private readonly ALARM_INTERVAL_MS = 10000;
 	private readonly BASE_PATH: string = '/bns';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/names/{address}'];
@@ -24,7 +25,7 @@ export class BnsApiDO extends DurableObject<Env> {
 		// Initialize AppConfig with environment
 		const config = AppConfig.getInstance(env).getConfig();
 		this.CACHE_TTL = config.CACHE_TTL;
-		this.ALARM_INTERVAL_MS = config.ALARM_INTERVAL_MS;
+		// this.ALARM_INTERVAL_MS = config.ALARM_INTERVAL_MS;
 
 		// Initialize the Stacks contract fetcher
 		initStacksFetcher(env);
