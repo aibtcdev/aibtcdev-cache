@@ -1,5 +1,7 @@
 import { getFetchOptions, setFetchOptions } from '@stacks/common';
 import { BufferCV, ClarityType, fetchCallReadOnlyFunction, principalCV, SomeCV, TupleCV } from '@stacks/transactions';
+import { StacksContractFetcher } from '../stacks-rate-limiter';
+import { Env } from '../../worker-configuration';
 
 const BNS_CONTRACT_ADDRESS = 'SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF';
 const BNS_CONTRACT_NAME = 'BNS-V2';
@@ -30,17 +32,35 @@ function hexToAscii(hexString: string | bigint): string {
 	return str;
 }
 
+let stacksFetcher: StacksContractFetcher;
+
+export function initStacksFetcher(env: Env) {
+    stacksFetcher = new StacksContractFetcher(
+        env,
+        300,  // cacheTtl
+        30,   // maxRequestsPerInterval
+        60000, // intervalMs (1 minute)
+        3,     // maxRetries
+        1000   // retryDelay
+    );
+}
+
 export async function getNameFromAddress(address: string, network: ValidNetworks = 'mainnet'): Promise<string> {
+    if (!stacksFetcher) {
+        throw new Error('StacksFetcher not initialized. Call initStacksFetcher first.');
+    }
 	try {
 		const addressCV = principalCV(address);
-		const response = await fetchCallReadOnlyFunction({
-			contractAddress: BNS_CONTRACT_ADDRESS,
-			contractName: BNS_CONTRACT_NAME,
-			functionName: 'get-primary',
-			functionArgs: [addressCV],
-			senderAddress: address,
-			network: network,
-		});
+		const cacheKey = `bns_get-primary_${address}`;
+		const response = await stacksFetcher.fetch(
+			BNS_CONTRACT_ADDRESS,
+			BNS_CONTRACT_NAME,
+			'get-primary',
+			[addressCV],
+			address,
+			network,
+			cacheKey
+		);
 		if (response.type === ClarityType.ResponseErr) {
 			// name doesn't exist, return a blank string
 			// console.log(`getNameFromAddress: name not found for address ${address}`);

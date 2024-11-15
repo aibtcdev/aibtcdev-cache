@@ -26,6 +26,9 @@ export class BnsApiDO extends DurableObject<Env> {
 		this.CACHE_TTL = config.CACHE_TTL;
 		this.ALARM_INTERVAL_MS = config.ALARM_INTERVAL_MS;
 
+		// Initialize the Stacks contract fetcher
+		initStacksFetcher(env);
+
 		// Set up alarm to run at configured interval
 		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
