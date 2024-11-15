@@ -16,6 +16,7 @@
 		"wrangler": "^3.60.3"
 	},
 	"dependencies": {
+		"@stacks/transactions": "^7.0.2",
 		"@supabase/supabase-js": "^2.46.1"
 	}
 }
