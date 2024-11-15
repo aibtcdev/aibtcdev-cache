@@ -26,29 +26,36 @@ test_endpoint() {
     headers=$(echo "$response" | grep -i "^[a-z-]*:" || true)
     body=$(echo "$response" | awk 'BEGIN{RS="\r\n\r\n"} NR==2')
     
+    local test_failed=false
+
     # Check status code
     if [ "$status" -eq "$expected_status" ]; then
         echo -e "${GREEN}✓${NC} $description - Status: $status"
     else
         echo -e "${RED}✗${NC} $description - Expected status $expected_status, got $status"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
+        test_failed=true
     fi
     
     # Check CORS headers (case-insensitive)
     if ! echo "$headers" | grep -qi "access-control-allow-origin:"; then
         echo -e "${RED}✗${NC} Missing CORS headers for $endpoint"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
+        test_failed=true
     fi
     
     # Check content type (case-insensitive)
     if ! echo "$headers" | grep -qi "content-type:.*application/json"; then
         echo -e "${RED}✗${NC} Missing or incorrect Content-Type header for $endpoint"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
+        test_failed=true
     fi
     
     # Validate JSON response
     if ! echo "$body" | jq . >/dev/null 2>&1; then
         echo -e "${RED}✗${NC} Invalid JSON response for $endpoint"
+        test_failed=true
+    fi
+
+    # Only increment failure counter once per endpoint
+    if [ "$test_failed" = true ]; then
         FAILED_TESTS=$((FAILED_TESTS + 1))
     fi
 }
