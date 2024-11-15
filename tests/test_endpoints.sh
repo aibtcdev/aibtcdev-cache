@@ -127,8 +127,20 @@ echo "BnsApiDO Tests"
 echo "===================="
 test_endpoint "/bns" 200 "BnsApiDO - Base endpoint"
 test_cors "/bns" "BnsApiDO - Base endpoint CORS"
-test_endpoint "/bns/names/SP000000000000000000002Q6VF78" 200 "BnsApiDO - Names lookup"
-test_cors "/bns/names/SP000000000000000000002Q6VF78" "BnsApiDO - Names lookup CORS"
+# Array of addresses to test
+BNS_ADDRESSES=(
+    "SP3GEF4KYM4V41FHC9NX0F7K0GW1VC6A4WNJ855X3"
+    "SP2733BAJCTWBM0790KC9GZYMP73S0VDYPRSAF95"
+    "SP2CZP2W4PCD22GWXFYYKV40JXZBWVFN692T0FJQH"
+    "SP22JJ7N9RN6ZDY2F6M2DHSDTYN4P768AHF3AG90A"
+    "SPK0PEGF4Z37H0D6V1JEMGTD7BE36MHT75P8548J"
+)
+
+# Test each address
+for address in "${BNS_ADDRESSES[@]}"; do
+    test_endpoint "/bns/names/$address" 200 "BnsApiDO - Names lookup for $address"
+    test_cors "/bns/names/$address" "BnsApiDO - Names lookup CORS for $address"
+done
 test_endpoint "/bns/invalid" 404 "BnsApiDO - Invalid endpoint"
 test_cors "/bns/invalid" "BnsApiDO - Invalid endpoint CORS"
 echo "===================="
