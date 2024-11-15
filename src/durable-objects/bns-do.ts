@@ -16,6 +16,8 @@ export class BnsApiDO extends DurableObject<Env> {
     private readonly ALARM_INTERVAL_MS: number;
     private readonly BASE_API_URL: string = 'https://api.bns.xyz';
     private readonly BASE_PATH: string = '/bns';
+    private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
+    private readonly SUPPORTED_ENDPOINTS: string[] = ['/names/{address}'];
     private fetcher: RateLimitedFetcher;
 
     constructor(ctx: DurableObjectState, env: Env) {
@@ -112,7 +114,7 @@ export class BnsApiDO extends DurableObject<Env> {
         // Handle root path
         if (endpoint === '' || endpoint === '/') {
             return createJsonResponse({
-                message: `Supported endpoints: ${['/names/{address}'].join(', ')}`,
+                message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
             });
         }
 
@@ -125,7 +127,7 @@ export class BnsApiDO extends DurableObject<Env> {
 
         return createJsonResponse(
             {
-                error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${['/names/{address}'].join(', ')}`,
+                error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
             },
             404
         );
