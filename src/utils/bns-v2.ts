@@ -33,7 +33,7 @@ function hexToAscii(hexString: string | bigint): string {
 	return str;
 }
 
-let stacksFetcher: StacksContractFetcher;
+let stacksFetcher: StacksContractFetcher<any>;
 
 export function initStacksFetcher(env: Env) {
     const config = AppConfig.getInstance(env).getConfig();

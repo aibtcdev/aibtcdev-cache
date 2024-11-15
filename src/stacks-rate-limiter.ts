@@ -2,8 +2,8 @@ import { createJsonResponse } from './utils/requests-responses';
 import { Env } from '../worker-configuration';
 import { fetchCallReadOnlyFunction } from '@stacks/transactions';
 
-interface QueuedContractCall {
-    resolve: (value: any) => void;
+interface QueuedContractCall<T> {
+    resolve: (value: T) => void;
     reject: (reason?: any) => void;
     contractAddress: string;
     contractName: string;
@@ -15,8 +15,8 @@ interface QueuedContractCall {
     retryCount: number;
 }
 
-export class StacksContractFetcher {
-    private queue: QueuedContractCall[] = [];
+export class StacksContractFetcher<T> {
+    private queue: QueuedContractCall<T>[] = [];
     private processing = false;
     private lastRequestTime = 0;
     private tokens: number;
@@ -89,7 +89,7 @@ export class StacksContractFetcher {
         }
     }
 
-    private async processRequest(request: QueuedContractCall): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
+    private async processRequest(request: QueuedContractCall<T>): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
         try {
             const { contractAddress, contractName, functionName, functionArgs, senderAddress, network } = request;
             
@@ -134,7 +134,7 @@ export class StacksContractFetcher {
         }
         const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
         if (cached && !bustCache) {
-            return JSON.parse(cached);
+            return JSON.parse(cached) as T;
         }
 
         return new Promise((resolve, reject) => {
