@@ -39,11 +39,11 @@ export function initStacksFetcher(env: Env) {
     const config = AppConfig.getInstance(env).getConfig();
     stacksFetcher = new StacksContractFetcher(
         env,
-        config.STACKS_CACHE_TTL,
-        config.STACKS_MAX_REQUESTS_PER_INTERVAL,
-        config.STACKS_INTERVAL_MS,
-        config.STACKS_MAX_RETRIES,
-        config.STACKS_RETRY_DELAY
+        config.CACHE_TTL,
+        config.MAX_REQUESTS_PER_INTERVAL,
+        config.INTERVAL_MS,
+        config.MAX_RETRIES,
+        config.RETRY_DELAY
     );
 }
 
