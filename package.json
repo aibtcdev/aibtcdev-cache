@@ -8,7 +8,7 @@
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"cf-typegen": "wrangler types",
-		"test": "chmod +x tests/test_endpoints.sh && tests/test_endpoints.sh"
+		"test": "chmod +x tests/run_tests.sh && tests/run_tests.sh"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20241106.0",
@@ -16,6 +16,7 @@
 		"wrangler": "^3.60.3"
 	},
 	"dependencies": {
+		"@stacks/transactions": "^7.0.2",
 		"@supabase/supabase-js": "^2.46.1"
 	}
 }

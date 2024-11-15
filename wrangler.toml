@@ -33,6 +33,10 @@ class_name = "StxCityDO"
 name = "SUPABASE_DO"
 class_name = "SupabaseDO"
 
+[[durable_objects.bindings]]
+name = "BNS_API_DO"
+class_name = "BnsApiDO"
+
 # Durable Object migrations.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#migrations
 [[migrations]]
@@ -46,6 +50,10 @@ new_classes = ["SupabaseDO"]
 [[migrations]]
 tag = "v3"
 new_classes = ["StxCityDO"]
+
+[[migrations]]
+tag = "v4"
+new_classes = ["BnsApiDO"]
 
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#kv-namespaces

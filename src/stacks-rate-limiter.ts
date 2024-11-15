@@ -1,20 +1,22 @@
 import { Env } from '../worker-configuration';
-import { createJsonResponse } from './utils/requests-responses';
+import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
+import { ValidNetworks } from './utils/stacks';
 
-interface QueuedRequest {
-	resolve: (value: Response | PromiseLike<Response>) => void;
+interface QueuedContractCall<T> {
+	resolve: (value: T) => void;
 	reject: (reason?: any) => void;
-	endpoint: string;
+	contractAddress: string;
+	contractName: string;
+	functionName: string;
+	functionArgs: any[];
+	senderAddress: string;
+	network: ValidNetworks;
 	cacheKey: string;
 	retryCount: number;
 }
 
-/**
- * A rate-limited fetcher implementation for Cloudflare Workers
- * that uses a token bucket approach with consistent request spacing
- */
-export class RateLimitedFetcher {
-	private queue: QueuedRequest[] = [];
+export class StacksContractFetcher<T extends ClarityValue> {
+	private queue: QueuedContractCall<T>[] = [];
 	private processing = false;
 	private lastRequestTime = 0;
 	private tokens: number;
@@ -23,7 +25,6 @@ export class RateLimitedFetcher {
 
 	constructor(
 		private readonly env: Env,
-		private readonly baseApiUrl: string,
 		private readonly cacheTtl: number,
 		private readonly maxRequestsPerInterval: number,
 		private readonly intervalMs: number,
@@ -31,23 +32,8 @@ export class RateLimitedFetcher {
 		private readonly retryDelay: number
 	) {
 		this.tokens = maxRequestsPerInterval;
-		// Ensure at least 100ms between requests
 		this.minRequestSpacing = Math.max(250, Math.floor(intervalMs / maxRequestsPerInterval));
-
-		// Start token replenishment
 		this.startTokenReplenishment();
-	}
-
-	public getQueueLength(): number {
-		return this.queue.length;
-	}
-
-	public getTokenCount(): number {
-		return this.tokens;
-	}
-
-	public getWindowRequestsCount(): number {
-		return this.windowRequests;
 	}
 
 	private startTokenReplenishment() {
@@ -59,7 +45,6 @@ export class RateLimitedFetcher {
 			}
 		}, replenishInterval);
 
-		// Reset window requests counter every interval
 		setInterval(() => {
 			this.windowRequests = 0;
 		}, this.intervalMs);
@@ -82,57 +67,44 @@ export class RateLimitedFetcher {
 				const result = await this.processRequest(request);
 
 				if (result.success) {
-					this.queue.shift(); // Remove the request only if successful
+					this.queue.shift();
 					this.tokens--;
 					this.lastRequestTime = Date.now();
 					this.windowRequests++;
 				} else if (result.retry && request.retryCount < this.maxRetries) {
-					// Move to end of queue for retry
 					this.queue.shift();
 					request.retryCount++;
 					this.queue.push(request);
 					await new Promise((resolve) => setTimeout(resolve, this.retryDelay * request.retryCount));
 				} else {
-					// Max retries exceeded or non-retryable error
 					this.queue.shift();
 					request.reject(result.error);
 				}
 			}
 		} finally {
 			this.processing = false;
-
-			// If there are still items in the queue and tokens available, continue processing
 			if (this.queue.length > 0 && this.tokens > 0) {
 				void this.processQueue();
 			}
 		}
 	}
 
-	private async processRequest(request: QueuedRequest): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
+	private async processRequest(request: QueuedContractCall<T>): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
 		try {
-			// separate the path from the base URL, if there is one
-			const baseUrl = new URL(this.baseApiUrl);
-			const basePath = baseUrl.pathname === '/' ? '' : baseUrl.pathname;
-			const url = new URL(`${basePath}${request.endpoint}`, baseUrl.origin);
-			// Make API request (cache was already checked)
-			const response = await fetch(url);
+			const { contractAddress, contractName, functionName, functionArgs, senderAddress, network } = request;
 
-			if (response.status === 429) {
-				return { success: false, retry: true, error: new Error('Rate limit exceeded, moving request to end of queue') };
-			}
+			const response = await fetchCallReadOnlyFunction({
+				contractAddress,
+				contractName,
+				functionName,
+				functionArgs,
+				senderAddress,
+				network,
+			});
 
-			if (!response.ok) {
-				return {
-					success: false,
-					retry: response.status >= 500,
-					error: new Error(`API request failed (${url}): ${response.statusText}`),
-				};
-			}
+			await this.env.AIBTCDEV_CACHE_KV.put(request.cacheKey, JSON.stringify(response), { expirationTtl: this.cacheTtl });
 
-			const data = await response.text();
-			await this.env.AIBTCDEV_CACHE_KV.put(request.cacheKey, data, { expirationTtl: this.cacheTtl });
-
-			request.resolve(createJsonResponse(data, response.status));
+			request.resolve(response);
 			return { success: true };
 		} catch (error) {
 			return {
@@ -143,20 +115,40 @@ export class RateLimitedFetcher {
 		}
 	}
 
-	/**
-	 * Enqueues a fetch request with rate limiting
-	 */
-	public async fetch(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
-		// Check cache first - bypass rate limiting for cached responses
+	public async fetch(
+		contractAddress: string,
+		contractName: string,
+		functionName: string,
+		functionArgs: any[],
+		senderAddress: string,
+		network: string,
+		cacheKey: string,
+		bustCache = false
+	): Promise<any> {
+		if (!this.env) {
+			throw new Error('StacksContractFetcher not properly initialized');
+		}
 		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
 		if (cached && !bustCache) {
-			return createJsonResponse(cached);
+			return JSON.parse(cached) as T;
 		}
 
-		// If not cached, go through rate limiting queue
 		return new Promise((resolve, reject) => {
-			this.queue.push({ resolve, reject, endpoint, cacheKey, retryCount: 0 });
-			void this.processQueue();
+			if (network === 'mainnet' || network === 'testnet') {
+				this.queue.push({
+					resolve,
+					reject,
+					contractAddress,
+					contractName,
+					functionName,
+					functionArgs,
+					senderAddress,
+					network,
+					cacheKey,
+					retryCount: 0,
+				});
+				void this.processQueue();
+			}
 		});
 	}
 }

@@ -1,7 +1,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { createJsonResponse } from '../utils';
+import { createJsonResponse } from '../utils/requests-responses';
+import { getKnownAddresses, addKnownAddress } from '../utils/address-store';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 interface KnownAddressInfo {
@@ -33,24 +34,8 @@ export class HiroApiDO extends DurableObject<Env> {
 	private readonly BASE_PATH: string = '/hiro-api';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/known-addresses'];
-	private readonly KNOWN_ADDRESSES_KEY = 'known_addresses';
 	// custom fetcher with KV cache logic and rate limiting
 	private fetcher: RateLimitedFetcher;
-
-	// Get all known addresses from DO storage
-	private async getKnownAddresses(): Promise<string[]> {
-		const addresses = await this.ctx.storage.get<string[]>(this.KNOWN_ADDRESSES_KEY);
-		return addresses || [];
-	}
-
-	// Store a new address if it doesn't exist
-	private async addKnownAddress(address: string): Promise<void> {
-		const addresses = await this.getKnownAddresses();
-		if (!addresses.includes(address)) {
-			addresses.push(address);
-			await this.ctx.storage.put(this.KNOWN_ADDRESSES_KEY, addresses);
-		}
-	}
 
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
@@ -89,11 +74,33 @@ export class HiroApiDO extends DurableObject<Env> {
 		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
+	private async extractAddressesFromCache(): Promise<string[]> {
+		const addresses = new Set<string>();
+		let cursor: string | null = null;
+
+		do {
+			const result: KVNamespaceListResult<string, string> = await this.env.AIBTCDEV_CACHE_KV.list({
+				cursor,
+				prefix: 'hiro-api_extended_v1_address_',
+			});
+			cursor = result.list_complete ? null : result.cursor;
+
+			for (const key of result.keys) {
+				const match = key.name.match(/hiro-api_extended_v1_address_([A-Z0-9]+)_(assets|balances)/);
+				if (match) {
+					addresses.add(match[1]);
+				}
+			}
+		} while (cursor != null);
+
+		return Array.from(addresses);
+	}
+
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
-			// Get addresses from DO storage instead of KV
-			const addresses = await this.getKnownAddresses();
+			// Get addresses from KV storage
+			const addresses = await getKnownAddresses(this.env);
 			console.log(`HiroApiDO: updating ${addresses.length} known addresses`);
 
 			// Track success/failure for each address
@@ -137,30 +144,6 @@ export class HiroApiDO extends DurableObject<Env> {
 				this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 			}
 		}
-	}
-
-	private async extractAddressesFromKV(): Promise<string[]> {
-		const addresses = new Set<string>();
-		let cursor: string | null = null;
-
-		do {
-			const result: KVNamespaceListResult<string, string> = await this.env.AIBTCDEV_CACHE_KV.list({ cursor });
-			if (result.list_complete === false && result.cursor) {
-				cursor = result.cursor;
-			} else {
-				cursor = null;
-			}
-
-			for (const key of result.keys) {
-				// Look for keys matching address pattern
-				const match = key.name.match(/hiro-api_extended_v1_address_([A-Z0-9]+)_(assets|balances)/);
-				if (match) {
-					addresses.add(match[1]);
-				}
-			}
-		} while (cursor != null);
-
-		return Array.from(addresses);
 	}
 
 	// helper function to fetch data from KV cache with rate limiting for API calls
@@ -219,12 +202,12 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle /extended path
 		if (endpoint === '/extended') {
-			return this.fetchWithCache(endpoint, cacheKey);
+			return await this.fetchWithCache(endpoint, cacheKey);
 		}
 
 		// handle /v2/info path
 		if (endpoint === '/v2/info') {
-			return this.fetchWithCache(endpoint, cacheKey);
+			return await this.fetchWithCache(endpoint, cacheKey);
 		}
 
 		// handle /extended/v1/address path
@@ -246,7 +229,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			const action = pathParts[1];
 
 			// Store the address when it's requested
-			await this.addKnownAddress(address);
+			await addKnownAddress(this.env, address);
 
 			// Validate the action
 			const validActions = ['assets', 'balances'];
@@ -261,23 +244,23 @@ export class HiroApiDO extends DurableObject<Env> {
 
 			// Construct the endpoint path
 			const apiEndpoint = `/extended/v1/address/${address}/${action}`;
-			return this.fetchWithCache(apiEndpoint, cacheKey);
+			return await this.fetchWithCache(apiEndpoint, cacheKey);
 		}
 
 		// handle /known-addresses path
 		if (endpoint === '/known-addresses') {
-			const [storageAddresses, cacheAddresses] = await Promise.all([this.getKnownAddresses(), this.extractAddressesFromKV()]);
-			const uncachedAddresses = storageAddresses.filter((address) => !cacheAddresses.includes(address));
+			const [knownAddresses, cachedAddresses] = await Promise.all([getKnownAddresses(this.env), this.extractAddressesFromCache()]);
+			const uncachedAddresses = knownAddresses.filter((address) => !cachedAddresses.includes(address));
 
 			const knownAddressInfo: KnownAddressInfo = {
 				stats: {
-					storage: storageAddresses.length,
-					cached: cacheAddresses.length,
+					storage: knownAddresses.length,
+					cached: cachedAddresses.length,
 					uncached: uncachedAddresses.length,
 				},
 				addresses: {
-					storage: storageAddresses,
-					cached: cacheAddresses,
+					storage: knownAddresses,
+					cached: cachedAddresses,
 					uncached: uncachedAddresses,
 				},
 			};

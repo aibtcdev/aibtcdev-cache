@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { createJsonResponse } from '../utils';
+import { createJsonResponse } from '../utils/requests-responses';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 type Metrics = {
@@ -103,8 +103,11 @@ export class StxCityDO extends DurableObject<Env> {
 		} catch (error) {
 			console.error(`StxCityDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
-			// Schedule next alarm
-			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+			// Always schedule next alarm if one isn't set
+			const currentAlarm = await this.ctx.storage.getAlarm();
+			if (currentAlarm === null) {
+				this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+			}
 		}
 	}
 
