@@ -38,6 +38,13 @@ export default {
 		}
 
 		// For the Durable Object responses, the CORS headers will be added by the DO handlers
+
+		if (path.startsWith('/bns')) {
+			const id: DurableObjectId = env.BNS_API_DO.idFromName('bns-do'); // create the instance
+			const stub = env.BNS_API_DO.get(id); // get the stub for communication
+			return await stub.fetch(request); // forward the request to the Durable Object
+		}
+
 		if (path.startsWith('/hiro-api')) {
 			const id: DurableObjectId = env.HIRO_API_DO.idFromName('hiro-api-do'); // create the instance
 			const stub = env.HIRO_API_DO.get(id); // get the stub for communication
