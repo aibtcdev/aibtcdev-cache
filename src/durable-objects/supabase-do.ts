@@ -21,7 +21,7 @@ export class SupabaseDO extends DurableObject<Env> {
 	private readonly BASE_PATH: string = '/supabase';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/stats'];
-	private readonly supabase: SupabaseClient;
+	private supabase: SupabaseClient;
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
