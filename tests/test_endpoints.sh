@@ -8,7 +8,7 @@ export TOTAL_TESTS=0
 
 # Source all test files
 SCRIPT_DIR="$(dirname "$0")"
-source "$SCRIPT_DIR/test_utils.sh"
+source "$SCRIPT_DIR/utils.sh"
 source "$SCRIPT_DIR/test_index.sh"
 source "$SCRIPT_DIR/test_hiro_api.sh"
 source "$SCRIPT_DIR/test_stx_city.sh"
