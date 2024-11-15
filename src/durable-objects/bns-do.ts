@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { createJsonResponse } from '../utils';
+import { createJsonResponse } from '../utils/requests-responses';
 import { getKnownAddresses } from '../utils/address-store';
 import { RateLimitedFetcher } from '../rate-limiter';
 

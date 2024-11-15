@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { createJsonResponse } from '../utils';
+import { createJsonResponse } from '../utils/requests-responses';
 
 interface StatsResponse {
 	total_jobs: number;

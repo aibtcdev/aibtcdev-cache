@@ -1,5 +1,5 @@
 import { Env } from '../worker-configuration';
-import { createJsonResponse } from './utils';
+import { createJsonResponse } from './utils/requests-responses';
 
 interface QueuedRequest {
 	resolve: (value: Response | PromiseLike<Response>) => void;
