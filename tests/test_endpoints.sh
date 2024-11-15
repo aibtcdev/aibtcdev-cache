@@ -102,6 +102,12 @@ test_endpoint "/hiro-api/v2/info" 200 "HiroApiDO - API info"
 test_cors "/hiro-api/v2/info" "HiroApiDO - API info CORS"
 test_endpoint "/hiro-api/known-addresses" 200 "HiroApiDO - Known addresses"
 test_cors "/hiro-api/known-addresses" "HiroApiDO - Known addresses CORS"
+# Test each address for Hiro API
+for address in "${TEST_ADDRESSES[@]}"; do
+    test_endpoint "/hiro-api/extended/v1/address/${address}/balances" 200 "HiroApiDO - Address balances for ${address}"
+    test_cors "/hiro-api/extended/v1/address/${address}/balances" "HiroApiDO - Address balances CORS for ${address}"
+done
+
 test_endpoint "/hiro-api/invalid" 404 "HiroApiDO - Invalid endpoint"
 test_cors "/hiro-api/invalid" "HiroApiDO - Invalid endpoint CORS"
 echo "===================="
@@ -127,8 +133,8 @@ echo "BnsApiDO Tests"
 echo "===================="
 test_endpoint "/bns" 200 "BnsApiDO - Base endpoint"
 test_cors "/bns" "BnsApiDO - Base endpoint CORS"
-# Array of addresses to test
-BNS_ADDRESSES=(
+# Shared test addresses
+TEST_ADDRESSES=(
     "SP3GEF4KYM4V41FHC9NX0F7K0GW1VC6A4WNJ855X3"
     "SP2733BAJCTWBM0790KC9GZYMP73S0VDYPRSAF95"
     "SP2CZP2W4PCD22GWXFYYKV40JXZBWVFN692T0FJQH"
@@ -136,8 +142,8 @@ BNS_ADDRESSES=(
     "SPK0PEGF4Z37H0D6V1JEMGTD7BE36MHT75P8548J"
 )
 
-# Test each address
-for address in "${BNS_ADDRESSES[@]}"; do
+# Test each address for BNS
+for address in "${TEST_ADDRESSES[@]}"; do
     test_endpoint "/bns/names/$address" 200 "BnsApiDO - Names lookup for $address"
     test_cors "/bns/names/$address" "BnsApiDO - Names lookup CORS for $address"
 done
