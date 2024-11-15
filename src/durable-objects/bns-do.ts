@@ -3,7 +3,7 @@ import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { createJsonResponse } from '../utils/requests-responses';
 import { getKnownAddresses } from '../utils/address-store';
-import { getNameFromAddress } from '../utils/bns-v2';
+import { getNameFromAddress, initStacksFetcher } from '../utils/bns-v2';
 import { validateStacksAddress } from '@stacks/transactions';
 
 /**
