@@ -63,8 +63,11 @@ export class BnsApiDO extends DurableObject<Env> {
 
         console.log(`Updated BNS cache for ${addresses.length} addresses`);
 
-        // Schedule next alarm
-        this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+        // Always schedule next alarm if one isn't set
+        const currentAlarm = await this.ctx.storage.getAlarm();
+        if (currentAlarm === null) {
+            this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+        }
     }
 
     private async extractAddressesFromKV(): Promise<string[]> {
