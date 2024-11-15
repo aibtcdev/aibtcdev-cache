@@ -17,5 +17,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Test Endpoints (10s delay)
         run: |
-          chmod +x tests/test_endpoints.sh
-          ./tests/test_endpoints.sh https://cache.aibtc.dev true
+          chmod +x tests/run_tests.sh
+          ./tests/run_tests.sh https://cache.aibtc.dev true
