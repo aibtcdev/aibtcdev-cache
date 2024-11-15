@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { createJsonResponse } from '../utils';
-import { getKnownAddresses, addKnownAddress, extractAddressesFromKV } from '../utils/address-store';
+import { getKnownAddresses, addKnownAddress } from '../utils/address-store';
 import { RateLimitedFetcher } from '../rate-limiter';
 
 interface KnownAddressInfo {
@@ -74,6 +74,28 @@ export class HiroApiDO extends DurableObject<Env> {
 		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
+	private async extractAddressesFromCache(): Promise<string[]> {
+		const addresses = new Set<string>();
+		let cursor: string | null = null;
+
+		do {
+			const result: KVNamespaceListResult<string, string> = await this.env.AIBTCDEV_CACHE_KV.list({
+				cursor,
+				prefix: 'hiro-api_extended_v1_address_',
+			});
+			cursor = result.list_complete ? null : result.cursor;
+
+			for (const key of result.keys) {
+				const match = key.name.match(/hiro-api_extended_v1_address_([A-Z0-9]+)_(assets|balances)/);
+				if (match) {
+					addresses.add(match[1]);
+				}
+			}
+		} while (cursor != null);
+
+		return Array.from(addresses);
+	}
+
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
@@ -123,7 +145,6 @@ export class HiroApiDO extends DurableObject<Env> {
 			}
 		}
 	}
-
 
 	// helper function to fetch data from KV cache with rate limiting for API calls
 	private async fetchWithCache(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
@@ -228,21 +249,18 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// handle /known-addresses path
 		if (endpoint === '/known-addresses') {
-			const [storageAddresses, cacheAddresses] = await Promise.all([
-				getKnownAddresses(this.env),
-				extractAddressesFromKV(this.env)
-			]);
-			const uncachedAddresses = storageAddresses.filter((address) => !cacheAddresses.includes(address));
+			const [knownAddresses, cachedAddresses] = await Promise.all([getKnownAddresses(this.env), this.extractAddressesFromCache()]);
+			const uncachedAddresses = knownAddresses.filter((address) => !cachedAddresses.includes(address));
 
 			const knownAddressInfo: KnownAddressInfo = {
 				stats: {
-					storage: storageAddresses.length,
-					cached: cacheAddresses.length,
+					storage: knownAddresses.length,
+					cached: cachedAddresses.length,
 					uncached: uncachedAddresses.length,
 				},
 				addresses: {
-					storage: storageAddresses,
-					cached: cacheAddresses,
+					storage: knownAddresses,
+					cached: cachedAddresses,
 					uncached: uncachedAddresses,
 				},
 			};
