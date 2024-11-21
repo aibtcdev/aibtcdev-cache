@@ -12,7 +12,7 @@ import { validateStacksAddress } from '@stacks/transactions';
 export class BnsApiDO extends DurableObject<Env> {
 	private readonly CACHE_TTL: number;
 	// private readonly ALARM_INTERVAL_MS: number;
-	private readonly ALARM_INTERVAL_MS = 10000;
+	private readonly ALARM_INTERVAL_MS = 600000; // 10 minutes
 	private readonly BASE_PATH: string = '/bns';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/names/{address}'];
