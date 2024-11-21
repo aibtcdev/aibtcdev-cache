@@ -1,6 +1,6 @@
 import { getFetchOptions, setFetchOptions } from '@stacks/common';
 import { AppConfig } from '../config';
-import { BufferCV, ClarityType, principalCV, TupleCV } from '@stacks/transactions';
+import { BufferCV, ClarityType, ClarityValue, principalCV, TupleCV } from '@stacks/transactions';
 import { StacksContractFetcher } from '../stacks-rate-limiter';
 import { Env } from '../../worker-configuration';
 import { ValidNetworks } from './stacks';
@@ -50,7 +50,7 @@ type BnsNameSuccessResponse = {
 	};
 };
 
-let stacksFetcher: StacksContractFetcher<ClarityValue>;
+let stacksFetcher: StacksContractFetcher;
 
 export function initStacksFetcher(env: Env) {
 	const config = AppConfig.getInstance(env).getConfig();

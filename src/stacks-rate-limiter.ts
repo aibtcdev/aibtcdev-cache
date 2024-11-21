@@ -2,8 +2,8 @@ import { Env } from '../worker-configuration';
 import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
 import { ValidNetworks } from './utils/stacks';
 
-interface QueuedContractCall<T> {
-	resolve: (value: T) => void;
+interface QueuedContractCall {
+	resolve: (value: ClarityValue) => void;
 	reject: (reason?: any) => void;
 	contractAddress: string;
 	contractName: string;
@@ -15,8 +15,22 @@ interface QueuedContractCall<T> {
 	retryCount: number;
 }
 
-export class StacksContractFetcher<T extends ClarityValue> {
-	private queue: QueuedContractCall<T>[] = [];
+function stringifyWithBigInt(value: unknown, replacer?: (key: string, value: unknown) => unknown, space?: string | number): string {
+	const customReplacer = (key: string, val: unknown): unknown => {
+		if (typeof val === 'bigint') {
+			return val.toString() + 'n'; // Convert BigInt to string with 'n' suffix
+		}
+		if (replacer && typeof replacer === 'function') {
+			return replacer(key, val);
+		}
+		return val;
+	};
+
+	return JSON.stringify(value, customReplacer, space);
+}
+
+export class StacksContractFetcher {
+	private queue: QueuedContractCall[] = [];
 	private processing = false;
 	private lastRequestTime = 0;
 	private tokens: number;
@@ -89,7 +103,7 @@ export class StacksContractFetcher<T extends ClarityValue> {
 		}
 	}
 
-	private async processRequest(request: QueuedContractCall<T>): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
+	private async processRequest(request: QueuedContractCall): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
 		try {
 			const { contractAddress, contractName, functionName, functionArgs, senderAddress, network } = request;
 
@@ -102,7 +116,7 @@ export class StacksContractFetcher<T extends ClarityValue> {
 				network,
 			});
 
-			await this.env.AIBTCDEV_CACHE_KV.put(request.cacheKey, JSON.stringify(response), { expirationTtl: this.cacheTtl });
+			await this.env.AIBTCDEV_CACHE_KV.put(request.cacheKey, stringifyWithBigInt(response), { expirationTtl: this.cacheTtl });
 
 			request.resolve(response);
 			return { success: true };
@@ -130,7 +144,7 @@ export class StacksContractFetcher<T extends ClarityValue> {
 		}
 		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
 		if (cached && !bustCache) {
-			return JSON.parse(cached) as T;
+			return JSON.parse(cached) as ClarityValue;
 		}
 
 		return new Promise((resolve, reject) => {

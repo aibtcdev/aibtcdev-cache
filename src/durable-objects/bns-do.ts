@@ -64,9 +64,10 @@ export class BnsApiDO extends DurableObject<Env> {
 
 			const endTime = Date.now();
 			const totalDuration = endTime - startTime;
+			const errors = results.errors.length > 0 ? results.errors.join(', ') : 'none';
 
 			console.log(
-				`BnsApiDO: ${addresses.length} addresses updated in ${totalDuration}ms, success: ${results.success}, failed: ${results.failed}`
+				`BnsApiDO: ${addresses.length} addresses updated in ${totalDuration}ms, success: ${results.success}, failed: ${results.failed}, errors: ${errors}`
 			);
 		} catch (error) {
 			console.error(`BnsApiDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -121,6 +122,16 @@ export class BnsApiDO extends DurableObject<Env> {
 				return createJsonResponse(cachedName);
 			}
 			const name = await getNameFromAddress(address);
+
+			if (name === '') {
+				return createJsonResponse(
+					{
+						error: `No registered name found for address ${address}`,
+					},
+					404
+				);
+			}
+
 			await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, name, { expirationTtl: this.CACHE_TTL });
 			return createJsonResponse(name);
 		}
