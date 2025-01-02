@@ -12,19 +12,19 @@ id = "beb302875cfa41eb86fb24eeb3b9373a"
 
 [[env.preview.durable_objects.bindings]]
 name = "HIRO_API_DO"
-class_name = "HiroApiDO"
+class_name = "HiroApiDO-preview"
 
 [[env.preview.durable_objects.bindings]]
 name = "STX_CITY_DO"
-class_name = "StxCityDO"
+class_name = "StxCityDO-preview"
 
 [[env.preview.durable_objects.bindings]]
 name = "SUPABASE_DO"
-class_name = "SupabaseDO"
+class_name = "SupabaseDO-preview"
 
 [[env.preview.durable_objects.bindings]]
 name = "BNS_API_DO"
-class_name = "BnsApiDO"
+class_name = "BnsApiDO-preview"
 
 [env.staging]
 routes = [{ pattern = "cache-staging.aibtc.dev", custom_domain = true }]
@@ -34,19 +34,19 @@ id = "beb302875cfa41eb86fb24eeb3b9373a"
 
 [[env.staging.durable_objects.bindings]]
 name = "HIRO_API_DO"
-class_name = "HiroApiDO"
+class_name = "HiroApiDO-staging"
 
 [[env.staging.durable_objects.bindings]]
 name = "STX_CITY_DO"
-class_name = "StxCityDO"
+class_name = "StxCityDO-staging"
 
 [[env.staging.durable_objects.bindings]]
 name = "SUPABASE_DO"
-class_name = "SupabaseDO"
+class_name = "SupabaseDO-staging"
 
 [[env.staging.durable_objects.bindings]]
 name = "BNS_API_DO"
-class_name = "BnsApiDO"
+class_name = "BnsApiDO-staging"
 
 [env.production]
 routes = [{ pattern = "cache.aibtc.dev", custom_domain = true }]
@@ -77,4 +77,4 @@ enabled = true
 # Durable Object migrations
 [[migrations]]
 tag = "20250102"
-new_classes = ["HiroApiDO", "SupabaseDO", "StxCityDO", "BnsApiDO"]
+new_classes = ["HiroApiDO", "HiroApiDO-preview", "HiroApiDO-staging", "SupabaseDO", "SupabaseDO-preview", "SupabaseDO-staging", "StxCityDO", "StxCityDO-preview", "StxCityDO-staging", "BnsApiDO", "BnsApiDO-preview", "BnsApiDO-staging"]
