@@ -3,34 +3,30 @@ name = "aibtcdev-cache"
 main = "src/index.ts"
 compatibility_date = "2024-11-09"
 account_id = "96280594e2b905d4dc40b3c744149710"
-# Default environment (preview)
+# Environment configurations
 [env.preview]
 routes = []
+[[env.preview.kv_namespaces]]
+binding = "AIBTCDEV_CACHE_KV"
+id = "beb302875cfa41eb86fb24eeb3b9373a"
 
-# Staging environment
 [env.staging]
 routes = [{ pattern = "cache-staging.aibtc.dev", custom_domain = true }]
+[[env.staging.kv_namespaces]]
+binding = "AIBTCDEV_CACHE_KV"
+id = "beb302875cfa41eb86fb24eeb3b9373a"
 
-# Production environment
 [env.production]
 routes = [{ pattern = "cache.aibtc.dev", custom_domain = true }]
+[[env.production.kv_namespaces]]
+binding = "AIBTCDEV_CACHE_KV"
+id = "83cf92a7f68247c7bf1279f8a6163046"
 
 # Workers Logs
-# Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
-# Configuration: https://developers.cloudflare.com/workers/observability/logs/workers-logs/#enable-workers-logs
 [observability]
 enabled = true
 
-# Want to use this with `npm run cf-typegen` but it overwrites the secrets
-# Will manage manually for now
-# [vars]
-# HIRO_API_KEY = ""
-# SUPABASE_URL = ""
-# SUPABASE_SERVICE_KEY = ""
-
-# Bind a Durable Object. Durable objects are a scale-to-zero compute primitive based on the actor model.
-# Durable Objects can live for as long as needed. Use these when you need a long-running "server", such as in realtime apps.
-# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#durable-objects
+# Durable Object bindings
 [[durable_objects.bindings]]
 name = "HIRO_API_DO"
 class_name = "HiroApiDO"
@@ -47,8 +43,7 @@ class_name = "SupabaseDO"
 name = "BNS_API_DO"
 class_name = "BnsApiDO"
 
-# Durable Object migrations.
-# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#migrations
+# Durable Object migrations
 [[migrations]]
 tag = "v1"
 new_classes = ["HiroApiDO"]
@@ -64,21 +59,3 @@ new_classes = ["StxCityDO"]
 [[migrations]]
 tag = "v4"
 new_classes = ["BnsApiDO"]
-
-# KV Namespace bindings for different environments
-# Default/Preview environment
-[[kv_namespaces]]
-binding = "AIBTCDEV_CACHE_KV"
-id = "beb302875cfa41eb86fb24eeb3b9373a"
-
-# Staging environment
-[env.staging]
-[[kv_namespaces]]
-binding = "AIBTCDEV_CACHE_KV"
-id = "beb302875cfa41eb86fb24eeb3b9373a"
-
-# Production environment
-[env.production]
-[[kv_namespaces]]
-binding = "AIBTCDEV_CACHE_KV"
-id = "83cf92a7f68247c7bf1279f8a6163046"
