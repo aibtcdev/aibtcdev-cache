@@ -10,11 +10,43 @@ routes = []
 binding = "AIBTCDEV_CACHE_KV"
 id = "beb302875cfa41eb86fb24eeb3b9373a"
 
+[[env.preview.durable_objects.bindings]]
+name = "HIRO_API_DO"
+class_name = "HiroApiDO"
+
+[[env.preview.durable_objects.bindings]]
+name = "STX_CITY_DO"
+class_name = "StxCityDO"
+
+[[env.preview.durable_objects.bindings]]
+name = "SUPABASE_DO"
+class_name = "SupabaseDO"
+
+[[env.preview.durable_objects.bindings]]
+name = "BNS_API_DO"
+class_name = "BnsApiDO"
+
 [env.staging]
 routes = [{ pattern = "cache-staging.aibtc.dev", custom_domain = true }]
 [[env.staging.kv_namespaces]]
 binding = "AIBTCDEV_CACHE_KV"
 id = "beb302875cfa41eb86fb24eeb3b9373a"
+
+[[env.staging.durable_objects.bindings]]
+name = "HIRO_API_DO"
+class_name = "HiroApiDO"
+
+[[env.staging.durable_objects.bindings]]
+name = "STX_CITY_DO"
+class_name = "StxCityDO"
+
+[[env.staging.durable_objects.bindings]]
+name = "SUPABASE_DO"
+class_name = "SupabaseDO"
+
+[[env.staging.durable_objects.bindings]]
+name = "BNS_API_DO"
+class_name = "BnsApiDO"
 
 [env.production]
 routes = [{ pattern = "cache.aibtc.dev", custom_domain = true }]
@@ -22,26 +54,25 @@ routes = [{ pattern = "cache.aibtc.dev", custom_domain = true }]
 binding = "AIBTCDEV_CACHE_KV"
 id = "83cf92a7f68247c7bf1279f8a6163046"
 
-# Workers Logs
-[observability]
-enabled = true
-
-# Durable Object bindings
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "HIRO_API_DO"
 class_name = "HiroApiDO"
 
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "STX_CITY_DO"
 class_name = "StxCityDO"
 
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "SUPABASE_DO"
 class_name = "SupabaseDO"
 
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "BNS_API_DO"
 class_name = "BnsApiDO"
+
+# Workers Logs
+[observability]
+enabled = true
 
 # Durable Object migrations
 [[migrations]]
