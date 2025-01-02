@@ -2,20 +2,42 @@ name: Deploy to Cloudflare
 
 on:
   push:
-    branches: [main]
+    branches: 
+      - main
+      - staging
+  pull_request:
+    branches:
+      - staging
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Ship Ship Ship
+    name: Deploy and Test
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Determine Environment
+        id: env
+        run: |
+          if [[ ${{ github.event_name }} == 'pull_request' ]]; then
+            echo "WRANGLER_ENV=preview" >> $GITHUB_ENV
+            echo "TEST_URL=https://aibtcdev-cache.PREVIEW_URL" >> $GITHUB_ENV
+          elif [[ ${{ github.ref }} == 'refs/heads/staging' ]]; then
+            echo "WRANGLER_ENV=staging" >> $GITHUB_ENV
+            echo "TEST_URL=https://cache-staging.aibtc.dev" >> $GITHUB_ENV
+          else
+            echo "WRANGLER_ENV=production" >> $GITHUB_ENV
+            echo "TEST_URL=https://cache.aibtc.dev" >> $GITHUB_ENV
+          fi
+
       - name: Deploy with Wrangler
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          environment: ${{ env.WRANGLER_ENV }}
+
       - name: Test Endpoints (10s delay)
         run: |
           chmod +x tests/run_tests.sh
-          ./tests/run_tests.sh https://cache.aibtc.dev true
+          ./tests/run_tests.sh ${{ env.TEST_URL }} true
