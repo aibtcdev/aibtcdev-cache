@@ -4,7 +4,7 @@ import { AppConfig } from '../config';
 import { createJsonResponse } from '../utils/requests-responses';
 import { StacksContractFetcher } from '../stacks-rate-limiter';
 import { CacheService } from '../services/cache-service';
-import { validateStacksAddress, fetchAbi, ClarityAbi, ClarityAbiFunction } from '@stacks/transactions';
+import { validateStacksAddress, fetchAbi, ClarityAbi, ClarityAbiFunction, ClarityValue } from '@stacks/transactions';
 import { ValidNetworks } from '../utils/stacks';
 
 /**
@@ -21,6 +21,15 @@ interface KnownContractsInfo {
 			contractName: string;
 		}>;
 	};
+}
+
+/**
+ * Interface for expected request body for contract calls
+ */
+interface ContractCallRequest {
+	functionArgs: ClarityValue[];
+	network: ValidNetworks;
+	senderAddress: string;
 }
 
 /**
@@ -258,7 +267,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 			try {
 				// Parse function arguments from request body
-				const body = await request.json();
+				const body = (await request.json()) as ContractCallRequest;
 				// Expect functionArgs to be ClarityValue[] from @stacks/transactions
 				// This allows direct replacement of callReadOnlyFunction in client apps
 				const functionArgs = body.functionArgs || [];
@@ -333,7 +342,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 		// Check cache first
 		if (!bustCache) {
-			const cachedABI = await this.cacheService.get(cacheKey);
+			const cachedABI = await this.cacheService.get<ClarityAbi>(cacheKey);
 			if (cachedABI) {
 				return cachedABI;
 			}
