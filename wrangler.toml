@@ -10,7 +10,11 @@ enabled = true
 # durable object migrations
 [[migrations]]
 tag = "20250102"
-new_classes = ["HiroApiDO", "SupabaseDO", "StxCityDO", "BnsApiDO", "ContractCallsDO"]
+new_classes = ["HiroApiDO", "SupabaseDO", "StxCityDO", "BnsApiDO"]
+
+[[migrations]]
+tag = "20250323"
+new_classes = ["ContractCallsDO"]
 
 
 [env.preview]
