@@ -263,6 +263,8 @@ export class ContractCallsDO extends DurableObject<Env> {
       try {
         // Parse function arguments from request body
         const body = await request.json();
+        // Expect functionArgs to be ClarityValue[] from @stacks/transactions
+        // This allows direct replacement of callReadOnlyFunction in client apps
         const functionArgs = body.functionArgs || [];
         const network = (body.network || 'mainnet') as ValidNetworks;
         const senderAddress = body.senderAddress || contractAddress;
@@ -270,11 +272,23 @@ export class ContractCallsDO extends DurableObject<Env> {
         // Get ABI to validate function arguments
         const abi = await this.fetchContractABI(contractAddress, contractName);
         
-        // Validate function exists in ABI
-        if (!this.validateFunctionInABI(abi, functionName)) {
+        // Validate function exists in ABI and arguments match expected types
+        const functionValidation = this.validateFunctionInABI(abi, functionName);
+        if (!functionValidation) {
           return createJsonResponse(
             {
               error: `Function ${functionName} not found in contract ABI`,
+            },
+            400
+          );
+        }
+        
+        // Validate function arguments
+        const argsValidation = this.validateFunctionArgs(abi, functionName, functionArgs);
+        if (!argsValidation.valid) {
+          return createJsonResponse(
+            {
+              error: argsValidation.error || 'Invalid function arguments',
             },
             400
           );
@@ -357,8 +371,7 @@ export class ContractCallsDO extends DurableObject<Env> {
   }
 
   /**
-   * Placeholder method to fetch contract ABI from an API
-   * This would be replaced with actual implementation
+   * Fetches contract ABI from the Stacks API
    * 
    * @param contractAddress - The contract's address
    * @param contractName - The contract's name
@@ -368,50 +381,30 @@ export class ContractCallsDO extends DurableObject<Env> {
     contractAddress: string,
     contractName: string
   ): Promise<any> {
-    // This is a placeholder. In a real implementation, this would call the Stacks API
-    // to fetch the contract ABI.
-    
-    // For now, we'll return a mock ABI
-    return {
-      functions: [
-        {
-          name: "get-balance",
-          access: "public",
-          args: [{ name: "owner", type: "principal" }],
-          outputs: { type: "uint128" }
-        },
-        {
-          name: "transfer",
-          access: "public",
-          args: [
-            { name: "amount", type: "uint128" },
-            { name: "sender", type: "principal" },
-            { name: "recipient", type: "principal" }
-          ],
-          outputs: { type: "bool" }
+    try {
+      // Construct the API URL for the contract interface
+      const apiUrl = `https://api.mainnet.hiro.so/v2/contracts/interface/${contractAddress}/${contractName}`;
+      
+      // Make the API request
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Content-Type': 'application/json',
+          // Add API key if available
+          ...(this.env.HIRO_API_KEY ? { 'x-hiro-api-key': this.env.HIRO_API_KEY } : {})
         }
-      ],
-      variables: [
-        {
-          name: "token-name",
-          type: "string-ascii",
-          access: "constant"
-        },
-        {
-          name: "token-symbol",
-          type: "string-ascii",
-          access: "constant"
-        }
-      ],
-      maps: [
-        {
-          name: "balances",
-          key: "principal",
-          value: "uint128"
-        }
-      ],
-      non_fungible_tokens: []
-    };
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch contract ABI: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(`Error fetching contract ABI for ${contractAddress}.${contractName}:`, error);
+      throw new Error(`Failed to fetch contract ABI: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**
@@ -427,6 +420,45 @@ export class ContractCallsDO extends DurableObject<Env> {
     }
     
     return abi.functions.some((func: any) => func.name === functionName);
+  }
+
+  /**
+   * Validates function arguments against the ABI specification
+   * 
+   * @param abi - The contract ABI
+   * @param functionName - The function name
+   * @param functionArgs - The arguments to validate
+   * @returns Object with validation result and error message if any
+   */
+  private validateFunctionArgs(abi: any, functionName: string, functionArgs: any[]): { valid: boolean; error?: string } {
+    if (!abi || !abi.functions) {
+      return { valid: false, error: 'Invalid ABI format' };
+    }
+    
+    // Find the function in the ABI
+    const functionSpec = abi.functions.find((func: any) => func.name === functionName);
+    if (!functionSpec) {
+      return { valid: false, error: `Function ${functionName} not found in contract ABI` };
+    }
+    
+    // Check if the function is read-only (public or read-only access)
+    if (functionSpec.access !== 'public' && functionSpec.access !== 'read_only') {
+      return { valid: false, error: `Function ${functionName} is not a read-only function` };
+    }
+    
+    // Check argument count
+    const expectedArgCount = functionSpec.args ? functionSpec.args.length : 0;
+    if (functionArgs.length !== expectedArgCount) {
+      return { 
+        valid: false, 
+        error: `Function ${functionName} expects ${expectedArgCount} arguments, but got ${functionArgs.length}` 
+      };
+    }
+    
+    // For more detailed type checking, we would need to implement a full Clarity type validator
+    // This is a simplified version that just checks argument count
+    
+    return { valid: true };
   }
 
   /**
