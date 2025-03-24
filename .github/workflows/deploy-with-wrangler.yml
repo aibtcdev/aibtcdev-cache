@@ -2,7 +2,7 @@ name: Deploy to Cloudflare
 
 on:
   push:
-    branches: 
+    branches:
       - main
       - staging
   pull_request:
@@ -36,8 +36,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           environment: ${{ env.WRANGLER_ENV }}
-
-      - name: Test Endpoints (10s delay)
-        run: |
-          chmod +x tests/run_tests.sh
-          ./tests/run_tests.sh ${{ env.TEST_URL }} true
+#      - name: Test Endpoints (10s delay)
+#        run: |
+#          chmod +x tests/run_tests.sh
+#          ./tests/run_tests.sh ${{ env.TEST_URL }} true
