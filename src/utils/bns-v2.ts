@@ -1,9 +1,8 @@
 import { getFetchOptions, setFetchOptions } from '@stacks/common';
 import { AppConfig } from '../config';
-import { BufferCV, ClarityType, ClarityValue, principalCV, TupleCV } from '@stacks/transactions';
+import { BufferCV, ClarityType, principalCV, TupleCV } from '@stacks/transactions';
 import { StacksContractFetcher } from '../stacks-rate-limiter';
 import { Env } from '../../worker-configuration';
-import { ValidNetworks } from './stacks';
 
 const BNS_CONTRACT_ADDRESS = 'SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF';
 const BNS_CONTRACT_NAME = 'BNS-V2';
@@ -64,14 +63,14 @@ export function initStacksFetcher(env: Env) {
 	);
 }
 
-export async function getNameFromAddress(address: string, network: ValidNetworks = 'mainnet'): Promise<string> {
+export async function getNameFromAddress(address: string, network = 'mainnet'): Promise<string> {
 	if (!stacksFetcher) {
 		throw new Error('StacksFetcher not initialized. Call initStacksFetcher first.');
 	}
 	try {
 		const addressCV = principalCV(address);
 		const cacheKey = `bns_get-primary_${address}`;
-		const response: BnsNameResponse = await stacksFetcher.fetch(
+		const response = (await stacksFetcher.fetch(
 			BNS_CONTRACT_ADDRESS,
 			BNS_CONTRACT_NAME,
 			'get-primary',
@@ -79,7 +78,7 @@ export async function getNameFromAddress(address: string, network: ValidNetworks
 			address,
 			network,
 			cacheKey
-		);
+		)) as BnsNameResponse;
 		if (response.type === ClarityType.ResponseErr) {
 			// name doesn't exist, return a blank string
 			// console.log(`getNameFromAddress: name not found for address ${address}`);

@@ -1,5 +1,5 @@
 import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
-import { ValidNetworks } from '../utils/stacks';
+import { StacksNetworkName } from '@stacks/network';
 
 export class StacksApiService {
 	async callReadOnlyFunction(
@@ -8,7 +8,7 @@ export class StacksApiService {
 		functionName: string,
 		functionArgs: any[],
 		senderAddress: string,
-		network: ValidNetworks
+		network: StacksNetworkName
 	): Promise<ClarityValue> {
 		return fetchCallReadOnlyFunction({
 			contractAddress,
