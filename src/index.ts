@@ -5,9 +5,10 @@ import { BnsApiDO } from './durable-objects/bns-do';
 import { HiroApiDO } from './durable-objects/hiro-api-do';
 import { StxCityDO } from './durable-objects/stx-city-do';
 import { SupabaseDO } from './durable-objects/supabase-do';
+import { ContractCallsDO } from './durable-objects/contract-calls-do';
 
 // export the Durable Object classes we're using
-export { BnsApiDO, HiroApiDO, StxCityDO, SupabaseDO };
+export { BnsApiDO, HiroApiDO, StxCityDO, SupabaseDO, ContractCallsDO };
 
 export default {
 	/**
@@ -60,6 +61,12 @@ export default {
 		if (path.startsWith('/supabase')) {
 			let id: DurableObjectId = env.SUPABASE_DO.idFromName('supabase-do'); // create the instance
 			let stub = env.SUPABASE_DO.get(id); // get the stub for communication
+			return await stub.fetch(request); // forward the request to the Durable Object
+		}
+
+		if (path.startsWith('/contract-calls')) {
+			let id: DurableObjectId = env.CONTRACT_CALLS_DO.idFromName('contract-calls-do'); // create the instance
+			let stub = env.CONTRACT_CALLS_DO.get(id); // get the stub for communication
 			return await stub.fetch(request); // forward the request to the Durable Object
 		}
 

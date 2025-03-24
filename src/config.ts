@@ -21,7 +21,7 @@ export class AppConfig {
 		return {
 			// supported services for API caching
 			// each entry is a durable object that handles requests
-			SUPPORTED_SERVICES: ['/bns', '/hiro-api', '/stx-city', '/supabase'],
+			SUPPORTED_SERVICES: ['/bns', '/hiro-api', '/stx-city', '/supabase', '/contract-calls'],
 			// VALUES BELOW CAN BE OVERRIDDEN BY DURABLE OBJECTS
 			// default cache TTL used for KV
 			CACHE_TTL: 900, // 15 minutes

@@ -10,7 +10,7 @@ enabled = true
 # durable object migrations
 [[migrations]]
 tag = "20250102"
-new_classes = ["HiroApiDO", "SupabaseDO", "StxCityDO", "BnsApiDO"]
+new_classes = ["HiroApiDO", "SupabaseDO", "StxCityDO", "BnsApiDO", "ContractCallsDO"]
 
 
 [env.preview]
@@ -37,6 +37,10 @@ class_name = "SupabaseDO"
 name = "BNS_API_DO"
 class_name = "BnsApiDO"
 
+[[env.preview.durable_objects.bindings]]
+name = "CONTRACT_CALLS_DO"
+class_name = "ContractCallsDO"
+
 
 [env.staging]
 
@@ -62,6 +66,10 @@ class_name = "SupabaseDO"
 name = "BNS_API_DO"
 class_name = "BnsApiDO"
 
+[[env.staging.durable_objects.bindings]]
+name = "CONTRACT_CALLS_DO"
+class_name = "ContractCallsDO"
+
 
 [env.production]
 
@@ -86,3 +94,7 @@ class_name = "SupabaseDO"
 [[env.production.durable_objects.bindings]]
 name = "BNS_API_DO"
 class_name = "BnsApiDO"
+
+[[env.production.durable_objects.bindings]]
+name = "CONTRACT_CALLS_DO"
+class_name = "ContractCallsDO"
