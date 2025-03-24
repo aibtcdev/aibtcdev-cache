@@ -4,7 +4,12 @@ import { AppConfig } from '../config';
 import { createJsonResponse } from '../utils/requests-responses';
 import { StacksContractFetcher } from '../stacks-rate-limiter';
 import { CacheService } from '../services/cache-service';
-import { validateStacksAddress } from '@stacks/transactions';
+import { 
+  validateStacksAddress, 
+  fetchAbi, 
+  ClarityAbi, 
+  ClarityAbiFunction 
+} from '@stacks/transactions';
 import { ValidNetworks } from '../utils/stacks';
 
 /**
@@ -270,7 +275,7 @@ export class ContractCallsDO extends DurableObject<Env> {
         const senderAddress = body.senderAddress || contractAddress;
 
         // Get ABI to validate function arguments
-        const abi = await this.fetchContractABI(contractAddress, contractName);
+        const abi = await this.fetchContractABI(contractAddress, contractName, false, network);
         
         // Validate function exists in ABI and arguments match expected types
         const functionValidation = this.validateFunctionInABI(abi, functionName);
@@ -331,13 +336,15 @@ export class ContractCallsDO extends DurableObject<Env> {
    * @param contractAddress - The contract's address
    * @param contractName - The contract's name
    * @param bustCache - Whether to bypass the cache
+   * @param network - The network to use (defaults to mainnet)
    * @returns The contract ABI
    */
   private async fetchContractABI(
     contractAddress: string,
     contractName: string,
-    bustCache = false
-  ): Promise<any> {
+    bustCache = false,
+    network: ValidNetworks = 'mainnet'
+  ): Promise<ClarityAbi> {
     const cacheKey = `${this.ABI_CACHE_KEY_PREFIX}_${contractAddress}_${contractName}`;
     
     // Check cache first
@@ -355,8 +362,8 @@ export class ContractCallsDO extends DurableObject<Env> {
       // TODO: Implement actual ABI fetching logic
       // This would typically call a Stacks API endpoint to get the contract ABI
       
-      // For now, we'll use a mock implementation
-      const abi = await this.fetchContractABIFromAPI(contractAddress, contractName);
+      // Fetch the ABI using the @stacks/transactions library
+      const abi = await this.fetchContractABIFromAPI(contractAddress, contractName, network);
       
       // Cache the ABI
       await this.cacheService.set(cacheKey, abi);
@@ -371,36 +378,27 @@ export class ContractCallsDO extends DurableObject<Env> {
   }
 
   /**
-   * Fetches contract ABI from the Stacks API
+   * Fetches contract ABI using the fetchAbi function from @stacks/transactions
    * 
    * @param contractAddress - The contract's address
    * @param contractName - The contract's name
+   * @param network - The network to use (defaults to mainnet)
    * @returns The contract ABI
    */
   private async fetchContractABIFromAPI(
     contractAddress: string,
-    contractName: string
-  ): Promise<any> {
+    contractName: string,
+    network: ValidNetworks = 'mainnet'
+  ): Promise<ClarityAbi> {
     try {
-      // Construct the API URL for the contract interface
-      const apiUrl = `https://api.mainnet.hiro.so/v2/contracts/interface/${contractAddress}/${contractName}`;
-      
-      // Make the API request
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Content-Type': 'application/json',
-          // Add API key if available
-          ...(this.env.HIRO_API_KEY ? { 'x-hiro-api-key': this.env.HIRO_API_KEY } : {})
-        }
+      // Use the fetchAbi function from @stacks/transactions
+      const abi = await fetchAbi({
+        contractAddress,
+        contractName,
+        network
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch contract ABI: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-      
-      const data = await response.json();
-      return data;
+      return abi;
     } catch (error) {
       console.error(`Error fetching contract ABI for ${contractAddress}.${contractName}:`, error);
       throw new Error(`Failed to fetch contract ABI: ${error instanceof Error ? error.message : String(error)}`);
@@ -414,12 +412,12 @@ export class ContractCallsDO extends DurableObject<Env> {
    * @param functionName - The function name to validate
    * @returns True if the function exists in the ABI
    */
-  private validateFunctionInABI(abi: any, functionName: string): boolean {
+  private validateFunctionInABI(abi: ClarityAbi, functionName: string): boolean {
     if (!abi || !abi.functions) {
       return false;
     }
     
-    return abi.functions.some((func: any) => func.name === functionName);
+    return abi.functions.some((func: ClarityAbiFunction) => func.name === functionName);
   }
 
   /**
@@ -430,13 +428,13 @@ export class ContractCallsDO extends DurableObject<Env> {
    * @param functionArgs - The arguments to validate
    * @returns Object with validation result and error message if any
    */
-  private validateFunctionArgs(abi: any, functionName: string, functionArgs: any[]): { valid: boolean; error?: string } {
+  private validateFunctionArgs(abi: ClarityAbi, functionName: string, functionArgs: any[]): { valid: boolean; error?: string } {
     if (!abi || !abi.functions) {
       return { valid: false, error: 'Invalid ABI format' };
     }
     
     // Find the function in the ABI
-    const functionSpec = abi.functions.find((func: any) => func.name === functionName);
+    const functionSpec = abi.functions.find((func: ClarityAbiFunction) => func.name === functionName);
     if (!functionSpec) {
       return { valid: false, error: `Function ${functionName} not found in contract ABI` };
     }
@@ -457,6 +455,7 @@ export class ContractCallsDO extends DurableObject<Env> {
     
     // For more detailed type checking, we would need to implement a full Clarity type validator
     // This is a simplified version that just checks argument count
+    // In a more complete implementation, we would validate each argument against its expected type
     
     return { valid: true };
   }
