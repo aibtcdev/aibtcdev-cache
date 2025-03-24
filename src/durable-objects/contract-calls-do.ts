@@ -22,7 +22,7 @@ interface ContractCallRequest {
 export class ContractCallsDO extends DurableObject<Env> {
   // Configuration constants
   private readonly CACHE_TTL: number;
-  private readonly ALARM_INTERVAL_MS = 600000; // 10 minutes
+  private readonly ALARM_INTERVAL_MS = 3600000; // 1 hour - only checking for new contracts
 
   // Base path and cache prefix
   private readonly BASE_PATH: string = '/contract-calls';
@@ -71,7 +71,7 @@ export class ContractCallsDO extends DurableObject<Env> {
   async alarm(): Promise<void> {
     const startTime = Date.now();
     try {
-      console.log('ContractCallsDO: refreshing cached contract ABIs');
+      console.log('ContractCallsDO: checking for new contracts to cache ABIs');
 
       const results = await this.contractAbiService.refreshAllContractABIs();
       
@@ -80,7 +80,7 @@ export class ContractCallsDO extends DurableObject<Env> {
       const errors = results.errors.length > 0 ? results.errors.join(', ') : 'none';
 
       console.log(
-        `ContractCallsDO: contracts updated in ${totalDuration}ms, success: ${results.success}, failed: ${results.failed}, errors: ${errors}`
+        `ContractCallsDO: contract check completed in ${totalDuration}ms, success: ${results.success}, skipped: ${results.skipped}, failed: ${results.failed}, errors: ${errors}`
       );
     } catch (error) {
       console.error(`ContractCallsDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);

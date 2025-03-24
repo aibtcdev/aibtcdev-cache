@@ -11,8 +11,11 @@ export class ContractAbiService {
   private readonly ABI_CACHE_KEY_PREFIX = 'contract_abi';
   private readonly KNOWN_CONTRACTS_KEY = 'known_contracts';
 
+  // Use a very long TTL for ABIs since contract code never changes after deployment
+  private readonly ABI_CACHE_TTL = 31536000; // 1 year in seconds
+
   constructor(private readonly env: Env, private readonly cacheTtl: number) {
-    this.cacheService = new CacheService(env, cacheTtl);
+    this.cacheService = new CacheService(env, this.ABI_CACHE_TTL);
   }
 
   /**
@@ -47,8 +50,8 @@ export class ContractAbiService {
         network,
       });
 
-      // Cache the ABI
-      await this.cacheService.set(cacheKey, abi);
+      // Cache the ABI indefinitely (using the 1-year TTL)
+      await this.cacheService.set(cacheKey, abi, this.ABI_CACHE_TTL);
 
       // Add to known contracts
       await this.addKnownContract(contractAddress, contractName);
@@ -147,12 +150,14 @@ export class ContractAbiService {
   }
 
   /**
-   * Refreshes all known contract ABIs
+   * Fetches ABIs for contracts that don't have cached ABIs yet
+   * Since contract code never changes after deployment, we don't need to refresh existing ABIs
    */
   async refreshAllContractABIs(): Promise<{
     success: number;
     failed: number;
     errors: string[];
+    skipped: number;
   }> {
     const knownContracts = await this.getKnownContracts();
     
@@ -160,11 +165,23 @@ export class ContractAbiService {
       success: 0,
       failed: 0,
       errors: [] as string[],
+      skipped: 0
     };
 
     for (const contract of knownContracts.contracts.cached) {
       try {
-        await this.fetchContractABI(contract.contractAddress, contract.contractName, true);
+        // Check if ABI is already cached
+        const cacheKey = `${this.ABI_CACHE_KEY_PREFIX}_${contract.contractAddress}_${contract.contractName}`;
+        const cachedABI = await this.cacheService.get<ClarityAbi>(cacheKey);
+        
+        if (cachedABI) {
+          // Skip if already cached since contract code never changes
+          results.skipped++;
+          continue;
+        }
+        
+        // Only fetch if not already cached
+        await this.fetchContractABI(contract.contractAddress, contract.contractName, false);
         results.success++;
       } catch (error) {
         results.failed++;
