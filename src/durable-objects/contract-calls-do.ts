@@ -22,7 +22,6 @@ interface ContractCallRequest {
 export class ContractCallsDO extends DurableObject<Env> {
   // Configuration constants
   private readonly CACHE_TTL: number;
-  private readonly ALARM_INTERVAL_MS = 3600000; // 1 hour - only checking for new contracts
 
   // Base path and cache prefix
   private readonly BASE_PATH: string = '/contract-calls';
@@ -61,37 +60,9 @@ export class ContractCallsDO extends DurableObject<Env> {
       config.RETRY_DELAY
     );
 
-    // Set up alarm to run at configured interval
-    ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+    // No need for an alarm since contract ABIs never change after deployment
   }
 
-  /**
-   * Alarm handler that runs periodically to refresh cached data
-   */
-  async alarm(): Promise<void> {
-    const startTime = Date.now();
-    try {
-      console.log('ContractCallsDO: checking for new contracts to cache ABIs');
-
-      const results = await this.contractAbiService.refreshAllContractABIs();
-      
-      const endTime = Date.now();
-      const totalDuration = endTime - startTime;
-      const errors = results.errors.length > 0 ? results.errors.join(', ') : 'none';
-
-      console.log(
-        `ContractCallsDO: contract check completed in ${totalDuration}ms, success: ${results.success}, skipped: ${results.skipped}, failed: ${results.failed}, errors: ${errors}`
-      );
-    } catch (error) {
-      console.error(`ContractCallsDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      // Always schedule next alarm if one isn't set
-      const currentAlarm = await this.ctx.storage.getAlarm();
-      if (currentAlarm === null) {
-        this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
-      }
-    }
-  }
 
   /**
    * Main request handler for the Durable Object
@@ -100,11 +71,6 @@ export class ContractCallsDO extends DurableObject<Env> {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Always schedule next alarm if one isn't set
-    const currentAlarm = await this.ctx.storage.getAlarm();
-    if (currentAlarm === null) {
-      this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
-    }
 
     try {
       if (!path.startsWith(this.BASE_PATH)) {
