@@ -1,162 +1,136 @@
 import { Env } from '../worker-configuration';
 import { createJsonResponse } from './utils/requests-responses';
-
-interface QueuedRequest {
-	resolve: (value: Response | PromiseLike<Response>) => void;
-	reject: (reason?: any) => void;
-	endpoint: string;
-	cacheKey: string;
-	retryCount: number;
-}
+import { RequestQueue } from './utils/request-queue';
+import { TokenBucket } from './utils/token-bucket';
+import { CacheService } from './services/cache-service';
 
 /**
- * A rate-limited fetcher implementation for Cloudflare Workers
- * that uses a token bucket approach with consistent request spacing
+ * A service that provides rate-limited API fetching capabilities
  */
-export class RateLimitedFetcher {
-	private queue: QueuedRequest[] = [];
-	private processing = false;
-	private lastRequestTime = 0;
-	private tokens: number;
-	private windowRequests: number = 0;
-	private readonly minRequestSpacing: number;
+export class ApiRateLimiterService {
+    private readonly cacheService: CacheService;
+    private readonly requestQueue: RequestQueue<Response>;
+    private readonly tokenBucket: TokenBucket;
+    private windowRequests: number = 0;
+    private lastRequestTime = 0;
+    private readonly minRequestSpacing: number;
 
-	constructor(
-		private readonly env: Env,
-		private readonly baseApiUrl: string,
-		private readonly cacheTtl: number,
-		private readonly maxRequestsPerInterval: number,
-		private readonly intervalMs: number,
-		private readonly maxRetries: number,
-		private readonly retryDelay: number
-	) {
-		this.tokens = maxRequestsPerInterval;
-		// Ensure at least 100ms between requests
-		this.minRequestSpacing = Math.max(250, Math.floor(intervalMs / maxRequestsPerInterval));
+    constructor(
+        private readonly env: Env,
+        private readonly baseApiUrl: string,
+        private readonly cacheTtl: number,
+        private readonly maxRequestsPerInterval: number,
+        private readonly intervalMs: number,
+        private readonly maxRetries: number,
+        private readonly retryDelay: number
+    ) {
+        this.cacheService = new CacheService(env, cacheTtl, false);
+        this.tokenBucket = new TokenBucket(maxRequestsPerInterval, intervalMs);
+        this.requestQueue = new RequestQueue<Response>(
+            maxRequestsPerInterval, 
+            intervalMs, 
+            maxRetries, 
+            retryDelay
+        );
+        
+        // Ensure at least 250ms between requests
+        this.minRequestSpacing = Math.max(250, Math.floor(intervalMs / maxRequestsPerInterval));
+        
+        // Reset window requests counter every interval
+        setInterval(() => {
+            this.windowRequests = 0;
+        }, this.intervalMs);
+    }
 
-		// Start token replenishment
-		this.startTokenReplenishment();
-	}
+    /**
+     * Returns the current length of the request queue
+     */
+    public getQueueLength(): number {
+        return this.requestQueue.getQueueLength();
+    }
 
-	public getQueueLength(): number {
-		return this.queue.length;
-	}
+    /**
+     * Returns the current number of available tokens
+     */
+    public getTokenCount(): number {
+        return this.tokenBucket.getAvailableTokens();
+    }
 
-	public getTokenCount(): number {
-		return this.tokens;
-	}
+    /**
+     * Returns the number of requests made in the current window
+     */
+    public getWindowRequestsCount(): number {
+        return this.windowRequests;
+    }
 
-	public getWindowRequestsCount(): number {
-		return this.windowRequests;
-	}
+    /**
+     * Fetches data from an API endpoint with rate limiting and caching
+     */
+    public async fetch(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
+        // Check cache first - bypass rate limiting for cached responses
+        if (!bustCache) {
+            const cached = await this.cacheService.get<string>(cacheKey);
+            if (cached) {
+                return createJsonResponse(cached);
+            }
+        }
 
-	private startTokenReplenishment() {
-		const replenishInterval = this.intervalMs / this.maxRequestsPerInterval;
-		setInterval(() => {
-			if (this.tokens < this.maxRequestsPerInterval) {
-				this.tokens++;
-				void this.processQueue();
-			}
-		}, replenishInterval);
+        // If not cached, go through rate limiting queue
+        return this.requestQueue.enqueue(async () => {
+            // Implement request spacing
+            const now = Date.now();
+            const timeSinceLastRequest = now - this.lastRequestTime;
+            
+            if (timeSinceLastRequest < this.minRequestSpacing) {
+                await new Promise((resolve) => 
+                    setTimeout(resolve, this.minRequestSpacing - timeSinceLastRequest)
+                );
+            }
+            
+            // Make the actual request
+            const response = await this.makeRequest(endpoint, cacheKey);
+            this.lastRequestTime = Date.now();
+            this.windowRequests++;
+            
+            return response;
+        });
+    }
 
-		// Reset window requests counter every interval
-		setInterval(() => {
-			this.windowRequests = 0;
-		}, this.intervalMs);
-	}
+    /**
+     * Makes the actual API request and handles caching the response
+     */
+    private async makeRequest(endpoint: string, cacheKey: string): Promise<Response> {
+        // Separate the path from the base URL, if there is one
+        const baseUrl = new URL(this.baseApiUrl);
+        const basePath = baseUrl.pathname === '/' ? '' : baseUrl.pathname;
+        const url = new URL(`${basePath}${endpoint}`, baseUrl.origin);
+        
+        // Make API request
+        const response = await fetch(url);
 
-	private async processQueue() {
-		if (this.processing || this.queue.length === 0 || this.tokens <= 0) return;
-		this.processing = true;
+        if (response.status === 429) {
+            throw new Error('Rate limit exceeded, retrying later');
+        }
 
-		try {
-			while (this.queue.length > 0 && this.tokens > 0) {
-				const now = Date.now();
-				const timeSinceLastRequest = now - this.lastRequestTime;
+        if (!response.ok) {
+            const retryable = response.status >= 500;
+            const error = new Error(`API request failed (${url}): ${response.statusText}`);
+            if (retryable) {
+                throw error; // Will be retried by RequestQueue
+            } else {
+                // For 4xx errors, we don't want to retry
+                return createJsonResponse(
+                    { error: `API request failed: ${response.statusText}` },
+                    response.status
+                );
+            }
+        }
 
-				if (timeSinceLastRequest < this.minRequestSpacing) {
-					await new Promise((resolve) => setTimeout(resolve, this.minRequestSpacing - timeSinceLastRequest));
-				}
+        const data = await response.text();
+        
+        // Cache the successful response
+        await this.cacheService.set(cacheKey, data);
 
-				const request = this.queue[0];
-				const result = await this.processRequest(request);
-
-				if (result.success) {
-					this.queue.shift(); // Remove the request only if successful
-					this.tokens--;
-					this.lastRequestTime = Date.now();
-					this.windowRequests++;
-				} else if (result.retry && request.retryCount < this.maxRetries) {
-					// Move to end of queue for retry
-					this.queue.shift();
-					request.retryCount++;
-					this.queue.push(request);
-					await new Promise((resolve) => setTimeout(resolve, this.retryDelay * request.retryCount));
-				} else {
-					// Max retries exceeded or non-retryable error
-					this.queue.shift();
-					request.reject(result.error);
-				}
-			}
-		} finally {
-			this.processing = false;
-
-			// If there are still items in the queue and tokens available, continue processing
-			if (this.queue.length > 0 && this.tokens > 0) {
-				void this.processQueue();
-			}
-		}
-	}
-
-	private async processRequest(request: QueuedRequest): Promise<{ success: boolean; retry?: boolean; error?: Error }> {
-		try {
-			// separate the path from the base URL, if there is one
-			const baseUrl = new URL(this.baseApiUrl);
-			const basePath = baseUrl.pathname === '/' ? '' : baseUrl.pathname;
-			const url = new URL(`${basePath}${request.endpoint}`, baseUrl.origin);
-			// Make API request (cache was already checked)
-			const response = await fetch(url);
-
-			if (response.status === 429) {
-				return { success: false, retry: true, error: new Error('Rate limit exceeded, moving request to end of queue') };
-			}
-
-			if (!response.ok) {
-				return {
-					success: false,
-					retry: response.status >= 500,
-					error: new Error(`API request failed (${url}): ${response.statusText}`),
-				};
-			}
-
-			const data = await response.text();
-			await this.env.AIBTCDEV_CACHE_KV.put(request.cacheKey, data, { expirationTtl: this.cacheTtl });
-
-			request.resolve(createJsonResponse(data, response.status));
-			return { success: true };
-		} catch (error) {
-			return {
-				success: false,
-				retry: true,
-				error: error instanceof Error ? error : new Error('Unknown error occurred'),
-			};
-		}
-	}
-
-	/**
-	 * Enqueues a fetch request with rate limiting
-	 */
-	public async fetch(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
-		// Check cache first - bypass rate limiting for cached responses
-		const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
-		if (cached && !bustCache) {
-			return createJsonResponse(cached);
-		}
-
-		// If not cached, go through rate limiting queue
-		return new Promise((resolve, reject) => {
-			this.queue.push({ resolve, reject, endpoint, cacheKey, retryCount: 0 });
-			void this.processQueue();
-		});
-	}
+        return createJsonResponse(data, response.status);
+    }
 }

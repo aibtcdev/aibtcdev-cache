@@ -24,6 +24,13 @@ export class RequestQueue<T> {
 		this.minRequestSpacing = Math.max(250, Math.floor(intervalMs / maxRequestsPerInterval));
 	}
 
+	/**
+	 * Returns the current length of the request queue
+	 */
+	public getQueueLength(): number {
+		return this.queue.length;
+	}
+
 	public enqueue(execute: () => Promise<T>): Promise<T> {
 		return new Promise<T>((resolve, reject) => {
 			this.queue.push({
