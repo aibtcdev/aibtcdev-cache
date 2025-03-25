@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { ApiRateLimiterService } from '../services/api-rate-limiter-service';
-import { createJsonResponse } from '../utils/requests-responses-util';
+import { createSuccessResponse, createErrorResponse } from '../utils/requests-responses-util';
 import { ApiError } from '../utils/api-error';
 import { ErrorCode } from '../utils/error-catalog';
 import { handleRequest } from '../utils/request-handler';

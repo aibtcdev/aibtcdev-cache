@@ -42,7 +42,7 @@ export default {
 			logger.debug('Processing request', { path, method: request.method });
 
 			if (path === '/') {
-				return createJsonResponse({
+				return createSuccessResponse({
 					message: `Welcome to the aibtcdev-api-cache! Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
 				});
 			}

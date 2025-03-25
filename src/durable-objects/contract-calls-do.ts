@@ -5,7 +5,7 @@ import { StacksNetworkName } from '@stacks/network';
 import { ClarityValue, deserializeCV, validateStacksAddress } from '@stacks/transactions';
 import { ContractAbiService } from '../services/stacks-contract-abi-service';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
-import { createJsonResponse } from '../utils/requests-responses-util';
+import { createSuccessResponse, createErrorResponse } from '../utils/requests-responses-util';
 import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } from '../utils/clarity-responses-util';
 import { ApiError } from '../utils/api-error';
 import { ErrorCode } from '../utils/error-catalog';

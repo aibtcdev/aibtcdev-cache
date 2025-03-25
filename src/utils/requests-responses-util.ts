@@ -106,6 +106,7 @@ export function createErrorResponse(error: unknown): Response {
  * @deprecated Use createSuccessResponse or createErrorResponse instead
  */
 export function createJsonResponse(body: unknown, status = 200): Response {
+	console.warn('createJsonResponse is deprecated. Use createSuccessResponse or createErrorResponse instead.');
 	return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
 		status,
 		headers: {

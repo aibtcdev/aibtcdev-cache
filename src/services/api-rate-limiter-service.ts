@@ -1,5 +1,5 @@
 import { Env } from '../../worker-configuration';
-import { createJsonResponse } from '../utils/requests-responses-util';
+import { createSuccessResponse, createErrorResponse } from '../utils/requests-responses-util';
 import { RequestQueue } from './request-queue-service';
 import { TokenBucket } from './token-bucket-service';
 import { CacheService } from './kv-cache-service';
@@ -92,7 +92,7 @@ export class ApiRateLimiterService {
 		if (!bustCache) {
 			const cached = await this.cacheService.get<string>(cacheKey);
 			if (cached) {
-				return createJsonResponse(cached);
+				return createSuccessResponse(cached);
 			}
 		}
 
@@ -158,12 +158,11 @@ export class ApiRateLimiterService {
 				});
 			} else {
 				// For 4xx errors, we don't want to retry
-				return createJsonResponse(
-					{
-						error: `API request failed: ${response.statusText}`,
+				return createErrorResponse(
+					new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+						message: `API request failed: ${response.statusText}`,
 						status: response.status,
-					},
-					response.status
+					})
 				);
 			}
 		}
@@ -173,6 +172,6 @@ export class ApiRateLimiterService {
 		// Cache the successful response
 		await this.cacheService.set(cacheKey, data);
 
-		return createJsonResponse(data, response.status);
+		return createSuccessResponse(data, response.status);
 	}
 }
