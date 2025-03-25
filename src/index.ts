@@ -5,7 +5,7 @@ import { HiroApiDO } from './durable-objects/hiro-api-do';
 import { StxCityDO } from './durable-objects/stx-city-do';
 import { SupabaseDO } from './durable-objects/supabase-do';
 import { ContractCallsDO } from './durable-objects/contract-calls-do';
-import { corsHeaders, createJsonResponse, createErrorResponse } from './utils/requests-responses-util';
+import { corsHeaders, createErrorResponse, createSuccessResponse } from './utils/requests-responses-util';
 import { ApiError } from './utils/api-error';
 import { ErrorCode } from './utils/error-catalog';
 import { Logger } from './utils/logger';

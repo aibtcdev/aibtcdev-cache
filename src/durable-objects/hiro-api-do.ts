@@ -2,7 +2,6 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { ApiRateLimiterService } from '../services/api-rate-limiter-service';
-import { createSuccessResponse, createErrorResponse } from '../utils/requests-responses-util';
 import { getKnownAddresses, addKnownAddress } from '../utils/address-store-util';
 import { ApiError } from '../utils/api-error';
 import { ErrorCode } from '../utils/error-catalog';

@@ -2,7 +2,6 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { createSuccessResponse, createErrorResponse } from '../utils/requests-responses-util';
 import { ApiError } from '../utils/api-error';
 import { ErrorCode } from '../utils/error-catalog';
 import { handleRequest } from '../utils/request-handler';

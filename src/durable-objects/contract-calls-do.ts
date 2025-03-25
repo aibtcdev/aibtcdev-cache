@@ -5,7 +5,6 @@ import { StacksNetworkName } from '@stacks/network';
 import { ClarityValue, deserializeCV, validateStacksAddress } from '@stacks/transactions';
 import { ContractAbiService } from '../services/stacks-contract-abi-service';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
-import { createSuccessResponse, createErrorResponse } from '../utils/requests-responses-util';
 import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } from '../utils/clarity-responses-util';
 import { ApiError } from '../utils/api-error';
 import { ErrorCode } from '../utils/error-catalog';
@@ -70,7 +69,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 		// Initialize services
 		this.contractAbiService = new ContractAbiService(env, this.CACHE_TTL);
-		
+
 		// Use Hiro API specific rate limiting settings since this DO makes calls to Stacks API
 		const hiroConfig = config.HIRO_API_RATE_LIMIT;
 		this.stacksContractFetcher = new StacksContractFetcher(

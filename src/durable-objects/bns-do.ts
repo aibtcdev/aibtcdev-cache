@@ -2,7 +2,6 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { validateStacksAddress } from '@stacks/transactions';
-import { createSuccessResponse, createErrorResponse } from '../utils/requests-responses-util';
 import { getKnownAddresses } from '../utils/address-store-util';
 import { getNameFromAddress, initStacksFetcher } from '../utils/bns-v2-util';
 import { ApiError } from '../utils/api-error';
