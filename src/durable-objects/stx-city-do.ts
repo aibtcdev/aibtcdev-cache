@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { RateLimitedFetcher } from '../rate-limiter';
+import { ApiRateLimiterService } from '../rate-limiter';
 import { createJsonResponse } from '../utils/requests-responses';
 
 type Metrics = {
@@ -54,7 +54,7 @@ export class StxCityDO extends DurableObject<Env> {
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/tokens/tradable-full-details-tokens'];
 	// custom fetcher with KV cache logic and rate limiting
-	private fetcher: RateLimitedFetcher;
+	private fetcher: ApiRateLimiterService;
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -71,7 +71,7 @@ export class StxCityDO extends DurableObject<Env> {
 		this.MAX_RETRIES = config.MAX_RETRIES;
 		this.RETRY_DELAY = config.RETRY_DELAY;
 
-		this.fetcher = new RateLimitedFetcher(
+		this.fetcher = new ApiRateLimiterService(
 			this.env,
 			this.BASE_API_URL,
 			this.CACHE_TTL,

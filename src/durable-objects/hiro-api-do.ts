@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { RateLimitedFetcher } from '../rate-limiter';
+import { ApiRateLimiterService } from '../rate-limiter';
 import { createJsonResponse } from '../utils/requests-responses';
 import { getKnownAddresses, addKnownAddress } from '../utils/address-store';
 
@@ -35,7 +35,7 @@ export class HiroApiDO extends DurableObject<Env> {
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/extended', '/v2/info', '/extended/v1/address/', '/known-addresses'];
 	// custom fetcher with KV cache logic and rate limiting
-	private fetcher: RateLimitedFetcher;
+	private fetcher: ApiRateLimiterService;
 
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
@@ -60,7 +60,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		this.RETRY_DELAY = config.RETRY_DELAY;
 		this.ALARM_INTERVAL_MS = config.ALARM_INTERVAL_MS;
 
-		this.fetcher = new RateLimitedFetcher(
+		this.fetcher = new ApiRateLimiterService(
 			this.env,
 			this.BASE_API_URL,
 			this.CACHE_TTL,
