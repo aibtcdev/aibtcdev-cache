@@ -3,6 +3,8 @@ import { StacksNetworkName } from '@stacks/network';
 import { ClarityAbi, ClarityAbiFunction, fetchAbi, validateStacksAddress } from '@stacks/transactions';
 import { CacheService } from './kv-cache-service';
 import { getNetworkByPrincipal } from '../utils/stacks-network-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
 
 /**
  * Service for fetching and managing Clarity smart contract ABIs
@@ -15,7 +17,7 @@ export class ContractAbiService {
 
 	/**
 	 * Creates a new contract ABI service
-	 * 
+	 *
 	 * @param env - The Cloudflare Worker environment
 	 * @param cacheTtl - Time-to-live in seconds for cached items (not used for ABIs)
 	 */
@@ -26,7 +28,7 @@ export class ContractAbiService {
 
 	/**
 	 * Fetches a contract's ABI and caches it indefinitely
-	 * 
+	 *
 	 * @param contractAddress - The principal address of the contract
 	 * @param contractName - The name of the contract
 	 * @param bustCache - If true, bypass the cache and force a fresh fetch
@@ -36,7 +38,7 @@ export class ContractAbiService {
 	async fetchContractABI(contractAddress: string, contractName: string, bustCache = false): Promise<ClarityAbi> {
 		// Validate contract address
 		if (!validateStacksAddress(contractAddress)) {
-			throw new Error(`Invalid contract address: ${contractAddress}`);
+			throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: contractAddress });
 		}
 
 		const cacheKey = `${this.ABI_CACHE_KEY_PREFIX}_${contractAddress}_${contractName}`;
@@ -67,13 +69,17 @@ export class ContractAbiService {
 
 			return abi;
 		} catch (error) {
-			throw new Error(`Failed to fetch ABI: ${error instanceof Error ? error.message : String(error)}`);
+			throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+				message: error instanceof Error ? error.message : String(error),
+				contractAddress,
+				contractName,
+			});
 		}
 	}
 
 	/**
 	 * Validates if a function exists in the contract ABI
-	 * 
+	 *
 	 * @param abi - The contract ABI to check
 	 * @param functionName - The name of the function to validate
 	 * @returns True if the function exists in the ABI, false otherwise
@@ -88,7 +94,7 @@ export class ContractAbiService {
 
 	/**
 	 * Validates function arguments against the ABI specification
-	 * 
+	 *
 	 * @param abi - The contract ABI to check against
 	 * @param functionName - The name of the function to validate
 	 * @param functionArgs - The arguments to validate
@@ -124,7 +130,7 @@ export class ContractAbiService {
 
 	/**
 	 * Gets the list of known contracts that have been cached
-	 * 
+	 *
 	 * @returns A promise that resolves to an object with contract statistics and details
 	 */
 	async getKnownContracts(): Promise<{
@@ -148,7 +154,7 @@ export class ContractAbiService {
 
 	/**
 	 * Adds a contract to the list of known contracts
-	 * 
+	 *
 	 * @param contractAddress - The principal address of the contract
 	 * @param contractName - The name of the contract
 	 */

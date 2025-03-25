@@ -2,13 +2,15 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { validateStacksAddress } from '@stacks/transactions';
-import { createJsonResponse } from '../utils/requests-responses-util';
 import { getKnownAddresses } from '../utils/address-store-util';
 import { getNameFromAddress, initStacksFetcher } from '../utils/bns-v2-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { handleRequest } from '../utils/request-handler';
 
 /**
  * Durable Object class for the BNS (Blockchain Naming System) API
- * 
+ *
  * This Durable Object handles BNS name lookups for Stacks addresses.
  * It provides endpoints to retrieve BNS names associated with Stacks addresses
  * and maintains a cache of these associations to reduce API calls.
@@ -40,13 +42,13 @@ export class BnsApiDO extends DurableObject<Env> {
 
 	/**
 	 * Alarm handler that periodically updates the BNS name cache
-	 * 
+	 *
 	 * This method is triggered by the Durable Object's alarm system and:
 	 * 1. Retrieves all known Stacks addresses from KV storage
 	 * 2. Updates the BNS name for each address
 	 * 3. Stores the results in KV cache with the configured TTL
 	 * 4. Logs statistics about the update process
-	 * 
+	 *
 	 * @returns A promise that resolves when the alarm handler completes
 	 */
 	async alarm(): Promise<void> {
@@ -97,11 +99,11 @@ export class BnsApiDO extends DurableObject<Env> {
 
 	/**
 	 * Main request handler for the BNS API Durable Object
-	 * 
+	 *
 	 * Handles the following endpoints:
 	 * - / - Returns a list of supported endpoints
 	 * - /names/{address} - Returns the BNS name for the given Stacks address
-	 * 
+	 *
 	 * @param request - The incoming HTTP request
 	 * @returns A Response object with the requested data or an error message
 	 */
@@ -109,63 +111,69 @@ export class BnsApiDO extends DurableObject<Env> {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		if (!path.startsWith(this.BASE_PATH)) {
-			return createJsonResponse(
-				{
-					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
-				},
-				404
-			);
-		}
+		return handleRequest(
+			async () => {
+				if (!path.startsWith(this.BASE_PATH)) {
+					throw new ApiError(ErrorCode.NOT_FOUND, {
+						resource: path,
+						basePath: this.BASE_PATH,
+					});
+				}
 
-		// Remove base path to get the endpoint
-		const endpoint = path.replace(this.BASE_PATH, '');
+				// Remove base path to get the endpoint
+				const endpoint = path.replace(this.BASE_PATH, '');
 
-		// Handle root path
-		if (endpoint === '' || endpoint === '/') {
-			return createJsonResponse({
-				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-			});
-		}
+				// Handle root path
+				if (endpoint === '' || endpoint === '/') {
+					return {
+						message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+					};
+				}
 
-		if (endpoint === '/names') {
-			return createJsonResponse({
-				message: `Please provide an address to look up the name for, e.g. /names/SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF`,
-			});
-		}
+				if (endpoint === '/names') {
+					return {
+						message: `Please provide an address to look up the name for, e.g. /names/SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF`,
+					};
+				}
 
-		// Handle name lookups
-		if (endpoint.startsWith('/names/')) {
-			const address = endpoint.replace('/names/', '');
-			const validAddress = validateStacksAddress(address);
-			if (!validAddress) {
-				return createJsonResponse({ error: `Invalid address ${address}, valid Stacks address required` }, 400);
-			}
-			const cacheKey = `${this.CACHE_PREFIX}_names_${address}`;
-			const cachedName = await this.env.AIBTCDEV_CACHE_KV.get<string>(cacheKey);
-			if (cachedName) {
-				return createJsonResponse(cachedName);
-			}
-			const name = await getNameFromAddress(address);
+				// Handle name lookups
+				if (endpoint.startsWith('/names/')) {
+					const address = endpoint.replace('/names/', '');
+					const validAddress = validateStacksAddress(address);
+					if (!validAddress) {
+						throw new ApiError(ErrorCode.INVALID_REQUEST, {
+							reason: `Invalid address ${address}, valid Stacks address required`,
+						});
+					}
 
-			if (name === '') {
-				return createJsonResponse(
-					{
-						error: `No registered name found for address ${address}`,
-					},
-					404
-				);
-			}
+					const cacheKey = `${this.CACHE_PREFIX}_names_${address}`;
+					const cachedName = await this.env.AIBTCDEV_CACHE_KV.get<string>(cacheKey);
+					if (cachedName) {
+						return cachedName;
+					}
 
-			await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, name, { expirationTtl: this.CACHE_TTL });
-			return createJsonResponse(name);
-		}
+					const name = await getNameFromAddress(address);
 
-		return createJsonResponse(
-			{
-				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+					if (name === '') {
+						throw new ApiError(ErrorCode.NOT_FOUND, {
+							resource: `name for address ${address}`,
+							reason: 'No registered name found',
+						});
+					}
+
+					await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, name, { expirationTtl: this.CACHE_TTL });
+					return name;
+				}
+
+				throw new ApiError(ErrorCode.NOT_FOUND, {
+					resource: endpoint,
+					supportedEndpoints: this.SUPPORTED_ENDPOINTS,
+				});
 			},
-			404
+			this.env,
+			{
+				slowThreshold: 2000, // BNS lookups can be slow
+			}
 		);
 	}
 }

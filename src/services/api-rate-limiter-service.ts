@@ -1,8 +1,11 @@
 import { Env } from '../../worker-configuration';
-import { createJsonResponse } from '../utils/requests-responses-util';
+import { createSuccessResponse, createErrorResponse } from '../utils/requests-responses-util';
 import { RequestQueue } from './request-queue-service';
 import { TokenBucket } from './token-bucket-service';
 import { CacheService } from './kv-cache-service';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { Logger } from '../utils/logger';
 
 /**
  * Service that provides rate-limited API fetching capabilities
@@ -18,7 +21,7 @@ export class ApiRateLimiterService {
 
 	/**
 	 * Creates a new API rate limiter service
-	 * 
+	 *
 	 * @param env - The Cloudflare Worker environment
 	 * @param baseApiUrl - The base URL for the external API
 	 * @param cacheTtl - Time-to-live in seconds for cached API responses
@@ -51,7 +54,7 @@ export class ApiRateLimiterService {
 
 	/**
 	 * Returns the current length of the request queue
-	 * 
+	 *
 	 * @returns The number of requests currently in the queue
 	 */
 	public getQueueLength(): number {
@@ -60,7 +63,7 @@ export class ApiRateLimiterService {
 
 	/**
 	 * Returns the current number of available tokens in the rate limiter
-	 * 
+	 *
 	 * @returns The number of tokens currently available
 	 */
 	public getTokenCount(): number {
@@ -69,7 +72,7 @@ export class ApiRateLimiterService {
 
 	/**
 	 * Returns the number of requests made in the current time window
-	 * 
+	 *
 	 * @returns The count of requests made in the current interval
 	 */
 	public getWindowRequestsCount(): number {
@@ -78,7 +81,7 @@ export class ApiRateLimiterService {
 
 	/**
 	 * Fetches data from an API endpoint with rate limiting and caching
-	 * 
+	 *
 	 * @param endpoint - The API endpoint path to fetch (will be appended to baseApiUrl)
 	 * @param cacheKey - The key to use for caching the response
 	 * @param bustCache - If true, bypass the cache and force a fresh request
@@ -89,7 +92,7 @@ export class ApiRateLimiterService {
 		if (!bustCache) {
 			const cached = await this.cacheService.get<string>(cacheKey);
 			if (cached) {
-				return createJsonResponse(cached);
+				return createSuccessResponse(cached);
 			}
 		}
 
@@ -114,33 +117,53 @@ export class ApiRateLimiterService {
 
 	/**
 	 * Makes the actual API request and handles caching the response
-	 * 
+	 *
 	 * @param endpoint - The API endpoint path to fetch
 	 * @param cacheKey - The key to use for caching the response
 	 * @returns A promise that resolves to the API response
 	 * @throws Error if the request fails and should be retried
 	 */
 	private async makeRequest(endpoint: string, cacheKey: string): Promise<Response> {
+		const logger = Logger.getInstance(this.env);
+
 		// Separate the path from the base URL, if there is one
 		const baseUrl = new URL(this.baseApiUrl);
 		const basePath = baseUrl.pathname === '/' ? '' : baseUrl.pathname;
 		const url = new URL(`${basePath}${endpoint}`, baseUrl.origin);
 
 		// Make API request
+		const startTime = Date.now();
 		const response = await fetch(url);
+		const duration = Date.now() - startTime;
+
+		// Log slow responses
+		if (duration > 1000) {
+			logger.warn(`Slow API response from ${url.toString()}`, { duration });
+		}
 
 		if (response.status === 429) {
-			throw new Error('Rate limit exceeded, retrying later');
+			throw new ApiError(ErrorCode.RATE_LIMIT_EXCEEDED, {
+				retryAfter: response.headers.get('Retry-After') || '60',
+			});
 		}
 
 		if (!response.ok) {
 			const retryable = response.status >= 500;
-			const error = new Error(`API request failed (${url}): ${response.statusText}`);
+
 			if (retryable) {
-				throw error; // Will be retried by RequestQueue
+				// Will be retried by RequestQueue
+				throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+					message: `${response.status}: ${response.statusText}`,
+					url: url.toString(),
+				});
 			} else {
 				// For 4xx errors, we don't want to retry
-				return createJsonResponse({ error: `API request failed: ${response.statusText}` }, response.status);
+				return createErrorResponse(
+					new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+						message: `API request failed: ${response.statusText}`,
+						status: response.status,
+					})
+				);
 			}
 		}
 
@@ -149,6 +172,6 @@ export class ApiRateLimiterService {
 		// Cache the successful response
 		await this.cacheService.set(cacheKey, data);
 
-		return createJsonResponse(data, response.status);
+		return createSuccessResponse(data, response.status);
 	}
 }

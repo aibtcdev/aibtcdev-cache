@@ -3,6 +3,9 @@ import { Env } from '../../worker-configuration';
 import { CacheService } from './kv-cache-service';
 import { StacksApiService } from './stacks-api-service';
 import { RequestQueue } from './request-queue-service';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { Logger } from '../utils/logger';
 
 /**
  * Service for fetching data from Stacks smart contracts
@@ -15,7 +18,7 @@ export class StacksContractFetcher {
 
 	/**
 	 * Creates a new Stacks contract fetcher
-	 * 
+	 *
 	 * @param env - The Cloudflare Worker environment
 	 * @param cacheTtl - Time-to-live in seconds for cached contract responses
 	 * @param maxRequestsPerInterval - Maximum number of requests allowed in the interval
@@ -38,7 +41,7 @@ export class StacksContractFetcher {
 
 	/**
 	 * Fetches data from a Stacks smart contract with caching and rate limiting
-	 * 
+	 *
 	 * @param contractAddress - The principal address of the contract
 	 * @param contractName - The name of the contract
 	 * @param functionName - The name of the function to call
@@ -69,7 +72,9 @@ export class StacksContractFetcher {
 
 		// Validate network
 		if (network !== 'mainnet' && network !== 'testnet') {
-			throw new Error(`Invalid network: ${network}. Must be 'mainnet' or 'testnet'`);
+			throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+				message: `Invalid network: ${network}. Must be 'mainnet' or 'testnet'`,
+			});
 		}
 
 		// Queue the request

@@ -5,8 +5,10 @@ import { StacksNetworkName } from '@stacks/network';
 import { ClarityValue, deserializeCV, validateStacksAddress } from '@stacks/transactions';
 import { ContractAbiService } from '../services/stacks-contract-abi-service';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
-import { createJsonResponse } from '../utils/requests-responses-util';
 import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } from '../utils/clarity-responses-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { handleRequest } from '../utils/request-handler';
 
 /**
  * Interface for expected request body for contract calls
@@ -67,11 +69,14 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 		// Initialize services
 		this.contractAbiService = new ContractAbiService(env, this.CACHE_TTL);
+
+		// Use Hiro API specific rate limiting settings since this DO makes calls to Stacks API
+		const hiroConfig = config.HIRO_API_RATE_LIMIT;
 		this.stacksContractFetcher = new StacksContractFetcher(
 			env,
 			this.CACHE_TTL,
-			config.MAX_REQUESTS_PER_INTERVAL,
-			config.INTERVAL_MS,
+			hiroConfig.MAX_REQUESTS_PER_INTERVAL,
+			hiroConfig.INTERVAL_MS,
 			config.MAX_RETRIES,
 			config.RETRY_DELAY
 		);
@@ -98,53 +103,54 @@ export class ContractCallsDO extends DurableObject<Env> {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		try {
-			if (!path.startsWith(this.BASE_PATH)) {
-				return createJsonResponse({ error: `Invalid path: ${path}` }, 404);
-			}
+		return handleRequest(
+			async () => {
+				if (!path.startsWith(this.BASE_PATH)) {
+					throw new ApiError(ErrorCode.NOT_FOUND, { resource: path });
+				}
 
-			// Remove base path to get the endpoint
-			const endpoint = path.replace(this.BASE_PATH, '');
+				// Remove base path to get the endpoint
+				const endpoint = path.replace(this.BASE_PATH, '');
 
-			// Handle root path
-			if (endpoint === '' || endpoint === '/') {
-				return createJsonResponse({
-					message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-				});
-			}
+				// Handle root path
+				if (endpoint === '' || endpoint === '/') {
+					return {
+						message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+					};
+				}
 
-			// Handle known contracts endpoint
-			if (endpoint === '/known-contracts') {
-				const knownContracts = await this.contractAbiService.getKnownContracts();
-				return createJsonResponse(knownContracts);
-			}
+				// Handle known contracts endpoint
+				if (endpoint === '/known-contracts') {
+					return await this.contractAbiService.getKnownContracts();
+				}
 
-			// Handle ABI endpoint
-			if (endpoint.startsWith('/abi/')) {
-				return await this.handleAbiRequest(endpoint);
-			}
+				// Handle ABI endpoint
+				if (endpoint.startsWith('/abi/')) {
+					return await this.handleAbiRequest(endpoint);
+				}
 
-			// Handle read-only contract call endpoint
-			if (endpoint.startsWith('/read-only/')) {
-				return await this.handleReadOnlyRequest(endpoint, request);
-			}
+				// Handle read-only contract call endpoint
+				if (endpoint.startsWith('/read-only/')) {
+					return await this.handleReadOnlyRequest(endpoint, request);
+				}
 
-			// Handle decode clarity value endpoint
-			if (endpoint === '/decode-clarity-value') {
-				return await this.handleDecodeClarityValueRequest(request);
-			}
+				// Handle decode clarity value endpoint
+				if (endpoint === '/decode-clarity-value') {
+					return await this.handleDecodeClarityValueRequest(request);
+				}
 
-			// If we get here, the endpoint is not supported
-			return createJsonResponse(
-				{
-					error: `Unsupported endpoint: ${endpoint}`,
+				// If we get here, the endpoint is not supported
+				throw new ApiError(ErrorCode.NOT_FOUND, {
+					resource: endpoint,
 					supportedEndpoints: this.SUPPORTED_ENDPOINTS,
-				},
-				404
-			);
-		} catch (error) {
-			return createJsonResponse({ error: `Request failed: ${error instanceof Error ? error.message : String(error)}` }, 500);
-		}
+				});
+			},
+			this.env,
+			{
+				// Contract calls can be slow, so set a higher threshold
+				slowThreshold: 2000, // 2 seconds
+			}
+		);
 	}
 
 	/**
@@ -156,23 +162,26 @@ export class ContractCallsDO extends DurableObject<Env> {
 	 * @param endpoint - The endpoint path after the base path, e.g., "/abi/SP2X0TH53NBMJ7HD7KA5XT5N9MPDH0VK14KGAT1TF/my-contract"
 	 * @returns A Response object with the ABI or an error message
 	 */
-	private async handleAbiRequest(endpoint: string): Promise<Response> {
+	private async handleAbiRequest(endpoint: string): Promise<any> {
 		const parts = endpoint.split('/').filter(Boolean);
 		if (parts.length !== 3) {
-			return createJsonResponse({ error: 'Invalid ABI endpoint format. Use /abi/{contractAddress}/{contractName}' }, 400);
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Invalid ABI endpoint format. Use /abi/{contractAddress}/{contractName}',
+			});
 		}
 
 		const contractAddress = parts[1];
 		const contractName = parts[2];
 
 		try {
-			const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName);
-			return createJsonResponse(abi);
+			return await this.contractAbiService.fetchContractABI(contractAddress, contractName);
 		} catch (error) {
-			return createJsonResponse(
-				{ error: `Failed to fetch ABI: ${error instanceof Error ? error.message : String(error)}` },
-				error instanceof Error && error.message.includes('Invalid contract address') ? 400 : 500
-			);
+			// Convert specific errors to ApiErrors
+			if (error instanceof Error && error.message.includes('Invalid contract address')) {
+				throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: contractAddress });
+			}
+			// Re-throw other errors
+			throw error;
 		}
 	}
 
@@ -191,13 +200,12 @@ export class ContractCallsDO extends DurableObject<Env> {
 	 * @param request - The original HTTP request containing function arguments
 	 * @returns A Response with the function call result or an error message
 	 */
-	private async handleReadOnlyRequest(endpoint: string, request: Request): Promise<Response> {
+	private async handleReadOnlyRequest(endpoint: string, request: Request): Promise<any> {
 		const parts = endpoint.split('/').filter(Boolean);
 		if (parts.length !== 4) {
-			return createJsonResponse(
-				{ error: 'Invalid read-only endpoint format. Use /read-only/{contractAddress}/{contractName}/{functionName}' },
-				400
-			);
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Invalid read-only endpoint format. Use /read-only/{contractAddress}/{contractName}/{functionName}',
+			});
 		}
 
 		const contractAddress = parts[1];
@@ -206,59 +214,61 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 		// Validate contract address
 		if (!validateStacksAddress(contractAddress)) {
-			return createJsonResponse({ error: `Invalid contract address: ${contractAddress}` }, 400);
+			throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: contractAddress });
 		}
 
 		// Only accept POST requests for contract calls
 		if (request.method !== 'POST') {
-			return createJsonResponse({ error: 'Only POST requests are supported for contract calls' }, 405);
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Only POST requests are supported for contract calls',
+			});
 		}
 
-		try {
-			// Parse function arguments from request body
-			const body = (await request.json()) as ContractCallRequest;
-			const rawFunctionArgs = body.functionArgs || [];
-			const network = (body.network || 'testnet') as StacksNetworkName;
-			const senderAddress = body.senderAddress || contractAddress;
-			const strictJsonCompat = body.strictJsonCompat || true;
-			const preserveContainers = body.preserveContainers || false;
+		// Parse function arguments from request body
+		const body = (await request.json()) as ContractCallRequest;
+		const rawFunctionArgs = body.functionArgs || [];
+		const network = (body.network || 'testnet') as StacksNetworkName;
+		const senderAddress = body.senderAddress || contractAddress;
+		const strictJsonCompat = body.strictJsonCompat || true;
+		const preserveContainers = body.preserveContainers || false;
 
-			// Convert any simplified arguments to ClarityValues
-			const functionArgs = rawFunctionArgs.map(convertToClarityValue);
+		// Convert any simplified arguments to ClarityValues
+		const functionArgs = rawFunctionArgs.map(convertToClarityValue);
 
-			// Get ABI to validate function arguments
-			const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName, false);
+		// Get ABI to validate function arguments
+		const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName, false);
 
-			// Validate function exists in ABI
-			if (!this.contractAbiService.validateFunctionInABI(abi, functionName)) {
-				return createJsonResponse({ error: `Function ${functionName} not found in contract ABI` }, 400);
-			}
-
-			// Validate function arguments
-			const argsValidation = this.contractAbiService.validateFunctionArgs(abi, functionName, functionArgs);
-			if (!argsValidation.valid) {
-				return createJsonResponse({ error: argsValidation.error || 'Invalid function arguments' }, 400);
-			}
-
-			// Execute contract call
-			const cacheKey = `${this.CACHE_PREFIX}_call_${contractAddress}_${contractName}_${functionName}_${new Date().getTime()}`;
-
-			const result = await this.stacksContractFetcher.fetch(
-				contractAddress,
-				contractName,
-				functionName,
-				functionArgs,
-				senderAddress,
-				network,
-				cacheKey
-			);
-
-			const convertedResult = decodeClarityValues(result, strictJsonCompat, preserveContainers);
-
-			return createJsonResponse(convertedResult);
-		} catch (error) {
-			return createJsonResponse({ error: `Contract call failed: ${error instanceof Error ? error.message : String(error)}` }, 500);
+		// Validate function exists in ABI
+		if (!this.contractAbiService.validateFunctionInABI(abi, functionName)) {
+			throw new ApiError(ErrorCode.INVALID_FUNCTION, {
+				function: functionName,
+				contract: `${contractAddress}.${contractName}`,
+			});
 		}
+
+		// Validate function arguments
+		const argsValidation = this.contractAbiService.validateFunctionArgs(abi, functionName, functionArgs);
+		if (!argsValidation.valid) {
+			throw new ApiError(ErrorCode.INVALID_ARGUMENTS, {
+				function: functionName,
+				reason: argsValidation.error || 'Invalid function arguments',
+			});
+		}
+
+		// Execute contract call
+		const cacheKey = `${this.CACHE_PREFIX}_call_${contractAddress}_${contractName}_${functionName}_${new Date().getTime()}`;
+
+		const result = await this.stacksContractFetcher.fetch(
+			contractAddress,
+			contractName,
+			functionName,
+			functionArgs,
+			senderAddress,
+			network,
+			cacheKey
+		);
+
+		return decodeClarityValues(result, strictJsonCompat, preserveContainers);
 	}
 
 	/**
@@ -270,48 +280,51 @@ export class ContractCallsDO extends DurableObject<Env> {
 	 * @param request - The HTTP request containing the ClarityValue to decode
 	 * @returns A Response with the decoded value or an error message
 	 */
-	private async handleDecodeClarityValueRequest(request: Request): Promise<Response> {
+	private async handleDecodeClarityValueRequest(request: Request): Promise<any> {
 		// Only accept POST requests for decoding
 		if (request.method !== 'POST') {
-			return createJsonResponse({ error: 'Only POST requests are supported for decoding Clarity values' }, 405);
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Only POST requests are supported for decoding Clarity values',
+			});
 		}
 
+		// Parse request body
+		const body = (await request.json()) as {
+			clarityValue: ClarityValue | SimplifiedClarityValue | string;
+			strictJsonCompat?: boolean;
+			preserveContainers?: boolean;
+		};
+
+		if (!body.clarityValue) {
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Missing required field: clarityValue',
+			});
+		}
+
+		// Convert ClarityValue to ClarityValue if necessary
+		let clarityValue: ClarityValue;
 		try {
-			// Parse request body
-			const body = (await request.json()) as {
-				clarityValue: ClarityValue | SimplifiedClarityValue | string;
-				strictJsonCompat?: boolean;
-				preserveContainers?: boolean;
-			};
-
-			if (!body.clarityValue) {
-				return createJsonResponse({ error: 'Missing required field: clarityValue' }, 400);
-			}
-
-			// Convert ClarityValue to ClarityValue if necessary
-			let clarityValue: ClarityValue;
 			if (typeof body.clarityValue === 'string') {
 				clarityValue = deserializeCV(body.clarityValue);
 			} else {
 				clarityValue = convertToClarityValue(body.clarityValue);
 			}
-
-			// Decode the value with the provided options
-			const decodedValue = decodeClarityValues(
-				clarityValue,
-				body.strictJsonCompat !== undefined ? body.strictJsonCompat : true,
-				body.preserveContainers !== undefined ? body.preserveContainers : false
-			);
-
-			return createJsonResponse({
-				original: body.clarityValue,
-				decoded: decodedValue,
-			});
 		} catch (error) {
-			return createJsonResponse(
-				{ error: `Failed to decode Clarity value: ${error instanceof Error ? error.message : String(error)}` },
-				400
-			);
+			throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+				message: `Invalid Clarity value format: ${error instanceof Error ? error.message : String(error)}`,
+			});
 		}
+
+		// Decode the value with the provided options
+		const decodedValue = decodeClarityValues(
+			clarityValue,
+			body.strictJsonCompat !== undefined ? body.strictJsonCompat : true,
+			body.preserveContainers !== undefined ? body.preserveContainers : false
+		);
+
+		return {
+			original: body.clarityValue,
+			decoded: decodedValue,
+		};
 	}
 }

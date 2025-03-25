@@ -10,7 +10,7 @@ export class TokenBucket {
 
 	/**
 	 * Creates a new token bucket for rate limiting
-	 * 
+	 *
 	 * @param maxTokens - Maximum number of tokens the bucket can hold
 	 * @param refillIntervalMs - Time in milliseconds to completely refill the bucket
 	 */
@@ -23,7 +23,7 @@ export class TokenBucket {
 
 	/**
 	 * Attempts to get a token from the bucket
-	 * 
+	 *
 	 * @returns True if a token was available and consumed, false otherwise
 	 */
 	public getToken(): boolean {
@@ -37,7 +37,7 @@ export class TokenBucket {
 
 	/**
 	 * Gets the current number of available tokens
-	 * 
+	 *
 	 * @returns The number of tokens currently available
 	 */
 	public getAvailableTokens(): number {

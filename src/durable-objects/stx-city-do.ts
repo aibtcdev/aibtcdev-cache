@@ -2,11 +2,13 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { ApiRateLimiterService } from '../services/api-rate-limiter-service';
-import { createJsonResponse } from '../utils/requests-responses-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { handleRequest } from '../utils/request-handler';
 
 /**
  * Represents token metrics from STX.city
- * 
+ *
  * Contains various numerical metrics about a token's performance and usage.
  */
 type Metrics = {
@@ -27,7 +29,7 @@ type Socials = {
 
 /**
  * Comprehensive details about a token from STX.city
- * 
+ *
  * Contains all information about a token including its contract details,
  * supply information, metrics, social links, and descriptive content.
  */
@@ -53,10 +55,10 @@ type TokenDetails = {
 
 /**
  * Durable Object class for proxying and caching STX.city API requests
- * 
+ *
  * This Durable Object provides a rate-limited and cached interface to the STX.city API,
  * which offers data about tokens on the Stacks blockchain. It handles:
- * 
+ *
  * 1. Proxying requests to the STX.city API with rate limiting
  * 2. Caching responses to reduce API calls
  * 3. Providing endpoints for token data and trading information
@@ -108,12 +110,12 @@ export class StxCityDO extends DurableObject<Env> {
 
 	/**
 	 * Alarm handler that periodically updates cached endpoints
-	 * 
+	 *
 	 * This method:
 	 * 1. Iterates through all supported endpoints
 	 * 2. Refreshes the cache for each endpoint
 	 * 3. Logs statistics about the update process
-	 * 
+	 *
 	 * @returns A promise that resolves when the alarm handler completes
 	 */
 	async alarm(): Promise<void> {
@@ -144,13 +146,13 @@ export class StxCityDO extends DurableObject<Env> {
 
 	/**
 	 * Helper function to fetch data from KV cache with rate limiting for API calls
-	 * 
+	 *
 	 * This method:
 	 * 1. Checks the cache for the requested data
 	 * 2. If not found or cache bust requested, fetches from the STX.city API
 	 * 3. Applies rate limiting to prevent API abuse
 	 * 4. Stores successful responses in the cache
-	 * 
+	 *
 	 * @param endpoint - The API endpoint to fetch
 	 * @param cacheKey - The key to use for caching
 	 * @param bustCache - Whether to ignore the cache and force a fresh fetch
@@ -162,11 +164,11 @@ export class StxCityDO extends DurableObject<Env> {
 
 	/**
 	 * Main request handler for the STX.city API Durable Object
-	 * 
+	 *
 	 * Handles the following endpoints:
 	 * - / - Returns a list of supported endpoints
 	 * - /tokens/tradable-full-details-tokens - Returns details about tradable tokens
-	 * 
+	 *
 	 * @param request - The incoming HTTP request
 	 * @returns A Response object with the requested data or an error message
 	 */
@@ -180,57 +182,59 @@ export class StxCityDO extends DurableObject<Env> {
 			// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
 
-		// Handle requests that don't match the base path
-		if (!path.startsWith(this.BASE_PATH)) {
-			return createJsonResponse(
-				{
-					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
-				},
-				404
-			);
-		}
+		return handleRequest(
+			async () => {
+				// Handle requests that don't match the base path
+				if (!path.startsWith(this.BASE_PATH)) {
+					throw new ApiError(ErrorCode.NOT_FOUND, {
+						resource: path,
+						basePath: this.BASE_PATH,
+					});
+				}
 
-		// Parse requested endpoint from base path
-		const endpoint = path.replace(this.BASE_PATH, '');
+				// Parse requested endpoint from base path
+				const endpoint = path.replace(this.BASE_PATH, '');
 
-		// Handle root route
-		if (endpoint === '' || endpoint === '/') {
-			return createJsonResponse({
-				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-			});
-		}
+				// Handle root route
+				if (endpoint === '' || endpoint === '/') {
+					return {
+						message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+					};
+				}
 
-		// handle unsupported endpoints
-		const isSupported = this.SUPPORTED_ENDPOINTS.some(
-			(path) =>
-				endpoint === path || // exact match
-				(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
-		);
+				// handle unsupported endpoints
+				const isSupported = this.SUPPORTED_ENDPOINTS.some(
+					(path) =>
+						endpoint === path || // exact match
+						(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
+				);
 
-		if (!isSupported) {
-			return createJsonResponse(
-				{
-					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-				},
-				404
-			);
-		}
+				if (!isSupported) {
+					throw new ApiError(ErrorCode.NOT_FOUND, {
+						resource: endpoint,
+						supportedEndpoints: this.SUPPORTED_ENDPOINTS,
+					});
+				}
 
-		// create cache key from endpoint
-		const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+				// create cache key from endpoint
+				const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
 
-		// handle /tokens/tradable-full-details-tokens path
-		if (endpoint === '/tokens/tradable-full-details-tokens') {
-			console.log(`fetching: ${endpoint} stored at ${cacheKey}`);
-			return await this.fetchWithCache(endpoint, cacheKey);
-		}
+				// handle /tokens/tradable-full-details-tokens path
+				if (endpoint === '/tokens/tradable-full-details-tokens') {
+					const response = await this.fetchWithCache(endpoint, cacheKey);
+					return await response.json();
+				}
 
-		// Return 404 for any other endpoint
-		return createJsonResponse(
-			{
-				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+				// This should never happen due to the isSupported check above
+				throw new ApiError(ErrorCode.NOT_FOUND, {
+					resource: endpoint,
+					supportedEndpoints: this.SUPPORTED_ENDPOINTS,
+				});
 			},
-			404
+			this.env,
+			{
+				slowThreshold: 2500, // Token data can be large and slow to process
+			}
 		);
 	}
 }
