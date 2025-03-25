@@ -2,6 +2,7 @@ import { Env } from '../../worker-configuration';
 import { StacksNetworkName } from '@stacks/network';
 import { ClarityAbi, ClarityAbiFunction, fetchAbi, validateStacksAddress } from '@stacks/transactions';
 import { CacheService } from './kv-cache-service';
+import { getNetworkByPrincipal } from '../utils/stacks-network-util';
 
 /**
  * Service for fetching and managing contract ABIs
@@ -19,12 +20,7 @@ export class ContractAbiService {
 	/**
 	 * Fetches a contract's ABI and caches it
 	 */
-	async fetchContractABI(
-		contractAddress: string,
-		contractName: string,
-		bustCache = false,
-		network: StacksNetworkName = 'mainnet'
-	): Promise<ClarityAbi> {
+	async fetchContractABI(contractAddress: string, contractName: string, bustCache = false): Promise<ClarityAbi> {
 		// Validate contract address
 		if (!validateStacksAddress(contractAddress)) {
 			throw new Error(`Invalid contract address: ${contractAddress}`);
@@ -41,6 +37,8 @@ export class ContractAbiService {
 		}
 
 		try {
+			// Get the network from the contract address
+			const network = getNetworkByPrincipal(contractAddress);
 			// Fetch the ABI using the @stacks/transactions library
 			const abi = await fetchAbi({
 				contractAddress,

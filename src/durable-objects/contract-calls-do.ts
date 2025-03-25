@@ -164,11 +164,11 @@ export class ContractCallsDO extends DurableObject<Env> {
 			// Parse function arguments from request body
 			const body = (await request.json()) as ContractCallRequest;
 			const functionArgs = body.functionArgs || [];
-			const network = (body.network || 'mainnet') as StacksNetworkName;
+			const network = (body.network || 'testnet') as StacksNetworkName;
 			const senderAddress = body.senderAddress || contractAddress;
 
 			// Get ABI to validate function arguments
-			const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName, false, network);
+			const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName, false);
 
 			// Validate function exists in ABI
 			if (!this.contractAbiService.validateFunctionInABI(abi, functionName)) {
