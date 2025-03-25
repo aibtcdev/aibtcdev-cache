@@ -25,7 +25,7 @@ export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const logger = Logger.getInstance(env);
 		const startTime = Date.now();
-		
+
 		try {
 			// Handle CORS preflight requests
 			if (request.method === 'OPTIONS') {
@@ -38,7 +38,7 @@ export default {
 			const config = AppConfig.getInstance(env).getConfig();
 			const url = new URL(request.url);
 			const path = url.pathname;
-			
+
 			logger.debug('Processing request', { path, method: request.method });
 
 			if (path === '/') {
@@ -81,37 +81,31 @@ export default {
 			} catch (error) {
 				// Log errors from Durable Objects
 				const duration = Date.now() - startTime;
-				logger.error(`Error in Durable Object request to ${path}`, 
-					error instanceof Error ? error : new Error(String(error)),
-					{ duration }
-				);
+				logger.error(`Error in Durable Object request to ${path}`, error instanceof Error ? error : new Error(String(error)), { duration });
 				throw error; // Re-throw to be handled by the outer try/catch
 			}
 
 			// If we get here, the path doesn't match any supported service
 			throw new ApiError(ErrorCode.NOT_FOUND, {
 				resource: path,
-				supportedServices: config.SUPPORTED_SERVICES
+				supportedServices: config.SUPPORTED_SERVICES,
 			});
 		} catch (error) {
 			const duration = Date.now() - startTime;
-			
+
 			// Log the error if it hasn't been logged already
 			if (!(error instanceof ApiError)) {
-				logger.error('Unhandled exception in worker', 
-					error instanceof Error ? error : new Error(String(error)),
-					{ duration }
-				);
+				logger.error('Unhandled exception in worker', error instanceof Error ? error : new Error(String(error)), { duration });
 			}
-			
+
 			// Return appropriate error response
 			return createErrorResponse(error);
 		} finally {
 			const duration = Date.now() - startTime;
 			if (duration > 1000) {
-				logger.warn('Slow request processing', { 
+				logger.warn('Slow request processing', {
 					path: new URL(request.url).pathname,
-					duration 
+					duration,
 				});
 			}
 		}

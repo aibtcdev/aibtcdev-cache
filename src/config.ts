@@ -4,7 +4,7 @@ import { ErrorCode } from './utils/error-catalog';
 
 /**
  * Singleton configuration class for the application
- * 
+ *
  * Provides centralized access to configuration settings and environment variables
  */
 export class AppConfig {
@@ -13,7 +13,7 @@ export class AppConfig {
 
 	/**
 	 * Private constructor to enforce singleton pattern
-	 * 
+	 *
 	 * @param env - The Cloudflare Worker environment
 	 */
 	private constructor(env: Env) {
@@ -22,7 +22,7 @@ export class AppConfig {
 
 	/**
 	 * Gets the singleton instance of AppConfig
-	 * 
+	 *
 	 * @param env - The Cloudflare Worker environment (required on first call)
 	 * @returns The AppConfig singleton instance
 	 * @throws Error if called without env before initialization
@@ -32,7 +32,7 @@ export class AppConfig {
 			AppConfig.instance = new AppConfig(env);
 		} else if (!AppConfig.instance) {
 			throw new ApiError(ErrorCode.CONFIG_ERROR, {
-				reason: 'AppConfig must be initialized with environment variables first'
+				reason: 'AppConfig must be initialized with environment variables first',
 			});
 		}
 		return AppConfig.instance;
@@ -40,7 +40,7 @@ export class AppConfig {
 
 	/**
 	 * Returns the application configuration settings
-	 * 
+	 *
 	 * @returns Configuration object with all application settings
 	 */
 	public getConfig() {
