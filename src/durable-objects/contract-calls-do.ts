@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { createJsonResponse } from '../utils/requests-responses';
-import { StacksContractFetcher } from '../stacks-rate-limiter';
+import { StacksContractFetcher } from '../services/stacks-contract-fetcher';
 import { ClarityValue, validateStacksAddress } from '@stacks/transactions';
 import { StacksNetworkName } from '@stacks/network';
 import { ContractAbiService } from '../services/contract-abi-service';

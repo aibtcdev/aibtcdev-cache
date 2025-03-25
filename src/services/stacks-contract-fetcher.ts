@@ -1,8 +1,8 @@
 import { ClarityValue } from '@stacks/transactions';
-import { Env } from '../worker-configuration';
-import { CacheService } from './services/cache-service';
-import { StacksApiService } from './services/stacks-api-service';
-import { RequestQueue } from './utils/request-queue';
+import { Env } from '../../worker-configuration';
+import { CacheService } from './cache-service';
+import { StacksApiService } from './stacks-api-service';
+import { RequestQueue } from '../utils/request-queue';
 
 export class StacksContractFetcher {
 	private readonly cacheService: CacheService;
