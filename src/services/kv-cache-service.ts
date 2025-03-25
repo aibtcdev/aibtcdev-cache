@@ -1,5 +1,8 @@
 import { Env } from '../../worker-configuration';
 import { stringifyWithBigInt } from '../utils/requests-responses-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { Logger } from '../utils/logger';
 
 /**
  * Service for caching data in Cloudflare KV storage
@@ -22,8 +25,17 @@ export class CacheService {
 	 * @returns The cached value (parsed from JSON) or null if not found
 	 */
 	async get<T>(key: string): Promise<T | null> {
-		const cached = await this.env.AIBTCDEV_CACHE_KV.get(key);
-		return cached ? (JSON.parse(cached) as T) : null;
+		try {
+			const cached = await this.env.AIBTCDEV_CACHE_KV.get(key);
+			return cached ? (JSON.parse(cached) as T) : null;
+		} catch (error) {
+			const logger = Logger.getInstance(this.env);
+			logger.error(`Failed to get cache key: ${key}`, error instanceof Error ? error : new Error(String(error)));
+			throw new ApiError(ErrorCode.CACHE_ERROR, { 
+				reason: `Failed to get cache key: ${key}`,
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}
 	}
 
 	/**
@@ -34,8 +46,17 @@ export class CacheService {
 	 * @param ttl - Optional TTL in seconds (defaults to the service's defaultTtl)
 	 */
 	async set(key: string, value: unknown, ttl: number = this.defaultTtl): Promise<void> {
-		await this.env.AIBTCDEV_CACHE_KV.put(key, typeof value === 'string' ? value : stringifyWithBigInt(value), {
-			expirationTtl: this.ignoreTtl ? undefined : ttl,
-		});
+		try {
+			await this.env.AIBTCDEV_CACHE_KV.put(key, typeof value === 'string' ? value : stringifyWithBigInt(value), {
+				expirationTtl: this.ignoreTtl ? undefined : ttl,
+			});
+		} catch (error) {
+			const logger = Logger.getInstance(this.env);
+			logger.error(`Failed to set cache key: ${key}`, error instanceof Error ? error : new Error(String(error)));
+			throw new ApiError(ErrorCode.CACHE_ERROR, { 
+				reason: `Failed to set cache key: ${key}`,
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}
 	}
 }

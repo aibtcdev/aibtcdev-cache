@@ -1,4 +1,6 @@
 import { Env } from '../worker-configuration';
+import { ApiError } from './utils/api-error';
+import { ErrorCode } from './utils/error-catalog';
 
 /**
  * Singleton configuration class for the application
@@ -29,7 +31,9 @@ export class AppConfig {
 		if (!AppConfig.instance && env) {
 			AppConfig.instance = new AppConfig(env);
 		} else if (!AppConfig.instance) {
-			throw new Error('AppConfig must be initialized with environment variables first');
+			throw new ApiError(ErrorCode.CONFIG_ERROR, {
+				reason: 'AppConfig must be initialized with environment variables first'
+			});
 		}
 		return AppConfig.instance;
 	}

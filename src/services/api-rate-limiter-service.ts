@@ -3,6 +3,9 @@ import { createJsonResponse } from '../utils/requests-responses-util';
 import { RequestQueue } from './request-queue-service';
 import { TokenBucket } from './token-bucket-service';
 import { CacheService } from './kv-cache-service';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { Logger } from '../utils/logger';
 
 /**
  * Service that provides rate-limited API fetching capabilities
@@ -121,26 +124,44 @@ export class ApiRateLimiterService {
 	 * @throws Error if the request fails and should be retried
 	 */
 	private async makeRequest(endpoint: string, cacheKey: string): Promise<Response> {
+		const logger = Logger.getInstance(this.env);
+		
 		// Separate the path from the base URL, if there is one
 		const baseUrl = new URL(this.baseApiUrl);
 		const basePath = baseUrl.pathname === '/' ? '' : baseUrl.pathname;
 		const url = new URL(`${basePath}${endpoint}`, baseUrl.origin);
 
 		// Make API request
+		const startTime = Date.now();
 		const response = await fetch(url);
+		const duration = Date.now() - startTime;
+		
+		// Log slow responses
+		if (duration > 1000) {
+			logger.warn(`Slow API response from ${url.toString()}`, { duration });
+		}
 
 		if (response.status === 429) {
-			throw new Error('Rate limit exceeded, retrying later');
+			throw new ApiError(ErrorCode.RATE_LIMIT_EXCEEDED, { 
+				retryAfter: response.headers.get('Retry-After') || '60'
+			});
 		}
 
 		if (!response.ok) {
 			const retryable = response.status >= 500;
-			const error = new Error(`API request failed (${url}): ${response.statusText}`);
+			
 			if (retryable) {
-				throw error; // Will be retried by RequestQueue
+				// Will be retried by RequestQueue
+				throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, { 
+					message: `${response.status}: ${response.statusText}`,
+					url: url.toString()
+				});
 			} else {
 				// For 4xx errors, we don't want to retry
-				return createJsonResponse({ error: `API request failed: ${response.statusText}` }, response.status);
+				return createJsonResponse({ 
+					error: `API request failed: ${response.statusText}`,
+					status: response.status
+				}, response.status);
 			}
 		}
 

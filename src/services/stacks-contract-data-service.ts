@@ -3,6 +3,9 @@ import { Env } from '../../worker-configuration';
 import { CacheService } from './kv-cache-service';
 import { StacksApiService } from './stacks-api-service';
 import { RequestQueue } from './request-queue-service';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { Logger } from '../utils/logger';
 
 /**
  * Service for fetching data from Stacks smart contracts
@@ -69,7 +72,9 @@ export class StacksContractFetcher {
 
 		// Validate network
 		if (network !== 'mainnet' && network !== 'testnet') {
-			throw new Error(`Invalid network: ${network}. Must be 'mainnet' or 'testnet'`);
+			throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+				message: `Invalid network: ${network}. Must be 'mainnet' or 'testnet'`
+			});
 		}
 
 		// Queue the request

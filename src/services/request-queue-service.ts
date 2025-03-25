@@ -1,4 +1,7 @@
 import { TokenBucket } from './token-bucket-service';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { Logger } from '../utils/logger';
 
 /**
  * Represents a request in the queue with its execution function and callbacks
@@ -92,7 +95,15 @@ export class RequestQueue<T> {
 				const request = this.queue[0];
 
 				try {
+					const startTime = Date.now();
 					const result = await request.execute();
+					const duration = Date.now() - startTime;
+					
+					// Log slow requests (over 1 second)
+					if (duration > 1000) {
+						Logger.getInstance().warn(`Slow queued request execution`, { duration });
+					}
+					
 					this.queue.shift();
 					this.lastRequestTime = Date.now();
 					request.resolve(result);
@@ -103,9 +114,31 @@ export class RequestQueue<T> {
 					if (request.retryCount < this.maxRetries) {
 						request.retryCount++;
 						this.queue.push(request);
-						await new Promise((resolve) => setTimeout(resolve, this.retryDelay * request.retryCount));
+						const retryDelay = this.retryDelay * request.retryCount;
+						
+						Logger.getInstance().info(`Retrying request`, { 
+							attempt: request.retryCount, 
+							maxRetries: this.maxRetries,
+							retryDelay 
+						});
+						
+						await new Promise((resolve) => setTimeout(resolve, retryDelay));
 					} else {
-						request.reject(error instanceof Error ? error : new Error(`Unknown error occurred ${String(error)}`));
+						// If it's already an ApiError, pass it through
+						if (error instanceof ApiError) {
+							request.reject(error);
+						} else {
+							// Otherwise, wrap in an ApiError
+							const apiError = new ApiError(
+								ErrorCode.UPSTREAM_API_ERROR, 
+								{ message: error instanceof Error ? error.message : String(error) }
+							);
+							Logger.getInstance().error(
+								`Request failed after ${this.maxRetries} retries`, 
+								error instanceof Error ? error : new Error(String(error))
+							);
+							request.reject(apiError);
+						}
 					}
 				}
 			}

@@ -1,5 +1,8 @@
 import { StacksNetworkName } from '@stacks/network';
 import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { Logger } from '../utils/logger';
 
 /**
  * Service for interacting with the Stacks blockchain API
@@ -25,13 +28,42 @@ export class StacksApiService {
 		senderAddress: string,
 		network: StacksNetworkName
 	): Promise<ClarityValue> {
-		return fetchCallReadOnlyFunction({
-			contractAddress,
-			contractName,
-			functionName,
-			functionArgs,
-			senderAddress,
-			network,
-		});
+		const logger = Logger.getInstance();
+		const startTime = Date.now();
+		
+		try {
+			const result = await fetchCallReadOnlyFunction({
+				contractAddress,
+				contractName,
+				functionName,
+				functionArgs,
+				senderAddress,
+				network,
+			});
+			
+			const duration = Date.now() - startTime;
+			if (duration > 2000) { // Log if call takes more than 2 seconds
+				logger.warn(`Slow contract call to ${contractAddress}.${contractName}::${functionName}`, { 
+					duration,
+					network
+				});
+			}
+			
+			return result;
+		} catch (error) {
+			const duration = Date.now() - startTime;
+			logger.error(
+				`Failed to call ${contractAddress}.${contractName}::${functionName}`, 
+				error instanceof Error ? error : new Error(String(error)),
+				{ duration, network }
+			);
+			
+			throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+				message: error instanceof Error ? error.message : String(error),
+				contract: `${contractAddress}.${contractName}`,
+				function: functionName,
+				network
+			});
+		}
 	}
 }
