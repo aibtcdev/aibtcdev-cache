@@ -48,6 +48,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 		'/read-only/{contractAddress}/{contractName}/{functionName}',
 		'/abi/{contractAddress}/{contractName}',
 		'/known-contracts',
+		'/decode-clarity-value',
 	];
 	// Services
 	private readonly contractAbiService: ContractAbiService;
@@ -126,6 +127,11 @@ export class ContractCallsDO extends DurableObject<Env> {
 			// Handle read-only contract call endpoint
 			if (endpoint.startsWith('/read-only/')) {
 				return await this.handleReadOnlyRequest(endpoint, request);
+			}
+
+			// Handle decode clarity value endpoint
+			if (endpoint === '/decode-clarity-value') {
+				return await this.handleDecodeClarityValueRequest(request);
 			}
 
 			// If we get here, the endpoint is not supported
@@ -252,6 +258,55 @@ export class ContractCallsDO extends DurableObject<Env> {
 			return createJsonResponse(convertedResult);
 		} catch (error) {
 			return createJsonResponse({ error: `Contract call failed: ${error instanceof Error ? error.message : String(error)}` }, 500);
+		}
+	}
+
+	/**
+	 * Handles requests to decode Clarity values
+	 * 
+	 * This endpoint accepts a POST request with a ClarityValue and optional parameters,
+	 * and returns the decoded JavaScript representation of the value.
+	 * 
+	 * @param request - The HTTP request containing the ClarityValue to decode
+	 * @returns A Response with the decoded value or an error message
+	 */
+	private async handleDecodeClarityValueRequest(request: Request): Promise<Response> {
+		// Only accept POST requests for decoding
+		if (request.method !== 'POST') {
+			return createJsonResponse({ error: 'Only POST requests are supported for decoding Clarity values' }, 405);
+		}
+
+		try {
+			// Parse request body
+			const body = await request.json() as {
+				clarityValue: ClarityValue | SimplifiedClarityValue;
+				strictJsonCompat?: boolean;
+				preserveContainers?: boolean;
+			};
+
+			if (!body.clarityValue) {
+				return createJsonResponse({ error: 'Missing required field: clarityValue' }, 400);
+			}
+
+			// Convert simplified value to ClarityValue if needed
+			const clarityValue = convertToClarityValue(body.clarityValue);
+			
+			// Decode the value with the provided options
+			const decodedValue = decodeClarityValues(
+				clarityValue,
+				body.strictJsonCompat !== undefined ? body.strictJsonCompat : true,
+				body.preserveContainers !== undefined ? body.preserveContainers : false
+			);
+
+			return createJsonResponse({
+				original: body.clarityValue,
+				decoded: decodedValue
+			});
+		} catch (error) {
+			return createJsonResponse(
+				{ error: `Failed to decode Clarity value: ${error instanceof Error ? error.message : String(error)}` },
+				400
+			);
 		}
 	}
 }
