@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { StacksNetworkName } from '@stacks/network';
-import { ClarityValue, validateStacksAddress } from '@stacks/transactions';
+import { ClarityValue, deserializeCV, validateStacksAddress } from '@stacks/transactions';
 import { ContractAbiService } from '../services/stacks-contract-abi-service';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
 import { createJsonResponse } from '../utils/requests-responses-util';
@@ -263,10 +263,10 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 	/**
 	 * Handles requests to decode Clarity values
-	 * 
+	 *
 	 * This endpoint accepts a POST request with a ClarityValue and optional parameters,
 	 * and returns the decoded JavaScript representation of the value.
-	 * 
+	 *
 	 * @param request - The HTTP request containing the ClarityValue to decode
 	 * @returns A Response with the decoded value or an error message
 	 */
@@ -278,8 +278,8 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 		try {
 			// Parse request body
-			const body = await request.json() as {
-				clarityValue: ClarityValue | SimplifiedClarityValue;
+			const body = (await request.json()) as {
+				clarityValue: ClarityValue | SimplifiedClarityValue | string;
 				strictJsonCompat?: boolean;
 				preserveContainers?: boolean;
 			};
@@ -288,9 +288,14 @@ export class ContractCallsDO extends DurableObject<Env> {
 				return createJsonResponse({ error: 'Missing required field: clarityValue' }, 400);
 			}
 
-			// Convert simplified value to ClarityValue if needed
-			const clarityValue = convertToClarityValue(body.clarityValue);
-			
+			// Convert ClarityValue to ClarityValue if necessary
+			let clarityValue: ClarityValue;
+			if (typeof body.clarityValue === 'string') {
+				clarityValue = deserializeCV(body.clarityValue);
+			} else {
+				clarityValue = convertToClarityValue(body.clarityValue);
+			}
+
 			// Decode the value with the provided options
 			const decodedValue = decodeClarityValues(
 				clarityValue,
@@ -300,7 +305,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 			return createJsonResponse({
 				original: body.clarityValue,
-				decoded: decodedValue
+				decoded: decodedValue,
 			});
 		} catch (error) {
 			return createJsonResponse(
