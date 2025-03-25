@@ -71,7 +71,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		);
 
 		// Set up alarm to run at configured interval
-		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+		// ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
 	private async extractAddressesFromCache(): Promise<string[]> {
@@ -141,7 +141,7 @@ export class HiroApiDO extends DurableObject<Env> {
 			// Always schedule next alarm if one isn't set
 			const currentAlarm = await this.ctx.storage.getAlarm();
 			if (currentAlarm === null) {
-				this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+				// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 			}
 		}
 	}
@@ -158,7 +158,7 @@ export class HiroApiDO extends DurableObject<Env> {
 		// Always schedule next alarm if one isn't set
 		const currentAlarm = await this.ctx.storage.getAlarm();
 		if (currentAlarm === null) {
-			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+			// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
 
 		// handle requests that don't match the base path

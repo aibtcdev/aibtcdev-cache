@@ -42,7 +42,7 @@ export class SupabaseDO extends DurableObject<Env> {
 		});
 
 		// Set up alarm to run at configured interval
-		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+		// ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
 	private async fetchStats(): Promise<StatsResponse | undefined> {
@@ -98,7 +98,7 @@ export class SupabaseDO extends DurableObject<Env> {
 			console.error(`SupabaseDO: alarm execution failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			// Schedule next alarm
-			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+			// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
 	}
 
@@ -109,7 +109,7 @@ export class SupabaseDO extends DurableObject<Env> {
 		// Schedule next alarm if one isn't set
 		const currentAlarm = await this.ctx.storage.getAlarm();
 		if (currentAlarm === null) {
-			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+			// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
 
 		// Handle requests that don't match the base path

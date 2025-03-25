@@ -31,7 +31,7 @@ export class BnsApiDO extends DurableObject<Env> {
 		initStacksFetcher(env);
 
 		// Set up alarm to run at configured interval
-		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+		// ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
 	async alarm(): Promise<void> {
@@ -75,7 +75,7 @@ export class BnsApiDO extends DurableObject<Env> {
 			// Always schedule next alarm if one isn't set
 			const currentAlarm = await this.ctx.storage.getAlarm();
 			if (currentAlarm === null) {
-				this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+				// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 			}
 		}
 	}

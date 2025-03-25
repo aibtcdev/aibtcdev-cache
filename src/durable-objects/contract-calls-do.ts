@@ -22,18 +22,15 @@ interface ContractCallRequest {
 export class ContractCallsDO extends DurableObject<Env> {
 	// Configuration constants
 	private readonly CACHE_TTL: number;
-
 	// Base path and cache prefix
 	private readonly BASE_PATH: string = '/contract-calls';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
-
 	// Supported endpoints
 	private readonly SUPPORTED_ENDPOINTS: string[] = [
 		'/read-only/{contractAddress}/{contractName}/{functionName}',
 		'/abi/{contractAddress}/{contractName}',
 		'/known-contracts',
 	];
-
 	// Services
 	private readonly contractAbiService: ContractAbiService;
 	private readonly stacksContractFetcher: StacksContractFetcher;
@@ -60,7 +57,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 			config.RETRY_DELAY
 		);
 
-		// No need for an alarm since contract ABIs never change after deployment
+		// No alarm configured yet
 	}
 
 	/**
@@ -185,9 +182,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 			}
 
 			// Execute contract call
-			const cacheKey = `${this.CACHE_PREFIX}_call_${contractAddress}_${contractName}_${functionName}_${JSON.stringify(
-				functionArgs
-			)}_${senderAddress}_${network}`;
+			const cacheKey = `${this.CACHE_PREFIX}_call_${contractAddress}_${contractName}_${functionName}_${new Date().getTime()}`;
 
 			const result = await this.stacksContractFetcher.fetch(
 				contractAddress,
