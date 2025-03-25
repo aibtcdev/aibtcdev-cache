@@ -1,9 +1,9 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { ApiRateLimiterService } from '../rate-limiter';
-import { createJsonResponse } from '../utils/requests-responses';
-import { getKnownAddresses, addKnownAddress } from '../utils/address-store';
+import { ApiRateLimiterService } from '../services/api-rate-limiter-service';
+import { createJsonResponse } from '../utils/requests-responses-util';
+import { getKnownAddresses, addKnownAddress } from '../utils/address-store-util';
 
 interface KnownAddressInfo {
 	stats: {

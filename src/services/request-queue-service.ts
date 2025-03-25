@@ -1,4 +1,4 @@
-import { TokenBucket } from './token-bucket';
+import { TokenBucket } from './token-bucket-service';
 
 interface QueuedRequest<T> {
 	execute: () => Promise<T>;

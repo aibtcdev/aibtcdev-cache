@@ -1,5 +1,5 @@
 import { Env } from '../../worker-configuration';
-import { stringifyWithBigInt } from '../utils/json-helpers';
+import { stringifyWithBigInt } from '../utils/requests-responses-util';
 
 export class CacheService {
 	constructor(private readonly env: Env, private readonly defaultTtl: number, private readonly ignoreTtl: boolean) {}

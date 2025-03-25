@@ -1,7 +1,7 @@
 import { Env } from '../../worker-configuration';
 import { StacksNetworkName } from '@stacks/network';
 import { ClarityAbi, ClarityAbiFunction, fetchAbi, validateStacksAddress } from '@stacks/transactions';
-import { CacheService } from './cache-service';
+import { CacheService } from './kv-cache-service';
 
 /**
  * Service for fetching and managing contract ABIs

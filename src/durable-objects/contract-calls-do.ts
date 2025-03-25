@@ -3,9 +3,9 @@ import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { StacksNetworkName } from '@stacks/network';
 import { ClarityValue, validateStacksAddress } from '@stacks/transactions';
-import { ContractAbiService } from '../services/contract-abi-service';
-import { StacksContractFetcher } from '../services/stacks-contract-fetcher';
-import { createJsonResponse } from '../utils/requests-responses';
+import { ContractAbiService } from '../services/stacks-contract-abi-service';
+import { StacksContractFetcher } from '../services/stacks-contract-data-service';
+import { createJsonResponse } from '../utils/requests-responses-util';
 
 /**
  * Interface for expected request body for contract calls
