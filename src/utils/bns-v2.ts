@@ -1,8 +1,8 @@
-import { getFetchOptions, setFetchOptions } from '@stacks/common';
+import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
+import { getFetchOptions, setFetchOptions } from '@stacks/common';
 import { BufferCV, ClarityType, principalCV, TupleCV } from '@stacks/transactions';
 import { StacksContractFetcher } from '../services/stacks-contract-fetcher';
-import { Env } from '../../worker-configuration';
 
 const BNS_CONTRACT_ADDRESS = 'SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF';
 const BNS_CONTRACT_NAME = 'BNS-V2';

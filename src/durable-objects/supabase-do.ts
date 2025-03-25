@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createJsonResponse } from '../utils/requests-responses';
 
 interface StatsResponse {

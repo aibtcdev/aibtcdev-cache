@@ -1,10 +1,10 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
+import { validateStacksAddress } from '@stacks/transactions';
 import { createJsonResponse } from '../utils/requests-responses';
 import { getKnownAddresses } from '../utils/address-store';
 import { getNameFromAddress, initStacksFetcher } from '../utils/bns-v2';
-import { validateStacksAddress } from '@stacks/transactions';
 
 /**
  * Durable Object class for the BNS API

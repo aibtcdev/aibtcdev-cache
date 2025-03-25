@@ -1,6 +1,6 @@
-import { ClarityAbi, ClarityAbiFunction, fetchAbi, validateStacksAddress } from '@stacks/transactions';
-import { StacksNetworkName } from '@stacks/network';
 import { Env } from '../../worker-configuration';
+import { StacksNetworkName } from '@stacks/network';
+import { ClarityAbi, ClarityAbiFunction, fetchAbi, validateStacksAddress } from '@stacks/transactions';
 import { CacheService } from './cache-service';
 
 /**

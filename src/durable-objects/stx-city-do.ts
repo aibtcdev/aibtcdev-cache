@@ -1,8 +1,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { createJsonResponse } from '../utils/requests-responses';
 import { RateLimitedFetcher } from '../rate-limiter';
+import { createJsonResponse } from '../utils/requests-responses';
 
 type Metrics = {
 	price_usd: number;

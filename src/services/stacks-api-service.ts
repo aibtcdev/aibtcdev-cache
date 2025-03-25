@@ -1,5 +1,5 @@
-import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
 import { StacksNetworkName } from '@stacks/network';
+import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
 
 export class StacksApiService {
 	async callReadOnlyFunction(
