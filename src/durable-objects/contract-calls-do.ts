@@ -70,11 +70,14 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 		// Initialize services
 		this.contractAbiService = new ContractAbiService(env, this.CACHE_TTL);
+		
+		// Use Hiro API specific rate limiting settings since this DO makes calls to Stacks API
+		const hiroConfig = config.HIRO_API_RATE_LIMIT;
 		this.stacksContractFetcher = new StacksContractFetcher(
 			env,
 			this.CACHE_TTL,
-			config.MAX_REQUESTS_PER_INTERVAL,
-			config.INTERVAL_MS,
+			hiroConfig.MAX_REQUESTS_PER_INTERVAL,
+			hiroConfig.INTERVAL_MS,
 			config.MAX_RETRIES,
 			config.RETRY_DELAY
 		);
