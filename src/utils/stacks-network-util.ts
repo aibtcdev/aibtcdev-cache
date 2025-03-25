@@ -1,5 +1,6 @@
 import { StacksNetworkName } from '@stacks/network';
 import { validateStacksAddress } from '@stacks/transactions';
+import { Logger } from './logger';
 
 /**
  * Determines the Stacks network (mainnet or testnet) based on a principal address
@@ -12,6 +13,8 @@ import { validateStacksAddress } from '@stacks/transactions';
  * @returns The network name ('mainnet' or 'testnet')
  */
 export function getNetworkByPrincipal(principal: string): StacksNetworkName {
+	const logger = Logger.getInstance();
+	
 	// test if principal is valid
 	if (validateStacksAddress(principal)) {
 		// detect network from address
@@ -22,6 +25,7 @@ export function getNetworkByPrincipal(principal: string): StacksNetworkName {
 			return 'testnet';
 		}
 	}
-	console.error('Invalid principal, falling back to testnet');
+	
+	logger.warn('Invalid principal, falling back to testnet', { principal });
 	return 'testnet';
 }

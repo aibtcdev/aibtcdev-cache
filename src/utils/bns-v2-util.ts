@@ -3,6 +3,9 @@ import { AppConfig } from '../config';
 import { getFetchOptions, setFetchOptions } from '@stacks/common';
 import { BufferCV, ClarityType, principalCV, TupleCV } from '@stacks/transactions';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
+import { ApiError } from './api-error';
+import { ErrorCode } from './error-catalog';
+import { Logger } from './logger';
 
 /**
  * BNS contract constants for the Stacks blockchain
@@ -36,14 +39,24 @@ setFetchOptions(fetchOptions);
  * @returns ASCII string representation
  */
 function hexToAscii(hexString: string | bigint): string {
-	// Convert BigInt to hex string if needed
-	const hex = typeof hexString === 'bigint' ? hexString.toString(16) : hexString.replace('0x', '');
-	// Convert each pair of hex digits directly to ASCII
-	let str = '';
-	for (let i = 0; i < hex.length; i += 2) {
-		str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+	try {
+		// Convert BigInt to hex string if needed
+		const hex = typeof hexString === 'bigint' ? hexString.toString(16) : hexString.replace('0x', '');
+		// Convert each pair of hex digits directly to ASCII
+		let str = '';
+		for (let i = 0; i < hex.length; i += 2) {
+			str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+		}
+		return str;
+	} catch (error) {
+		Logger.getInstance().error('Failed to convert hex to ASCII', 
+			error instanceof Error ? error : new Error(String(error)),
+			{ hexString: String(hexString) }
+		);
+		// Return empty string on error rather than throwing
+		// This is more graceful for display purposes
+		return '';
 	}
-	return str;
 }
 
 /**
@@ -84,7 +97,11 @@ let stacksFetcher: StacksContractFetcher;
  * @param env - The Cloudflare Worker environment
  */
 export function initStacksFetcher(env: Env) {
+	const logger = Logger.getInstance(env);
 	const config = AppConfig.getInstance(env).getConfig();
+	
+	logger.debug('Initializing StacksContractFetcher for BNS lookups');
+	
 	stacksFetcher = new StacksContractFetcher(
 		env,
 		config.CACHE_TTL,
@@ -104,12 +121,19 @@ export function initStacksFetcher(env: Env) {
  * @throws Error if the StacksFetcher is not initialized or if the request fails
  */
 export async function getNameFromAddress(address: string, network = 'mainnet'): Promise<string> {
+	const logger = Logger.getInstance();
+	
 	if (!stacksFetcher) {
-		throw new Error('StacksFetcher not initialized. Call initStacksFetcher first.');
+		throw new ApiError(ErrorCode.CONFIG_ERROR, {
+			reason: 'StacksFetcher not initialized. Call initStacksFetcher first.'
+		});
 	}
+	
 	try {
+		const startTime = Date.now();
 		const addressCV = principalCV(address);
 		const cacheKey = `bns_get-primary_${address}`;
+		
 		const response = (await stacksFetcher.fetch(
 			BNS_CONTRACT_ADDRESS,
 			BNS_CONTRACT_NAME,
@@ -119,11 +143,18 @@ export async function getNameFromAddress(address: string, network = 'mainnet'): 
 			network,
 			cacheKey
 		)) as BnsNameResponse;
+		
+		const duration = Date.now() - startTime;
+		if (duration > 1000) {
+			logger.warn(`Slow BNS lookup for address ${address}`, { duration });
+		}
+		
 		if (response.type === ClarityType.ResponseErr) {
 			// name doesn't exist, return a blank string
-			// console.log(`getNameFromAddress: name not found for address ${address}`);
+			logger.debug(`No BNS name found for address ${address}`);
 			return '';
 		}
+		
 		if (
 			response.type === ClarityType.ResponseOk &&
 			response.value.type === ClarityType.OptionalSome &&
@@ -135,10 +166,22 @@ export async function getNameFromAddress(address: string, network = 'mainnet'): 
 			const namespaceStr = hexToAscii(namespace.value);
 			return `${nameStr}.${namespaceStr}`;
 		}
-		throw new Error(`getNameFromAddress: unexpected response type ${response.type}`);
+		
+		throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+			message: `Unexpected response type ${response.type}`,
+			address
+		});
 	} catch (error) {
-		throw new Error(
-			`Failed to get name for address ${address}, error: ${error ? (error instanceof Error ? error.message : String(error)) : 'unknown'}`
-		);
+		// If it's already an ApiError, rethrow it
+		if (error instanceof ApiError) {
+			throw error;
+		}
+		
+		// Otherwise, wrap in an ApiError
+		throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+			message: error instanceof Error ? error.message : String(error),
+			address,
+			network
+		});
 	}
 }

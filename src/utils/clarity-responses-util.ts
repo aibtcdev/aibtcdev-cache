@@ -22,6 +22,8 @@ import {
 	responseOkCV,
 	responseErrorCV,
 } from '@stacks/transactions';
+import { ApiError } from './api-error';
+import { ErrorCode } from './error-catalog';
 
 /**
  * Interface for simplified Clarity value representation
@@ -164,9 +166,21 @@ export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue
 			case 'responseerr':
 				return responseErrorCV(convertToClarityValue(simplifiedArg.value));
 			default:
-				throw new Error(`Unsupported clarity type: ${simplifiedArg.type}`);
+				throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+					message: `Unsupported clarity type: ${simplifiedArg.type}`
+				});
 		}
 	} catch (error) {
-		throw new Error(`Failed to convert to Clarity value of type ${type}: ${error instanceof Error ? error.message : String(error)}`);
+		// If it's already an ApiError, rethrow it
+		if (error instanceof ApiError) {
+			throw error;
+		}
+		
+		// Otherwise, wrap in an ApiError
+		throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+			message: `Failed to convert to Clarity value of type ${type}`,
+			error: error instanceof Error ? error.message : String(error),
+			valueType: type
+		});
 	}
 }
