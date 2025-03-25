@@ -6,16 +6,20 @@ import { ClarityValue, validateStacksAddress } from '@stacks/transactions';
 import { ContractAbiService } from '../services/stacks-contract-abi-service';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
 import { createJsonResponse } from '../utils/requests-responses-util';
-import { decodeClarityValues } from '../utils/clarity-responses-util';
+import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } from '../utils/clarity-responses-util';
 
 /**
  * Interface for expected request body for contract calls
  *
  * This defines the structure of the JSON payload that must be sent
  * when making read-only contract function calls.
+ * 
+ * The functionArgs can be either:
+ * - ClarityValue[] - For TypeScript clients using @stacks/transactions
+ * - SimplifiedClarityValue[] - For non-TypeScript clients using a simpler JSON format
  */
 interface ContractCallRequest {
-	functionArgs: ClarityValue[];
+	functionArgs: (ClarityValue | SimplifiedClarityValue)[];
 	network: StacksNetworkName;
 	senderAddress: string;
 }
@@ -205,9 +209,12 @@ export class ContractCallsDO extends DurableObject<Env> {
 		try {
 			// Parse function arguments from request body
 			const body = (await request.json()) as ContractCallRequest;
-			const functionArgs = body.functionArgs || [];
+			const rawFunctionArgs = body.functionArgs || [];
 			const network = (body.network || 'testnet') as StacksNetworkName;
 			const senderAddress = body.senderAddress || contractAddress;
+			
+			// Convert any simplified arguments to ClarityValues
+			const functionArgs = rawFunctionArgs.map(convertToClarityValue);
 
 			// Get ABI to validate function arguments
 			const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName, false);
