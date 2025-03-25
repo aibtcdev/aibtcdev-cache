@@ -3,6 +3,8 @@ import { StacksNetworkName } from '@stacks/network';
 import { ClarityAbi, ClarityAbiFunction, fetchAbi, validateStacksAddress } from '@stacks/transactions';
 import { CacheService } from './kv-cache-service';
 import { getNetworkByPrincipal } from '../utils/stacks-network-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
 
 /**
  * Service for fetching and managing Clarity smart contract ABIs
@@ -36,7 +38,7 @@ export class ContractAbiService {
 	async fetchContractABI(contractAddress: string, contractName: string, bustCache = false): Promise<ClarityAbi> {
 		// Validate contract address
 		if (!validateStacksAddress(contractAddress)) {
-			throw new Error(`Invalid contract address: ${contractAddress}`);
+			throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: contractAddress });
 		}
 
 		const cacheKey = `${this.ABI_CACHE_KEY_PREFIX}_${contractAddress}_${contractName}`;
@@ -67,7 +69,11 @@ export class ContractAbiService {
 
 			return abi;
 		} catch (error) {
-			throw new Error(`Failed to fetch ABI: ${error instanceof Error ? error.message : String(error)}`);
+			throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, { 
+				message: error instanceof Error ? error.message : String(error),
+				contractAddress,
+				contractName
+			});
 		}
 	}
 

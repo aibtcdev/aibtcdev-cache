@@ -7,6 +7,9 @@ import { ContractAbiService } from '../services/stacks-contract-abi-service';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
 import { createJsonResponse } from '../utils/requests-responses-util';
 import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } from '../utils/clarity-responses-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { handleRequest } from '../utils/request-handler';
 
 /**
  * Interface for expected request body for contract calls
@@ -98,9 +101,9 @@ export class ContractCallsDO extends DurableObject<Env> {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		try {
+		return handleRequest(async () => {
 			if (!path.startsWith(this.BASE_PATH)) {
-				return createJsonResponse({ error: `Invalid path: ${path}` }, 404);
+				throw new ApiError(ErrorCode.NOT_FOUND, { resource: path });
 			}
 
 			// Remove base path to get the endpoint
@@ -108,15 +111,14 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 			// Handle root path
 			if (endpoint === '' || endpoint === '/') {
-				return createJsonResponse({
+				return {
 					message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-				});
+				};
 			}
 
 			// Handle known contracts endpoint
 			if (endpoint === '/known-contracts') {
-				const knownContracts = await this.contractAbiService.getKnownContracts();
-				return createJsonResponse(knownContracts);
+				return await this.contractAbiService.getKnownContracts();
 			}
 
 			// Handle ABI endpoint
@@ -135,16 +137,11 @@ export class ContractCallsDO extends DurableObject<Env> {
 			}
 
 			// If we get here, the endpoint is not supported
-			return createJsonResponse(
-				{
-					error: `Unsupported endpoint: ${endpoint}`,
-					supportedEndpoints: this.SUPPORTED_ENDPOINTS,
-				},
-				404
-			);
-		} catch (error) {
-			return createJsonResponse({ error: `Request failed: ${error instanceof Error ? error.message : String(error)}` }, 500);
-		}
+			throw new ApiError(ErrorCode.NOT_FOUND, { 
+				resource: endpoint,
+				supportedEndpoints: this.SUPPORTED_ENDPOINTS 
+			});
+		}, this.env);
 	}
 
 	/**
@@ -156,23 +153,26 @@ export class ContractCallsDO extends DurableObject<Env> {
 	 * @param endpoint - The endpoint path after the base path, e.g., "/abi/SP2X0TH53NBMJ7HD7KA5XT5N9MPDH0VK14KGAT1TF/my-contract"
 	 * @returns A Response object with the ABI or an error message
 	 */
-	private async handleAbiRequest(endpoint: string): Promise<Response> {
+	private async handleAbiRequest(endpoint: string): Promise<any> {
 		const parts = endpoint.split('/').filter(Boolean);
 		if (parts.length !== 3) {
-			return createJsonResponse({ error: 'Invalid ABI endpoint format. Use /abi/{contractAddress}/{contractName}' }, 400);
+			throw new ApiError(ErrorCode.INVALID_REQUEST, { 
+				reason: 'Invalid ABI endpoint format. Use /abi/{contractAddress}/{contractName}' 
+			});
 		}
 
 		const contractAddress = parts[1];
 		const contractName = parts[2];
 
 		try {
-			const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName);
-			return createJsonResponse(abi);
+			return await this.contractAbiService.fetchContractABI(contractAddress, contractName);
 		} catch (error) {
-			return createJsonResponse(
-				{ error: `Failed to fetch ABI: ${error instanceof Error ? error.message : String(error)}` },
-				error instanceof Error && error.message.includes('Invalid contract address') ? 400 : 500
-			);
+			// Convert specific errors to ApiErrors
+			if (error instanceof Error && error.message.includes('Invalid contract address')) {
+				throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: contractAddress });
+			}
+			// Re-throw other errors
+			throw error;
 		}
 	}
 

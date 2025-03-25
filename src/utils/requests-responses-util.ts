@@ -1,3 +1,5 @@
+import { ApiError } from './api-error';
+
 /**
  * Creates CORS headers for cross-origin requests
  * 
@@ -14,11 +16,76 @@ export function corsHeaders(origin?: string): HeadersInit {
 }
 
 /**
- * Creates a JSON response with appropriate headers
- * 
- * @param body - The response body (will be stringified if not already a string)
- * @param status - HTTP status code, defaults to 200
- * @returns Response object with JSON content type and CORS headers
+ * Standard response format for all API responses
+ */
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: Record<string, any>;
+  };
+}
+
+/**
+ * Creates a standardized success response
+ */
+export function createSuccessResponse<T>(data: T, status = 200): Response {
+  const body: ApiResponse<T> = {
+    success: true,
+    data
+  };
+  
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(),
+    },
+  });
+}
+
+/**
+ * Creates a standardized error response
+ */
+export function createErrorResponse(error: unknown): Response {
+  let body: ApiResponse<never>;
+  let status = 500;
+  
+  if (error instanceof ApiError) {
+    body = {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+        details: error.details
+      }
+    };
+    status = error.status;
+  } else {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    body = {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: errorMessage || 'An unexpected error occurred'
+      }
+    };
+  }
+  
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(),
+    },
+  });
+}
+
+/**
+ * Legacy function for backward compatibility
+ * @deprecated Use createSuccessResponse or createErrorResponse instead
  */
 export function createJsonResponse(body: unknown, status = 200): Response {
 	return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
