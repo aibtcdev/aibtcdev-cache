@@ -9,6 +9,9 @@ import { createJsonResponse } from '../utils/requests-responses-util';
 
 /**
  * Interface for expected request body for contract calls
+ * 
+ * This defines the structure of the JSON payload that must be sent
+ * when making read-only contract function calls.
  */
 interface ContractCallRequest {
 	functionArgs: ClarityValue[];
@@ -17,7 +20,15 @@ interface ContractCallRequest {
 }
 
 /**
- * Durable Object class for handling contract calls
+ * Durable Object class for handling Stacks smart contract calls
+ * 
+ * This Durable Object provides endpoints for:
+ * 1. Making read-only function calls to Stacks smart contracts
+ * 2. Retrieving contract ABIs (Application Binary Interfaces)
+ * 3. Listing known contracts that have been previously accessed
+ * 
+ * It handles validation of contract addresses, function names, and arguments
+ * before executing calls to the blockchain.
  */
 export class ContractCallsDO extends DurableObject<Env> {
 	// Configuration constants
@@ -62,6 +73,18 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 	/**
 	 * Main request handler for the Durable Object
+	 */
+	/**
+	 * Main request handler for the Contract Calls Durable Object
+	 * 
+	 * Handles the following endpoints:
+	 * - / - Returns a list of supported endpoints
+	 * - /abi/{contractAddress}/{contractName} - Returns the ABI for a contract
+	 * - /read-only/{contractAddress}/{contractName}/{functionName} - Makes a read-only call to a contract function
+	 * - /known-contracts - Lists all contracts that have been accessed
+	 * 
+	 * @param request - The incoming HTTP request
+	 * @returns A Response object with the requested data or an error message
 	 */
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
@@ -112,7 +135,13 @@ export class ContractCallsDO extends DurableObject<Env> {
 	}
 
 	/**
-	 * Handles ABI requests
+	 * Handles requests for contract ABIs
+	 * 
+	 * Parses the endpoint path to extract the contract address and name,
+	 * then fetches the ABI from the blockchain or cache.
+	 * 
+	 * @param endpoint - The endpoint path after the base path, e.g., "/abi/SP2X0TH53NBMJ7HD7KA5XT5N9MPDH0VK14KGAT1TF/my-contract"
+	 * @returns A Response object with the ABI or an error message
 	 */
 	private async handleAbiRequest(endpoint: string): Promise<Response> {
 		const parts = endpoint.split('/').filter(Boolean);
@@ -135,7 +164,19 @@ export class ContractCallsDO extends DurableObject<Env> {
 	}
 
 	/**
-	 * Handles read-only contract call requests
+	 * Handles read-only contract function call requests
+	 * 
+	 * This method:
+	 * 1. Parses the endpoint to extract contract address, name, and function
+	 * 2. Validates the contract address
+	 * 3. Extracts function arguments from the request body
+	 * 4. Validates the function exists in the contract ABI
+	 * 5. Validates the function arguments match the expected types
+	 * 6. Executes the contract call and returns the result
+	 * 
+	 * @param endpoint - The endpoint path after the base path
+	 * @param request - The original HTTP request containing function arguments
+	 * @returns A Response with the function call result or an error message
 	 */
 	private async handleReadOnlyRequest(endpoint: string, request: Request): Promise<Response> {
 		const parts = endpoint.split('/').filter(Boolean);

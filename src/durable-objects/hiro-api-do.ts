@@ -5,6 +5,12 @@ import { ApiRateLimiterService } from '../services/api-rate-limiter-service';
 import { createJsonResponse } from '../utils/requests-responses-util';
 import { getKnownAddresses, addKnownAddress } from '../utils/address-store-util';
 
+/**
+ * Interface representing information about known Stacks addresses
+ * 
+ * This structure is used to return information about addresses that
+ * have been stored and/or cached by the Durable Object.
+ */
 interface KnownAddressInfo {
 	stats: {
 		storage: number;
@@ -19,7 +25,15 @@ interface KnownAddressInfo {
 }
 
 /**
- * Durable Object class for the Hiro API
+ * Durable Object class for proxying and caching Hiro API requests
+ * 
+ * This Durable Object provides a rate-limited and cached interface to the Hiro API,
+ * which is the primary API service for the Stacks blockchain. It handles:
+ * 
+ * 1. Proxying requests to the Hiro API with rate limiting
+ * 2. Caching responses to reduce API calls
+ * 3. Tracking known Stacks addresses for background updates
+ * 4. Providing endpoints for blockchain data like address balances and assets
  */
 export class HiroApiDO extends DurableObject<Env> {
 	// can override values here for all endpoints
@@ -74,6 +88,14 @@ export class HiroApiDO extends DurableObject<Env> {
 		// ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
+	/**
+	 * Extracts all Stacks addresses that have cached data
+	 * 
+	 * This method scans the KV cache for keys matching the pattern for
+	 * address-related data and extracts the unique addresses.
+	 * 
+	 * @returns A promise that resolves to an array of unique Stacks addresses
+	 */
 	private async extractAddressesFromCache(): Promise<string[]> {
 		const addresses = new Set<string>();
 		let cursor: string | null = null;
@@ -96,6 +118,17 @@ export class HiroApiDO extends DurableObject<Env> {
 		return Array.from(addresses);
 	}
 
+	/**
+	 * Alarm handler that periodically updates cached address data
+	 * 
+	 * This method:
+	 * 1. Retrieves all known Stacks addresses from KV storage
+	 * 2. Updates the balance and asset data for each address
+	 * 3. Tracks success and failure statistics
+	 * 4. Logs the results of the update process
+	 * 
+	 * @returns A promise that resolves when the alarm handler completes
+	 */
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
@@ -146,11 +179,37 @@ export class HiroApiDO extends DurableObject<Env> {
 		}
 	}
 
-	// helper function to fetch data from KV cache with rate limiting for API calls
+	/**
+	 * Helper function to fetch data from KV cache with rate limiting for API calls
+	 * 
+	 * This method:
+	 * 1. Checks the cache for the requested data
+	 * 2. If not found or cache bust requested, fetches from the Hiro API
+	 * 3. Applies rate limiting to prevent API abuse
+	 * 4. Stores successful responses in the cache
+	 * 
+	 * @param endpoint - The API endpoint to fetch
+	 * @param cacheKey - The key to use for caching
+	 * @param bustCache - Whether to ignore the cache and force a fresh fetch
+	 * @returns A Response object with the requested data
+	 */
 	private async fetchWithCache(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
 		return this.fetcher.fetch(endpoint, cacheKey, bustCache);
 	}
 
+	/**
+	 * Main request handler for the Hiro API Durable Object
+	 * 
+	 * Handles the following endpoints:
+	 * - / - Returns a list of supported endpoints
+	 * - /extended - Proxies to the Hiro extended API
+	 * - /v2/info - Proxies to the Hiro v2 info endpoint
+	 * - /extended/v1/address/{address}/{action} - Fetches address data (balances/assets)
+	 * - /known-addresses - Lists all addresses being tracked
+	 * 
+	 * @param request - The incoming HTTP request
+	 * @returns A Response object with the requested data or an error message
+	 */
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname;

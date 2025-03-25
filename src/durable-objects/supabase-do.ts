@@ -4,6 +4,11 @@ import { AppConfig } from '../config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createJsonResponse } from '../utils/requests-responses-util';
 
+/**
+ * Interface for statistics response from Supabase
+ * 
+ * Contains various counts and top items from the database.
+ */
 interface StatsResponse {
 	total_jobs: number;
 	main_chat_jobs: number;
@@ -13,7 +18,15 @@ interface StatsResponse {
 }
 
 /**
- * Durable Object class for Supabase queries
+ * Durable Object class for handling Supabase database queries
+ * 
+ * This Durable Object provides a cached interface to Supabase database,
+ * which stores application data. It handles:
+ * 
+ * 1. Executing database queries using the Supabase client
+ * 2. Caching query results to reduce database load
+ * 3. Periodically refreshing cached data
+ * 4. Providing endpoints for statistics and other database information
  */
 export class SupabaseDO extends DurableObject<Env> {
 	private readonly CACHE_TTL: number;
@@ -45,6 +58,14 @@ export class SupabaseDO extends DurableObject<Env> {
 		// ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
+	/**
+	 * Fetches statistics from the Supabase database
+	 * 
+	 * This method calls a stored procedure in the database to retrieve
+	 * various statistics about the application's data.
+	 * 
+	 * @returns A promise that resolves to the statistics or undefined if the query fails
+	 */
 	private async fetchStats(): Promise<StatsResponse | undefined> {
 		try {
 			const { data, error } = await this.supabase
@@ -71,6 +92,16 @@ export class SupabaseDO extends DurableObject<Env> {
 		}
 	}
 
+	/**
+	 * Alarm handler that periodically updates cached database queries
+	 * 
+	 * This method:
+	 * 1. Fetches fresh statistics from the database
+	 * 2. Updates the cache with the new data
+	 * 3. Logs information about the update process
+	 * 
+	 * @returns A promise that resolves when the alarm handler completes
+	 */
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
@@ -102,6 +133,16 @@ export class SupabaseDO extends DurableObject<Env> {
 		}
 	}
 
+	/**
+	 * Main request handler for the Supabase Durable Object
+	 * 
+	 * Handles the following endpoints:
+	 * - / - Returns a list of supported endpoints
+	 * - /stats - Returns statistics from the database
+	 * 
+	 * @param request - The incoming HTTP request
+	 * @returns A Response object with the requested data or an error message
+	 */
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname;
