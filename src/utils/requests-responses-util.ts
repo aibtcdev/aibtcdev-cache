@@ -4,18 +4,18 @@ import { ApiError } from './api-error';
  * Generates a unique error ID for tracking purposes
  */
 function generateErrorId(): string {
-  // Use crypto.randomUUID() if available
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID().split('-')[0]; // Use first segment for brevity
-  }
-  
-  // Fallback to timestamp + random string
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+	// Use crypto.randomUUID() if available
+	if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+		return crypto.randomUUID().split('-')[0]; // Use first segment for brevity
+	}
+
+	// Fallback to timestamp + random string
+	return Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
 }
 
 /**
  * Creates CORS headers for cross-origin requests
- * 
+ *
  * @param origin - Optional origin to allow, defaults to '*' (all origins)
  * @returns HeadersInit object with CORS headers
  */
@@ -32,73 +32,73 @@ export function corsHeaders(origin?: string): HeadersInit {
  * Standard response format for all API responses
  */
 interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: {
-    id: string;
-    code: string;
-    message: string;
-    details?: Record<string, any>;
-  };
+	success: boolean;
+	data?: T;
+	error?: {
+		id: string;
+		code: string;
+		message: string;
+		details?: Record<string, any>;
+	};
 }
 
 /**
  * Creates a standardized success response
  */
 export function createSuccessResponse<T>(data: T, status = 200): Response {
-  const body: ApiResponse<T> = {
-    success: true,
-    data
-  };
-  
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...corsHeaders(),
-    },
-  });
+	const body: ApiResponse<T> = {
+		success: true,
+		data,
+	};
+
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: {
+			'Content-Type': 'application/json',
+			...corsHeaders(),
+		},
+	});
 }
 
 /**
  * Creates a standardized error response
  */
 export function createErrorResponse(error: unknown): Response {
-  let body: ApiResponse<never>;
-  let status = 500;
-  
-  if (error instanceof ApiError) {
-    body = {
-      success: false,
-      error: {
-        id: error.id,
-        code: error.code,
-        message: error.message,
-        details: error.details
-      }
-    };
-    status = error.status;
-  } else {
-    // Generate an error ID for non-ApiError errors
-    const errorId = generateErrorId();
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    body = {
-      success: false,
-      error: {
-        id: errorId,
-        code: 'INTERNAL_ERROR',
-        message: errorMessage || 'An unexpected error occurred'
-      }
-    };
-  }
-  
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...corsHeaders(),
-    },
-  });
+	let body: ApiResponse<never>;
+	let status = 500;
+
+	if (error instanceof ApiError) {
+		body = {
+			success: false,
+			error: {
+				id: error.id,
+				code: error.code,
+				message: error.message,
+				details: error.details,
+			},
+		};
+		status = error.status;
+	} else {
+		// Generate an error ID for non-ApiError errors
+		const errorId = generateErrorId();
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		body = {
+			success: false,
+			error: {
+				id: errorId,
+				code: 'INTERNAL_ERROR',
+				message: errorMessage || 'An unexpected error occurred',
+			},
+		};
+	}
+
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: {
+			'Content-Type': 'application/json',
+			...corsHeaders(),
+		},
+	});
 }
 
 /**
@@ -117,7 +117,7 @@ export function createJsonResponse(body: unknown, status = 200): Response {
 
 /**
  * Stringifies a value with special handling for BigInt values
- * 
+ *
  * @param value - The value to stringify
  * @param replacer - Optional replacer function for JSON.stringify
  * @param space - Optional space parameter for JSON.stringify formatting

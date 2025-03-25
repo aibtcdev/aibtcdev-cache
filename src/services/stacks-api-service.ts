@@ -11,7 +11,7 @@ import { Logger } from '../utils/logger';
 export class StacksApiService {
 	/**
 	 * Calls a read-only function on a Stacks smart contract
-	 * 
+	 *
 	 * @param contractAddress - The principal address of the contract
 	 * @param contractName - The name of the contract
 	 * @param functionName - The name of the function to call
@@ -30,7 +30,7 @@ export class StacksApiService {
 	): Promise<ClarityValue> {
 		const logger = Logger.getInstance();
 		const startTime = Date.now();
-		
+
 		try {
 			const result = await fetchCallReadOnlyFunction({
 				contractAddress,
@@ -40,29 +40,30 @@ export class StacksApiService {
 				senderAddress,
 				network,
 			});
-			
+
 			const duration = Date.now() - startTime;
-			if (duration > 2000) { // Log if call takes more than 2 seconds
-				logger.warn(`Slow contract call to ${contractAddress}.${contractName}::${functionName}`, { 
+			if (duration > 2000) {
+				// Log if call takes more than 2 seconds
+				logger.warn(`Slow contract call to ${contractAddress}.${contractName}::${functionName}`, {
 					duration,
-					network
+					network,
 				});
 			}
-			
+
 			return result;
 		} catch (error) {
 			const duration = Date.now() - startTime;
 			logger.error(
-				`Failed to call ${contractAddress}.${contractName}::${functionName}`, 
+				`Failed to call ${contractAddress}.${contractName}::${functionName}`,
 				error instanceof Error ? error : new Error(String(error)),
 				{ duration, network }
 			);
-			
+
 			throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
 				message: error instanceof Error ? error.message : String(error),
 				contract: `${contractAddress}.${contractName}`,
 				function: functionName,
-				network
+				network,
 			});
 		}
 	}

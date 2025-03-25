@@ -167,7 +167,7 @@ export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue
 				return responseErrorCV(convertToClarityValue(simplifiedArg.value));
 			default:
 				throw new ApiError(ErrorCode.VALIDATION_ERROR, {
-					message: `Unsupported clarity type: ${simplifiedArg.type}`
+					message: `Unsupported clarity type: ${simplifiedArg.type}`,
 				});
 		}
 	} catch (error) {
@@ -175,12 +175,12 @@ export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue
 		if (error instanceof ApiError) {
 			throw error;
 		}
-		
+
 		// Otherwise, wrap in an ApiError
 		throw new ApiError(ErrorCode.VALIDATION_ERROR, {
 			message: `Failed to convert to Clarity value of type ${type}`,
 			error: error instanceof Error ? error.message : String(error),
-			valueType: type
+			valueType: type,
 		});
 	}
 }

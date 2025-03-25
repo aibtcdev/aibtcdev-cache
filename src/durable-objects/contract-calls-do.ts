@@ -101,50 +101,54 @@ export class ContractCallsDO extends DurableObject<Env> {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		return handleRequest(async () => {
-			if (!path.startsWith(this.BASE_PATH)) {
-				throw new ApiError(ErrorCode.NOT_FOUND, { resource: path });
+		return handleRequest(
+			async () => {
+				if (!path.startsWith(this.BASE_PATH)) {
+					throw new ApiError(ErrorCode.NOT_FOUND, { resource: path });
+				}
+
+				// Remove base path to get the endpoint
+				const endpoint = path.replace(this.BASE_PATH, '');
+
+				// Handle root path
+				if (endpoint === '' || endpoint === '/') {
+					return {
+						message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+					};
+				}
+
+				// Handle known contracts endpoint
+				if (endpoint === '/known-contracts') {
+					return await this.contractAbiService.getKnownContracts();
+				}
+
+				// Handle ABI endpoint
+				if (endpoint.startsWith('/abi/')) {
+					return await this.handleAbiRequest(endpoint);
+				}
+
+				// Handle read-only contract call endpoint
+				if (endpoint.startsWith('/read-only/')) {
+					return await this.handleReadOnlyRequest(endpoint, request);
+				}
+
+				// Handle decode clarity value endpoint
+				if (endpoint === '/decode-clarity-value') {
+					return await this.handleDecodeClarityValueRequest(request);
+				}
+
+				// If we get here, the endpoint is not supported
+				throw new ApiError(ErrorCode.NOT_FOUND, {
+					resource: endpoint,
+					supportedEndpoints: this.SUPPORTED_ENDPOINTS,
+				});
+			},
+			this.env,
+			{
+				// Contract calls can be slow, so set a higher threshold
+				slowThreshold: 2000, // 2 seconds
 			}
-
-			// Remove base path to get the endpoint
-			const endpoint = path.replace(this.BASE_PATH, '');
-
-			// Handle root path
-			if (endpoint === '' || endpoint === '/') {
-				return {
-					message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-				};
-			}
-
-			// Handle known contracts endpoint
-			if (endpoint === '/known-contracts') {
-				return await this.contractAbiService.getKnownContracts();
-			}
-
-			// Handle ABI endpoint
-			if (endpoint.startsWith('/abi/')) {
-				return await this.handleAbiRequest(endpoint);
-			}
-
-			// Handle read-only contract call endpoint
-			if (endpoint.startsWith('/read-only/')) {
-				return await this.handleReadOnlyRequest(endpoint, request);
-			}
-
-			// Handle decode clarity value endpoint
-			if (endpoint === '/decode-clarity-value') {
-				return await this.handleDecodeClarityValueRequest(request);
-			}
-
-			// If we get here, the endpoint is not supported
-			throw new ApiError(ErrorCode.NOT_FOUND, { 
-				resource: endpoint,
-				supportedEndpoints: this.SUPPORTED_ENDPOINTS 
-			});
-		}, this.env, {
-			// Contract calls can be slow, so set a higher threshold
-			slowThreshold: 2000 // 2 seconds
-		});
+		);
 	}
 
 	/**
@@ -159,8 +163,8 @@ export class ContractCallsDO extends DurableObject<Env> {
 	private async handleAbiRequest(endpoint: string): Promise<any> {
 		const parts = endpoint.split('/').filter(Boolean);
 		if (parts.length !== 3) {
-			throw new ApiError(ErrorCode.INVALID_REQUEST, { 
-				reason: 'Invalid ABI endpoint format. Use /abi/{contractAddress}/{contractName}' 
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Invalid ABI endpoint format. Use /abi/{contractAddress}/{contractName}',
 			});
 		}
 
@@ -198,7 +202,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 		const parts = endpoint.split('/').filter(Boolean);
 		if (parts.length !== 4) {
 			throw new ApiError(ErrorCode.INVALID_REQUEST, {
-				reason: 'Invalid read-only endpoint format. Use /read-only/{contractAddress}/{contractName}/{functionName}'
+				reason: 'Invalid read-only endpoint format. Use /read-only/{contractAddress}/{contractName}/{functionName}',
 			});
 		}
 
@@ -214,7 +218,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 		// Only accept POST requests for contract calls
 		if (request.method !== 'POST') {
 			throw new ApiError(ErrorCode.INVALID_REQUEST, {
-				reason: 'Only POST requests are supported for contract calls'
+				reason: 'Only POST requests are supported for contract calls',
 			});
 		}
 
@@ -236,7 +240,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 		if (!this.contractAbiService.validateFunctionInABI(abi, functionName)) {
 			throw new ApiError(ErrorCode.INVALID_FUNCTION, {
 				function: functionName,
-				contract: `${contractAddress}.${contractName}`
+				contract: `${contractAddress}.${contractName}`,
 			});
 		}
 
@@ -245,7 +249,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 		if (!argsValidation.valid) {
 			throw new ApiError(ErrorCode.INVALID_ARGUMENTS, {
 				function: functionName,
-				reason: argsValidation.error || 'Invalid function arguments'
+				reason: argsValidation.error || 'Invalid function arguments',
 			});
 		}
 
@@ -278,7 +282,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 		// Only accept POST requests for decoding
 		if (request.method !== 'POST') {
 			throw new ApiError(ErrorCode.INVALID_REQUEST, {
-				reason: 'Only POST requests are supported for decoding Clarity values'
+				reason: 'Only POST requests are supported for decoding Clarity values',
 			});
 		}
 
@@ -291,7 +295,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 		if (!body.clarityValue) {
 			throw new ApiError(ErrorCode.INVALID_REQUEST, {
-				reason: 'Missing required field: clarityValue'
+				reason: 'Missing required field: clarityValue',
 			});
 		}
 
@@ -305,7 +309,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 			}
 		} catch (error) {
 			throw new ApiError(ErrorCode.VALIDATION_ERROR, {
-				message: `Invalid Clarity value format: ${error instanceof Error ? error.message : String(error)}`
+				message: `Invalid Clarity value format: ${error instanceof Error ? error.message : String(error)}`,
 			});
 		}
 

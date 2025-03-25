@@ -10,7 +10,7 @@ import { handleRequest } from '../utils/request-handler';
 
 /**
  * Interface representing information about known Stacks addresses
- * 
+ *
  * This structure is used to return information about addresses that
  * have been stored and/or cached by the Durable Object.
  */
@@ -29,10 +29,10 @@ interface KnownAddressInfo {
 
 /**
  * Durable Object class for proxying and caching Hiro API requests
- * 
+ *
  * This Durable Object provides a rate-limited and cached interface to the Hiro API,
  * which is the primary API service for the Stacks blockchain. It handles:
- * 
+ *
  * 1. Proxying requests to the Hiro API with rate limiting
  * 2. Caching responses to reduce API calls
  * 3. Tracking known Stacks addresses for background updates
@@ -93,10 +93,10 @@ export class HiroApiDO extends DurableObject<Env> {
 
 	/**
 	 * Extracts all Stacks addresses that have cached data
-	 * 
+	 *
 	 * This method scans the KV cache for keys matching the pattern for
 	 * address-related data and extracts the unique addresses.
-	 * 
+	 *
 	 * @returns A promise that resolves to an array of unique Stacks addresses
 	 */
 	private async extractAddressesFromCache(): Promise<string[]> {
@@ -123,13 +123,13 @@ export class HiroApiDO extends DurableObject<Env> {
 
 	/**
 	 * Alarm handler that periodically updates cached address data
-	 * 
+	 *
 	 * This method:
 	 * 1. Retrieves all known Stacks addresses from KV storage
 	 * 2. Updates the balance and asset data for each address
 	 * 3. Tracks success and failure statistics
 	 * 4. Logs the results of the update process
-	 * 
+	 *
 	 * @returns A promise that resolves when the alarm handler completes
 	 */
 	async alarm(): Promise<void> {
@@ -184,13 +184,13 @@ export class HiroApiDO extends DurableObject<Env> {
 
 	/**
 	 * Helper function to fetch data from KV cache with rate limiting for API calls
-	 * 
+	 *
 	 * This method:
 	 * 1. Checks the cache for the requested data
 	 * 2. If not found or cache bust requested, fetches from the Hiro API
 	 * 3. Applies rate limiting to prevent API abuse
 	 * 4. Stores successful responses in the cache
-	 * 
+	 *
 	 * @param endpoint - The API endpoint to fetch
 	 * @param cacheKey - The key to use for caching
 	 * @param bustCache - Whether to ignore the cache and force a fresh fetch
@@ -202,14 +202,14 @@ export class HiroApiDO extends DurableObject<Env> {
 
 	/**
 	 * Main request handler for the Hiro API Durable Object
-	 * 
+	 *
 	 * Handles the following endpoints:
 	 * - / - Returns a list of supported endpoints
 	 * - /extended - Proxies to the Hiro extended API
 	 * - /v2/info - Proxies to the Hiro v2 info endpoint
 	 * - /extended/v1/address/{address}/{action} - Fetches address data (balances/assets)
 	 * - /known-addresses - Lists all addresses being tracked
-	 * 
+	 *
 	 * @param request - The incoming HTTP request
 	 * @returns A Response object with the requested data or an error message
 	 */
@@ -223,118 +223,117 @@ export class HiroApiDO extends DurableObject<Env> {
 			// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
 
-		return handleRequest(async () => {
-			// handle requests that don't match the base path
-			if (!path.startsWith(this.BASE_PATH)) {
-				throw new ApiError(ErrorCode.NOT_FOUND, { 
-					resource: path,
-					basePath: this.BASE_PATH
-				});
-			}
-
-			// parse requested endpoint from base path
-			const endpoint = path.replace(this.BASE_PATH, '');
-
-			// handle root route
-			if (endpoint === '' || endpoint === '/') {
-				return {
-					message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-				};
-			}
-
-			// handle unsupported endpoints
-			const isSupported = this.SUPPORTED_ENDPOINTS.some(
-				(path) =>
-					endpoint === path || // exact match
-					(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
-			);
-
-			if (!isSupported) {
-				throw new ApiError(ErrorCode.NOT_FOUND, {
-					resource: endpoint,
-					supportedEndpoints: this.SUPPORTED_ENDPOINTS
-				});
-			}
-
-			// create cache key from endpoint
-			const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
-
-			// handle /extended path
-			if (endpoint === '/extended') {
-				const response = await this.fetchWithCache(endpoint, cacheKey);
-				return await response.json();
-			}
-
-			// handle /v2/info path
-			if (endpoint === '/v2/info') {
-				const response = await this.fetchWithCache(endpoint, cacheKey);
-				return await response.json();
-			}
-
-			// handle /extended/v1/address path
-			if (endpoint.startsWith('/extended/v1/address/')) {
-				// Remove '/extended/v1/address/' from the start
-				const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
-
-				if (pathParts.length < 2) {
-					throw new ApiError(ErrorCode.INVALID_REQUEST, {
-						reason: 'Invalid address path format, expected: /extended/v1/address/{address}/{action}'
+		return handleRequest(
+			async () => {
+				// handle requests that don't match the base path
+				if (!path.startsWith(this.BASE_PATH)) {
+					throw new ApiError(ErrorCode.NOT_FOUND, {
+						resource: path,
+						basePath: this.BASE_PATH,
 					});
 				}
 
-				// get address and action from parts
-				const address = pathParts[0];
-				const action = pathParts[1];
+				// parse requested endpoint from base path
+				const endpoint = path.replace(this.BASE_PATH, '');
 
-				// Store the address when it's requested
-				await addKnownAddress(this.env, address);
-
-				// Validate the action
-				const validActions = ['assets', 'balances'];
-				if (!validActions.includes(action)) {
-					throw new ApiError(ErrorCode.INVALID_REQUEST, {
-						reason: `Invalid action: ${action}`,
-						validActions
-					});
+				// handle root route
+				if (endpoint === '' || endpoint === '/') {
+					return {
+						message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+					};
 				}
 
-				// Construct the endpoint path
-				const apiEndpoint = `/extended/v1/address/${address}/${action}`;
-				const response = await this.fetchWithCache(apiEndpoint, cacheKey);
-				return await response.json();
-			}
-
-			// handle /known-addresses path
-			if (endpoint === '/known-addresses') {
-				const [knownAddresses, cachedAddresses] = await Promise.all([
-					getKnownAddresses(this.env), 
-					this.extractAddressesFromCache()
-				]);
-				const uncachedAddresses = knownAddresses.filter(
-					(address) => !cachedAddresses.includes(address)
+				// handle unsupported endpoints
+				const isSupported = this.SUPPORTED_ENDPOINTS.some(
+					(path) =>
+						endpoint === path || // exact match
+						(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
 				);
 
-				return {
-					stats: {
-						storage: knownAddresses.length,
-						cached: cachedAddresses.length,
-						uncached: uncachedAddresses.length,
-					},
-					addresses: {
-						storage: knownAddresses,
-						cached: cachedAddresses,
-						uncached: uncachedAddresses,
-					},
-				};
-			}
+				if (!isSupported) {
+					throw new ApiError(ErrorCode.NOT_FOUND, {
+						resource: endpoint,
+						supportedEndpoints: this.SUPPORTED_ENDPOINTS,
+					});
+				}
 
-			// This should never happen due to the isSupported check above
-			throw new ApiError(ErrorCode.NOT_FOUND, {
-				resource: endpoint,
-				supportedEndpoints: this.SUPPORTED_ENDPOINTS
-			});
-		}, this.env, {
-			slowThreshold: 1500 // 1.5 seconds
-		});
+				// create cache key from endpoint
+				const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+
+				// handle /extended path
+				if (endpoint === '/extended') {
+					const response = await this.fetchWithCache(endpoint, cacheKey);
+					return await response.json();
+				}
+
+				// handle /v2/info path
+				if (endpoint === '/v2/info') {
+					const response = await this.fetchWithCache(endpoint, cacheKey);
+					return await response.json();
+				}
+
+				// handle /extended/v1/address path
+				if (endpoint.startsWith('/extended/v1/address/')) {
+					// Remove '/extended/v1/address/' from the start
+					const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
+
+					if (pathParts.length < 2) {
+						throw new ApiError(ErrorCode.INVALID_REQUEST, {
+							reason: 'Invalid address path format, expected: /extended/v1/address/{address}/{action}',
+						});
+					}
+
+					// get address and action from parts
+					const address = pathParts[0];
+					const action = pathParts[1];
+
+					// Store the address when it's requested
+					await addKnownAddress(this.env, address);
+
+					// Validate the action
+					const validActions = ['assets', 'balances'];
+					if (!validActions.includes(action)) {
+						throw new ApiError(ErrorCode.INVALID_REQUEST, {
+							reason: `Invalid action: ${action}`,
+							validActions,
+						});
+					}
+
+					// Construct the endpoint path
+					const apiEndpoint = `/extended/v1/address/${address}/${action}`;
+					const response = await this.fetchWithCache(apiEndpoint, cacheKey);
+					return await response.json();
+				}
+
+				// handle /known-addresses path
+				if (endpoint === '/known-addresses') {
+					const [knownAddresses, cachedAddresses] = await Promise.all([getKnownAddresses(this.env), this.extractAddressesFromCache()]);
+					const uncachedAddresses = knownAddresses.filter((address) => !cachedAddresses.includes(address));
+
+					return {
+						stats: {
+							storage: knownAddresses.length,
+							cached: cachedAddresses.length,
+							uncached: uncachedAddresses.length,
+						},
+						addresses: {
+							storage: knownAddresses,
+							cached: cachedAddresses,
+							uncached: uncachedAddresses,
+						},
+					};
+				}
+
+				// This should never happen due to the isSupported check above
+				throw new ApiError(ErrorCode.NOT_FOUND, {
+					resource: endpoint,
+					supportedEndpoints: this.SUPPORTED_ENDPOINTS,
+				});
+			},
+			this.env,
+			{
+				slowThreshold: 1500, // 1.5 seconds
+			}
+		);
 	}
 }
