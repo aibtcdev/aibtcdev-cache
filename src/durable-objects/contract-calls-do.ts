@@ -13,15 +13,17 @@ import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } fr
  *
  * This defines the structure of the JSON payload that must be sent
  * when making read-only contract function calls.
- * 
+ *
  * The functionArgs can be either:
  * - ClarityValue[] - For TypeScript clients using @stacks/transactions
  * - SimplifiedClarityValue[] - For non-TypeScript clients using a simpler JSON format
  */
 interface ContractCallRequest {
 	functionArgs: (ClarityValue | SimplifiedClarityValue)[];
-	network: StacksNetworkName;
-	senderAddress: string;
+	network?: StacksNetworkName;
+	senderAddress?: string;
+	strictJsonCompat?: boolean;
+	preserveContainers?: boolean;
 }
 
 /**
@@ -212,7 +214,9 @@ export class ContractCallsDO extends DurableObject<Env> {
 			const rawFunctionArgs = body.functionArgs || [];
 			const network = (body.network || 'testnet') as StacksNetworkName;
 			const senderAddress = body.senderAddress || contractAddress;
-			
+			const strictJsonCompat = body.strictJsonCompat || true;
+			const preserveContainers = body.preserveContainers || false;
+
 			// Convert any simplified arguments to ClarityValues
 			const functionArgs = rawFunctionArgs.map(convertToClarityValue);
 
@@ -243,7 +247,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 				cacheKey
 			);
 
-			const convertedResult = decodeClarityValues(result, true, true);
+			const convertedResult = decodeClarityValues(result, strictJsonCompat, preserveContainers);
 
 			return createJsonResponse(convertedResult);
 		} catch (error) {

@@ -12,6 +12,7 @@ import {
 	boolCV,
 	principalCV,
 	bufferCV,
+	bufferCVFromString,
 	stringAsciiCV,
 	stringUtf8CV,
 	listCV,
@@ -135,7 +136,7 @@ export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue
 			case 'buffer':
 				// Handle buffer conversion based on input format
 				if (typeof simplifiedArg.value === 'string') {
-					return bufferCV(Buffer.from(simplifiedArg.value));
+					return bufferCVFromString(simplifiedArg.value);
 				}
 				return bufferCV(Buffer.from(simplifiedArg.value));
 			case 'string':
