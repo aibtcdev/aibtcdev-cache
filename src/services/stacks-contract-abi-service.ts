@@ -5,20 +5,33 @@ import { CacheService } from './kv-cache-service';
 import { getNetworkByPrincipal } from '../utils/stacks-network-util';
 
 /**
- * Service for fetching and managing contract ABIs
+ * Service for fetching and managing Clarity smart contract ABIs
+ * Handles caching, validation, and tracking of known contracts
  */
 export class ContractAbiService {
 	private readonly cacheService: CacheService;
 	private readonly ABI_CACHE_KEY_PREFIX = 'contract_abi';
 	private readonly KNOWN_CONTRACTS_KEY = 'known_contracts';
 
+	/**
+	 * Creates a new contract ABI service
+	 * 
+	 * @param env - The Cloudflare Worker environment
+	 * @param cacheTtl - Time-to-live in seconds for cached items (not used for ABIs)
+	 */
 	constructor(private readonly env: Env, private readonly cacheTtl: number) {
 		// No TTL for ABIs since contract code never changes after deployment
 		this.cacheService = new CacheService(env, 1000, true);
 	}
 
 	/**
-	 * Fetches a contract's ABI and caches it
+	 * Fetches a contract's ABI and caches it indefinitely
+	 * 
+	 * @param contractAddress - The principal address of the contract
+	 * @param contractName - The name of the contract
+	 * @param bustCache - If true, bypass the cache and force a fresh fetch
+	 * @returns A promise that resolves to the contract's ABI
+	 * @throws Error if the contract address is invalid or the ABI fetch fails
 	 */
 	async fetchContractABI(contractAddress: string, contractName: string, bustCache = false): Promise<ClarityAbi> {
 		// Validate contract address
@@ -60,6 +73,10 @@ export class ContractAbiService {
 
 	/**
 	 * Validates if a function exists in the contract ABI
+	 * 
+	 * @param abi - The contract ABI to check
+	 * @param functionName - The name of the function to validate
+	 * @returns True if the function exists in the ABI, false otherwise
 	 */
 	validateFunctionInABI(abi: ClarityAbi, functionName: string): boolean {
 		if (!abi?.functions) {
@@ -71,6 +88,11 @@ export class ContractAbiService {
 
 	/**
 	 * Validates function arguments against the ABI specification
+	 * 
+	 * @param abi - The contract ABI to check against
+	 * @param functionName - The name of the function to validate
+	 * @param functionArgs - The arguments to validate
+	 * @returns An object with valid flag and optional error message
 	 */
 	validateFunctionArgs(abi: ClarityAbi, functionName: string, functionArgs: any[]): { valid: boolean; error?: string } {
 		if (!abi?.functions) {
@@ -101,7 +123,9 @@ export class ContractAbiService {
 	}
 
 	/**
-	 * Gets the list of known contracts
+	 * Gets the list of known contracts that have been cached
+	 * 
+	 * @returns A promise that resolves to an object with contract statistics and details
 	 */
 	async getKnownContracts(): Promise<{
 		stats: { total: number; cached: number };
@@ -124,6 +148,9 @@ export class ContractAbiService {
 
 	/**
 	 * Adds a contract to the list of known contracts
+	 * 
+	 * @param contractAddress - The principal address of the contract
+	 * @param contractName - The name of the contract
 	 */
 	private async addKnownContract(contractAddress: string, contractName: string): Promise<void> {
 		const knownContracts = await this.getKnownContracts();

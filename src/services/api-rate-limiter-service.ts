@@ -5,7 +5,8 @@ import { TokenBucket } from './token-bucket-service';
 import { CacheService } from './kv-cache-service';
 
 /**
- * A service that provides rate-limited API fetching capabilities
+ * Service that provides rate-limited API fetching capabilities
+ * Handles caching, request queuing, and rate limiting for external API calls
  */
 export class ApiRateLimiterService {
 	private readonly cacheService: CacheService;
@@ -15,6 +16,17 @@ export class ApiRateLimiterService {
 	private lastRequestTime = 0;
 	private readonly minRequestSpacing: number;
 
+	/**
+	 * Creates a new API rate limiter service
+	 * 
+	 * @param env - The Cloudflare Worker environment
+	 * @param baseApiUrl - The base URL for the external API
+	 * @param cacheTtl - Time-to-live in seconds for cached API responses
+	 * @param maxRequestsPerInterval - Maximum number of requests allowed in the interval
+	 * @param intervalMs - The time interval in milliseconds for rate limiting
+	 * @param maxRetries - Maximum number of times to retry a failed request
+	 * @param retryDelay - Base delay in milliseconds between retries
+	 */
 	constructor(
 		private readonly env: Env,
 		private readonly baseApiUrl: string,
@@ -39,20 +51,26 @@ export class ApiRateLimiterService {
 
 	/**
 	 * Returns the current length of the request queue
+	 * 
+	 * @returns The number of requests currently in the queue
 	 */
 	public getQueueLength(): number {
 		return this.requestQueue.getQueueLength();
 	}
 
 	/**
-	 * Returns the current number of available tokens
+	 * Returns the current number of available tokens in the rate limiter
+	 * 
+	 * @returns The number of tokens currently available
 	 */
 	public getTokenCount(): number {
 		return this.tokenBucket.getAvailableTokens();
 	}
 
 	/**
-	 * Returns the number of requests made in the current window
+	 * Returns the number of requests made in the current time window
+	 * 
+	 * @returns The count of requests made in the current interval
 	 */
 	public getWindowRequestsCount(): number {
 		return this.windowRequests;
@@ -60,6 +78,11 @@ export class ApiRateLimiterService {
 
 	/**
 	 * Fetches data from an API endpoint with rate limiting and caching
+	 * 
+	 * @param endpoint - The API endpoint path to fetch (will be appended to baseApiUrl)
+	 * @param cacheKey - The key to use for caching the response
+	 * @param bustCache - If true, bypass the cache and force a fresh request
+	 * @returns A promise that resolves to the API response
 	 */
 	public async fetch(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
 		// Check cache first - bypass rate limiting for cached responses
@@ -91,6 +114,11 @@ export class ApiRateLimiterService {
 
 	/**
 	 * Makes the actual API request and handles caching the response
+	 * 
+	 * @param endpoint - The API endpoint path to fetch
+	 * @param cacheKey - The key to use for caching the response
+	 * @returns A promise that resolves to the API response
+	 * @throws Error if the request fails and should be retried
 	 */
 	private async makeRequest(endpoint: string, cacheKey: string): Promise<Response> {
 		// Separate the path from the base URL, if there is one
