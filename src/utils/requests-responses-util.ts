@@ -1,3 +1,9 @@
+/**
+ * Creates CORS headers for cross-origin requests
+ * 
+ * @param origin - Optional origin to allow, defaults to '*' (all origins)
+ * @returns HeadersInit object with CORS headers
+ */
 export function corsHeaders(origin?: string): HeadersInit {
 	return {
 		'Access-Control-Allow-Origin': origin || '*',
@@ -7,6 +13,13 @@ export function corsHeaders(origin?: string): HeadersInit {
 	};
 }
 
+/**
+ * Creates a JSON response with appropriate headers
+ * 
+ * @param body - The response body (will be stringified if not already a string)
+ * @param status - HTTP status code, defaults to 200
+ * @returns Response object with JSON content type and CORS headers
+ */
 export function createJsonResponse(body: unknown, status = 200): Response {
 	return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
 		status,
@@ -17,6 +30,14 @@ export function createJsonResponse(body: unknown, status = 200): Response {
 	});
 }
 
+/**
+ * Stringifies a value with special handling for BigInt values
+ * 
+ * @param value - The value to stringify
+ * @param replacer - Optional replacer function for JSON.stringify
+ * @param space - Optional space parameter for JSON.stringify formatting
+ * @returns JSON string with BigInt values converted to strings with 'n' suffix
+ */
 export function stringifyWithBigInt(value: unknown, replacer?: (key: string, value: unknown) => unknown, space?: string | number): string {
 	const customReplacer = (key: string, val: unknown): unknown => {
 		if (typeof val === 'bigint') {
