@@ -1,25 +1,25 @@
-import { 
-  ClarityType, 
-  ClarityValue, 
-  cvToValue, 
-  ListCV, 
-  ResponseErrorCV, 
-  ResponseOkCV, 
-  SomeCV, 
-  TupleCV,
-  uintCV,
-  intCV,
-  booleanCV,
-  principalCV,
-  bufferCV,
-  stringAsciiCV,
-  stringUtf8CV,
-  listCV,
-  tupleCV,
-  noneCV,
-  someCV,
-  responseOkCV,
-  responseErrorCV
+import {
+	ClarityType,
+	ClarityValue,
+	cvToValue,
+	ListCV,
+	ResponseErrorCV,
+	ResponseOkCV,
+	SomeCV,
+	TupleCV,
+	uintCV,
+	intCV,
+	boolCV,
+	principalCV,
+	bufferCV,
+	stringAsciiCV,
+	stringUtf8CV,
+	listCV,
+	tupleCV,
+	noneCV,
+	someCV,
+	responseOkCV,
+	responseErrorCV,
 } from '@stacks/transactions';
 
 /**
@@ -27,13 +27,13 @@ import {
  * Used for non-TypeScript clients to easily construct Clarity values
  */
 export interface SimplifiedClarityValue {
-  type: string;
-  value: any;
+	type: string;
+	value: any;
 }
 
 /**
  * Recursively decodes Clarity values into JavaScript objects
- * 
+ *
  * @param value - The Clarity value to decode
  * @param strictJsonCompat - If true, ensures values are JSON compatible
  * @param preserveContainers - If true, preserves container types in the output
@@ -76,7 +76,7 @@ export function decodeClarityValues(value: ClarityValue, strictJsonCompat = fals
 
 /**
  * Recursively decodes a Clarity tuple into a JavaScript object
- * 
+ *
  * @param tuple - The Clarity tuple to decode
  * @param strictJsonCompat - If true, ensures values are JSON compatible
  * @param preserveContainers - If true, preserves container types in the output
@@ -92,7 +92,7 @@ export function decodeTupleRecursively(tuple: TupleCV, strictJsonCompat = false,
 
 /**
  * Recursively decodes a Clarity list into a JavaScript array
- * 
+ *
  * @param list - The Clarity list to decode
  * @param strictJsonCompat - If true, ensures values are JSON compatible
  * @param preserveContainers - If true, preserves container types in the output
@@ -107,68 +107,65 @@ export function decodeListRecursively(list: ListCV, strictJsonCompat = false, pr
 /**
  * Converts a simplified Clarity value representation to a proper ClarityValue object
  * This allows non-TypeScript clients to use a simpler JSON format for contract calls
- * 
+ *
  * @param arg - Either a ClarityValue object or a simplified representation
  * @returns A proper ClarityValue object
  * @throws Error if the type is unsupported or the conversion fails
  */
 export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue): ClarityValue {
-  // If it's already a ClarityValue (has a type property that's a ClarityType enum)
-  if (typeof arg === 'object' && arg !== null && 'type' in arg && 
-      Object.values(ClarityType).includes(arg.type as ClarityType)) {
-    return arg as ClarityValue;
-  }
-  
-  // Otherwise, treat it as a simplified object
-  const simplifiedArg = arg as SimplifiedClarityValue;
-  const type = simplifiedArg.type.toLowerCase();
-  
-  try {
-    switch (type) {
-      case 'uint':
-        return uintCV(BigInt(simplifiedArg.value));
-      case 'int':
-        return intCV(BigInt(simplifiedArg.value));
-      case 'bool':
-        return booleanCV(Boolean(simplifiedArg.value));
-      case 'principal':
-        return principalCV(String(simplifiedArg.value));
-      case 'buffer':
-        // Handle buffer conversion based on input format
-        if (typeof simplifiedArg.value === 'string') {
-          return bufferCV(Buffer.from(simplifiedArg.value));
-        }
-        return bufferCV(Buffer.from(simplifiedArg.value));
-      case 'string':
-      case 'stringascii':
-        return stringAsciiCV(String(simplifiedArg.value));
-      case 'stringutf8':
-        return stringUtf8CV(String(simplifiedArg.value));
-      case 'list':
-        return listCV(
-          (simplifiedArg.value as SimplifiedClarityValue[]).map(convertToClarityValue)
-        );
-      case 'tuple':
-        const tupleObj: Record<string, ClarityValue> = {};
-        Object.entries(simplifiedArg.value).forEach(([key, val]) => {
-          tupleObj[key] = convertToClarityValue(val as SimplifiedClarityValue);
-        });
-        return tupleCV(tupleObj);
-      case 'none':
-        return noneCV();
-      case 'optional':
-      case 'some':
-        return someCV(convertToClarityValue(simplifiedArg.value));
-      case 'ok':
-      case 'responseok':
-        return responseOkCV(convertToClarityValue(simplifiedArg.value));
-      case 'err':
-      case 'responseerr':
-        return responseErrorCV(convertToClarityValue(simplifiedArg.value));
-      default:
-        throw new Error(`Unsupported clarity type: ${simplifiedArg.type}`);
-    }
-  } catch (error) {
-    throw new Error(`Failed to convert to Clarity value of type ${type}: ${error instanceof Error ? error.message : String(error)}`);
-  }
+	// If it's already a ClarityValue (has a type property that's a ClarityType enum)
+	if (typeof arg === 'object' && arg !== null && 'type' in arg && Object.values(ClarityType).includes(arg.type as ClarityType)) {
+		return arg as ClarityValue;
+	}
+
+	// Otherwise, treat it as a simplified object
+	const simplifiedArg = arg as SimplifiedClarityValue;
+	const type = simplifiedArg.type.toLowerCase();
+
+	try {
+		switch (type) {
+			case 'uint':
+				return uintCV(BigInt(simplifiedArg.value));
+			case 'int':
+				return intCV(BigInt(simplifiedArg.value));
+			case 'bool':
+				return boolCV(Boolean(simplifiedArg.value));
+			case 'principal':
+				return principalCV(String(simplifiedArg.value));
+			case 'buffer':
+				// Handle buffer conversion based on input format
+				if (typeof simplifiedArg.value === 'string') {
+					return bufferCV(Buffer.from(simplifiedArg.value));
+				}
+				return bufferCV(Buffer.from(simplifiedArg.value));
+			case 'string':
+			case 'stringascii':
+				return stringAsciiCV(String(simplifiedArg.value));
+			case 'stringutf8':
+				return stringUtf8CV(String(simplifiedArg.value));
+			case 'list':
+				return listCV((simplifiedArg.value as SimplifiedClarityValue[]).map(convertToClarityValue));
+			case 'tuple':
+				const tupleObj: Record<string, ClarityValue> = {};
+				Object.entries(simplifiedArg.value).forEach(([key, val]) => {
+					tupleObj[key] = convertToClarityValue(val as SimplifiedClarityValue);
+				});
+				return tupleCV(tupleObj);
+			case 'none':
+				return noneCV();
+			case 'optional':
+			case 'some':
+				return someCV(convertToClarityValue(simplifiedArg.value));
+			case 'ok':
+			case 'responseok':
+				return responseOkCV(convertToClarityValue(simplifiedArg.value));
+			case 'err':
+			case 'responseerr':
+				return responseErrorCV(convertToClarityValue(simplifiedArg.value));
+			default:
+				throw new Error(`Unsupported clarity type: ${simplifiedArg.type}`);
+		}
+	} catch (error) {
+		throw new Error(`Failed to convert to Clarity value of type ${type}: ${error instanceof Error ? error.message : String(error)}`);
+	}
 }
