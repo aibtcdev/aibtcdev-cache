@@ -194,13 +194,12 @@ export class ContractCallsDO extends DurableObject<Env> {
 	 * @param request - The original HTTP request containing function arguments
 	 * @returns A Response with the function call result or an error message
 	 */
-	private async handleReadOnlyRequest(endpoint: string, request: Request): Promise<Response> {
+	private async handleReadOnlyRequest(endpoint: string, request: Request): Promise<any> {
 		const parts = endpoint.split('/').filter(Boolean);
 		if (parts.length !== 4) {
-			return createJsonResponse(
-				{ error: 'Invalid read-only endpoint format. Use /read-only/{contractAddress}/{contractName}/{functionName}' },
-				400
-			);
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Invalid read-only endpoint format. Use /read-only/{contractAddress}/{contractName}/{functionName}'
+			});
 		}
 
 		const contractAddress = parts[1];
@@ -209,59 +208,61 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 		// Validate contract address
 		if (!validateStacksAddress(contractAddress)) {
-			return createJsonResponse({ error: `Invalid contract address: ${contractAddress}` }, 400);
+			throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: contractAddress });
 		}
 
 		// Only accept POST requests for contract calls
 		if (request.method !== 'POST') {
-			return createJsonResponse({ error: 'Only POST requests are supported for contract calls' }, 405);
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Only POST requests are supported for contract calls'
+			});
 		}
 
-		try {
-			// Parse function arguments from request body
-			const body = (await request.json()) as ContractCallRequest;
-			const rawFunctionArgs = body.functionArgs || [];
-			const network = (body.network || 'testnet') as StacksNetworkName;
-			const senderAddress = body.senderAddress || contractAddress;
-			const strictJsonCompat = body.strictJsonCompat || true;
-			const preserveContainers = body.preserveContainers || false;
+		// Parse function arguments from request body
+		const body = (await request.json()) as ContractCallRequest;
+		const rawFunctionArgs = body.functionArgs || [];
+		const network = (body.network || 'testnet') as StacksNetworkName;
+		const senderAddress = body.senderAddress || contractAddress;
+		const strictJsonCompat = body.strictJsonCompat || true;
+		const preserveContainers = body.preserveContainers || false;
 
-			// Convert any simplified arguments to ClarityValues
-			const functionArgs = rawFunctionArgs.map(convertToClarityValue);
+		// Convert any simplified arguments to ClarityValues
+		const functionArgs = rawFunctionArgs.map(convertToClarityValue);
 
-			// Get ABI to validate function arguments
-			const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName, false);
+		// Get ABI to validate function arguments
+		const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName, false);
 
-			// Validate function exists in ABI
-			if (!this.contractAbiService.validateFunctionInABI(abi, functionName)) {
-				return createJsonResponse({ error: `Function ${functionName} not found in contract ABI` }, 400);
-			}
-
-			// Validate function arguments
-			const argsValidation = this.contractAbiService.validateFunctionArgs(abi, functionName, functionArgs);
-			if (!argsValidation.valid) {
-				return createJsonResponse({ error: argsValidation.error || 'Invalid function arguments' }, 400);
-			}
-
-			// Execute contract call
-			const cacheKey = `${this.CACHE_PREFIX}_call_${contractAddress}_${contractName}_${functionName}_${new Date().getTime()}`;
-
-			const result = await this.stacksContractFetcher.fetch(
-				contractAddress,
-				contractName,
-				functionName,
-				functionArgs,
-				senderAddress,
-				network,
-				cacheKey
-			);
-
-			const convertedResult = decodeClarityValues(result, strictJsonCompat, preserveContainers);
-
-			return createJsonResponse(convertedResult);
-		} catch (error) {
-			return createJsonResponse({ error: `Contract call failed: ${error instanceof Error ? error.message : String(error)}` }, 500);
+		// Validate function exists in ABI
+		if (!this.contractAbiService.validateFunctionInABI(abi, functionName)) {
+			throw new ApiError(ErrorCode.INVALID_FUNCTION, {
+				function: functionName,
+				contract: `${contractAddress}.${contractName}`
+			});
 		}
+
+		// Validate function arguments
+		const argsValidation = this.contractAbiService.validateFunctionArgs(abi, functionName, functionArgs);
+		if (!argsValidation.valid) {
+			throw new ApiError(ErrorCode.INVALID_ARGUMENTS, {
+				function: functionName,
+				reason: argsValidation.error || 'Invalid function arguments'
+			});
+		}
+
+		// Execute contract call
+		const cacheKey = `${this.CACHE_PREFIX}_call_${contractAddress}_${contractName}_${functionName}_${new Date().getTime()}`;
+
+		const result = await this.stacksContractFetcher.fetch(
+			contractAddress,
+			contractName,
+			functionName,
+			functionArgs,
+			senderAddress,
+			network,
+			cacheKey
+		);
+
+		return decodeClarityValues(result, strictJsonCompat, preserveContainers);
 	}
 
 	/**
@@ -273,48 +274,51 @@ export class ContractCallsDO extends DurableObject<Env> {
 	 * @param request - The HTTP request containing the ClarityValue to decode
 	 * @returns A Response with the decoded value or an error message
 	 */
-	private async handleDecodeClarityValueRequest(request: Request): Promise<Response> {
+	private async handleDecodeClarityValueRequest(request: Request): Promise<any> {
 		// Only accept POST requests for decoding
 		if (request.method !== 'POST') {
-			return createJsonResponse({ error: 'Only POST requests are supported for decoding Clarity values' }, 405);
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Only POST requests are supported for decoding Clarity values'
+			});
 		}
 
+		// Parse request body
+		const body = (await request.json()) as {
+			clarityValue: ClarityValue | SimplifiedClarityValue | string;
+			strictJsonCompat?: boolean;
+			preserveContainers?: boolean;
+		};
+
+		if (!body.clarityValue) {
+			throw new ApiError(ErrorCode.INVALID_REQUEST, {
+				reason: 'Missing required field: clarityValue'
+			});
+		}
+
+		// Convert ClarityValue to ClarityValue if necessary
+		let clarityValue: ClarityValue;
 		try {
-			// Parse request body
-			const body = (await request.json()) as {
-				clarityValue: ClarityValue | SimplifiedClarityValue | string;
-				strictJsonCompat?: boolean;
-				preserveContainers?: boolean;
-			};
-
-			if (!body.clarityValue) {
-				return createJsonResponse({ error: 'Missing required field: clarityValue' }, 400);
-			}
-
-			// Convert ClarityValue to ClarityValue if necessary
-			let clarityValue: ClarityValue;
 			if (typeof body.clarityValue === 'string') {
 				clarityValue = deserializeCV(body.clarityValue);
 			} else {
 				clarityValue = convertToClarityValue(body.clarityValue);
 			}
-
-			// Decode the value with the provided options
-			const decodedValue = decodeClarityValues(
-				clarityValue,
-				body.strictJsonCompat !== undefined ? body.strictJsonCompat : true,
-				body.preserveContainers !== undefined ? body.preserveContainers : false
-			);
-
-			return createJsonResponse({
-				original: body.clarityValue,
-				decoded: decodedValue,
-			});
 		} catch (error) {
-			return createJsonResponse(
-				{ error: `Failed to decode Clarity value: ${error instanceof Error ? error.message : String(error)}` },
-				400
-			);
+			throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+				message: `Invalid Clarity value format: ${error instanceof Error ? error.message : String(error)}`
+			});
 		}
+
+		// Decode the value with the provided options
+		const decodedValue = decodeClarityValues(
+			clarityValue,
+			body.strictJsonCompat !== undefined ? body.strictJsonCompat : true,
+			body.preserveContainers !== undefined ? body.preserveContainers : false
+		);
+
+		return {
+			original: body.clarityValue,
+			decoded: decodedValue,
+		};
 	}
 }

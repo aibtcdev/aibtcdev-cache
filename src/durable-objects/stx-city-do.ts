@@ -3,6 +3,9 @@ import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { ApiRateLimiterService } from '../services/api-rate-limiter-service';
 import { createJsonResponse } from '../utils/requests-responses-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { handleRequest } from '../utils/request-handler';
 
 /**
  * Represents token metrics from STX.city
@@ -180,57 +183,55 @@ export class StxCityDO extends DurableObject<Env> {
 			// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
 
-		// Handle requests that don't match the base path
-		if (!path.startsWith(this.BASE_PATH)) {
-			return createJsonResponse(
-				{
-					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
-				},
-				404
+		return handleRequest(async () => {
+			// Handle requests that don't match the base path
+			if (!path.startsWith(this.BASE_PATH)) {
+				throw new ApiError(ErrorCode.NOT_FOUND, { 
+					resource: path,
+					basePath: this.BASE_PATH
+				});
+			}
+
+			// Parse requested endpoint from base path
+			const endpoint = path.replace(this.BASE_PATH, '');
+
+			// Handle root route
+			if (endpoint === '' || endpoint === '/') {
+				return {
+					message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+				};
+			}
+
+			// handle unsupported endpoints
+			const isSupported = this.SUPPORTED_ENDPOINTS.some(
+				(path) =>
+					endpoint === path || // exact match
+					(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
 			);
-		}
 
-		// Parse requested endpoint from base path
-		const endpoint = path.replace(this.BASE_PATH, '');
+			if (!isSupported) {
+				throw new ApiError(ErrorCode.NOT_FOUND, {
+					resource: endpoint,
+					supportedEndpoints: this.SUPPORTED_ENDPOINTS
+				});
+			}
 
-		// Handle root route
-		if (endpoint === '' || endpoint === '/') {
-			return createJsonResponse({
-				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+			// create cache key from endpoint
+			const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+
+			// handle /tokens/tradable-full-details-tokens path
+			if (endpoint === '/tokens/tradable-full-details-tokens') {
+				const response = await this.fetchWithCache(endpoint, cacheKey);
+				return await response.json();
+			}
+
+			// This should never happen due to the isSupported check above
+			throw new ApiError(ErrorCode.NOT_FOUND, {
+				resource: endpoint,
+				supportedEndpoints: this.SUPPORTED_ENDPOINTS
 			});
-		}
-
-		// handle unsupported endpoints
-		const isSupported = this.SUPPORTED_ENDPOINTS.some(
-			(path) =>
-				endpoint === path || // exact match
-				(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
-		);
-
-		if (!isSupported) {
-			return createJsonResponse(
-				{
-					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-				},
-				404
-			);
-		}
-
-		// create cache key from endpoint
-		const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
-
-		// handle /tokens/tradable-full-details-tokens path
-		if (endpoint === '/tokens/tradable-full-details-tokens') {
-			console.log(`fetching: ${endpoint} stored at ${cacheKey}`);
-			return await this.fetchWithCache(endpoint, cacheKey);
-		}
-
-		// Return 404 for any other endpoint
-		return createJsonResponse(
-			{
-				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-			},
-			404
-		);
+		}, this.env, {
+			slowThreshold: 2500 // Token data can be large and slow to process
+		});
 	}
 }
