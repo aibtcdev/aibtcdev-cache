@@ -4,6 +4,9 @@ import { AppConfig } from '../config';
 import { ApiRateLimiterService } from '../services/api-rate-limiter-service';
 import { createJsonResponse } from '../utils/requests-responses-util';
 import { getKnownAddresses, addKnownAddress } from '../utils/address-store-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { handleRequest } from '../utils/request-handler';
 
 /**
  * Interface representing information about known Stacks addresses
@@ -220,119 +223,118 @@ export class HiroApiDO extends DurableObject<Env> {
 			// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
 
-		// handle requests that don't match the base path
-		if (!path.startsWith(this.BASE_PATH)) {
-			return createJsonResponse(
-				{
-					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
-				},
-				404
+		return handleRequest(async () => {
+			// handle requests that don't match the base path
+			if (!path.startsWith(this.BASE_PATH)) {
+				throw new ApiError(ErrorCode.NOT_FOUND, { 
+					resource: path,
+					basePath: this.BASE_PATH
+				});
+			}
+
+			// parse requested endpoint from base path
+			const endpoint = path.replace(this.BASE_PATH, '');
+
+			// handle root route
+			if (endpoint === '' || endpoint === '/') {
+				return {
+					message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+				};
+			}
+
+			// handle unsupported endpoints
+			const isSupported = this.SUPPORTED_ENDPOINTS.some(
+				(path) =>
+					endpoint === path || // exact match
+					(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
 			);
-		}
 
-		// parse requested endpoint from base path
-		const endpoint = path.replace(this.BASE_PATH, '');
+			if (!isSupported) {
+				throw new ApiError(ErrorCode.NOT_FOUND, {
+					resource: endpoint,
+					supportedEndpoints: this.SUPPORTED_ENDPOINTS
+				});
+			}
 
-		// handle root route
-		if (endpoint === '' || endpoint === '/') {
-			return createJsonResponse({
-				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+			// create cache key from endpoint
+			const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+
+			// handle /extended path
+			if (endpoint === '/extended') {
+				const response = await this.fetchWithCache(endpoint, cacheKey);
+				return await response.json();
+			}
+
+			// handle /v2/info path
+			if (endpoint === '/v2/info') {
+				const response = await this.fetchWithCache(endpoint, cacheKey);
+				return await response.json();
+			}
+
+			// handle /extended/v1/address path
+			if (endpoint.startsWith('/extended/v1/address/')) {
+				// Remove '/extended/v1/address/' from the start
+				const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
+
+				if (pathParts.length < 2) {
+					throw new ApiError(ErrorCode.INVALID_REQUEST, {
+						reason: 'Invalid address path format, expected: /extended/v1/address/{address}/{action}'
+					});
+				}
+
+				// get address and action from parts
+				const address = pathParts[0];
+				const action = pathParts[1];
+
+				// Store the address when it's requested
+				await addKnownAddress(this.env, address);
+
+				// Validate the action
+				const validActions = ['assets', 'balances'];
+				if (!validActions.includes(action)) {
+					throw new ApiError(ErrorCode.INVALID_REQUEST, {
+						reason: `Invalid action: ${action}`,
+						validActions
+					});
+				}
+
+				// Construct the endpoint path
+				const apiEndpoint = `/extended/v1/address/${address}/${action}`;
+				const response = await this.fetchWithCache(apiEndpoint, cacheKey);
+				return await response.json();
+			}
+
+			// handle /known-addresses path
+			if (endpoint === '/known-addresses') {
+				const [knownAddresses, cachedAddresses] = await Promise.all([
+					getKnownAddresses(this.env), 
+					this.extractAddressesFromCache()
+				]);
+				const uncachedAddresses = knownAddresses.filter(
+					(address) => !cachedAddresses.includes(address)
+				);
+
+				return {
+					stats: {
+						storage: knownAddresses.length,
+						cached: cachedAddresses.length,
+						uncached: uncachedAddresses.length,
+					},
+					addresses: {
+						storage: knownAddresses,
+						cached: cachedAddresses,
+						uncached: uncachedAddresses,
+					},
+				};
+			}
+
+			// This should never happen due to the isSupported check above
+			throw new ApiError(ErrorCode.NOT_FOUND, {
+				resource: endpoint,
+				supportedEndpoints: this.SUPPORTED_ENDPOINTS
 			});
-		}
-
-		// handle unsupported endpoints
-		const isSupported = this.SUPPORTED_ENDPOINTS.some(
-			(path) =>
-				endpoint === path || // exact match
-				(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
-		);
-
-		if (!isSupported) {
-			return createJsonResponse(
-				{
-					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-				},
-				404
-			);
-		}
-
-		// create cache key from endpoint
-		const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
-
-		// handle /extended path
-		if (endpoint === '/extended') {
-			return await this.fetchWithCache(endpoint, cacheKey);
-		}
-
-		// handle /v2/info path
-		if (endpoint === '/v2/info') {
-			return await this.fetchWithCache(endpoint, cacheKey);
-		}
-
-		// handle /extended/v1/address path
-		if (endpoint.startsWith('/extended/v1/address/')) {
-			// Remove '/extended/v1/address/' from the start
-			const pathParts = endpoint.replace('/extended/v1/address/', '').split('/');
-
-			if (pathParts.length < 2) {
-				return createJsonResponse(
-					{
-						error: 'Invalid address path format, expected: /extended/v1/address/{address}/{action}',
-					},
-					400
-				);
-			}
-
-			// get address and action from parts
-			const address = pathParts[0];
-			const action = pathParts[1];
-
-			// Store the address when it's requested
-			await addKnownAddress(this.env, address);
-
-			// Validate the action
-			const validActions = ['assets', 'balances'];
-			if (!validActions.includes(action)) {
-				return createJsonResponse(
-					{
-						error: `Invalid action: ${action}, valid actions: ${validActions.join(', ')}`,
-					},
-					400
-				);
-			}
-
-			// Construct the endpoint path
-			const apiEndpoint = `/extended/v1/address/${address}/${action}`;
-			return await this.fetchWithCache(apiEndpoint, cacheKey);
-		}
-
-		// handle /known-addresses path
-		if (endpoint === '/known-addresses') {
-			const [knownAddresses, cachedAddresses] = await Promise.all([getKnownAddresses(this.env), this.extractAddressesFromCache()]);
-			const uncachedAddresses = knownAddresses.filter((address) => !cachedAddresses.includes(address));
-
-			const knownAddressInfo: KnownAddressInfo = {
-				stats: {
-					storage: knownAddresses.length,
-					cached: cachedAddresses.length,
-					uncached: uncachedAddresses.length,
-				},
-				addresses: {
-					storage: knownAddresses,
-					cached: cachedAddresses,
-					uncached: uncachedAddresses,
-				},
-			};
-
-			return createJsonResponse(knownAddressInfo);
-		}
-
-		// return 404 for any other endpoint
-		return createJsonResponse(
-			{
-				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-			},
-			404
-		);
+		}, this.env, {
+			slowThreshold: 1500 // 1.5 seconds
+		});
 	}
 }

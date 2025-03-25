@@ -1,6 +1,19 @@
 import { ApiError } from './api-error';
 
 /**
+ * Generates a unique error ID for tracking purposes
+ */
+function generateErrorId(): string {
+  // Use crypto.randomUUID() if available
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID().split('-')[0]; // Use first segment for brevity
+  }
+  
+  // Fallback to timestamp + random string
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+}
+
+/**
  * Creates CORS headers for cross-origin requests
  * 
  * @param origin - Optional origin to allow, defaults to '*' (all origins)
@@ -22,6 +35,7 @@ interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: {
+    id: string;
     code: string;
     message: string;
     details?: Record<string, any>;
@@ -57,6 +71,7 @@ export function createErrorResponse(error: unknown): Response {
     body = {
       success: false,
       error: {
+        id: error.id,
         code: error.code,
         message: error.message,
         details: error.details
@@ -64,10 +79,13 @@ export function createErrorResponse(error: unknown): Response {
     };
     status = error.status;
   } else {
+    // Generate an error ID for non-ApiError errors
+    const errorId = generateErrorId();
     const errorMessage = error instanceof Error ? error.message : String(error);
     body = {
       success: false,
       error: {
+        id: errorId,
         code: 'INTERNAL_ERROR',
         message: errorMessage || 'An unexpected error occurred'
       }

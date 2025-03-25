@@ -14,11 +14,13 @@ export enum LogLevel {
  * Interface for structured log entries
  */
 export interface LogEntry {
+  id: string;
   timestamp: string;
   level: LogLevel;
   message: string;
   context?: Record<string, any>;
   error?: Error;
+  duration?: number;
 }
 
 /**
@@ -31,6 +33,21 @@ export class Logger {
   private readonly MAX_LOG_AGE = 604800; // 1 week in seconds (7 * 24 * 60 * 60)
   
   private constructor() {}
+  
+  /**
+   * Generates a unique error ID
+   * 
+   * @returns A unique string identifier for errors and logs
+   */
+  private generateId(): string {
+    // Use crypto.randomUUID() if available (modern browsers and Node.js)
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID().split('-')[0]; // Use first segment for brevity
+    }
+    
+    // Fallback to timestamp + random string
+    return Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+  }
   
   /**
    * Get the singleton logger instance
@@ -51,8 +68,10 @@ export class Logger {
   /**
    * Log a message at the specified level
    */
-  public log(level: LogLevel, message: string, context?: Record<string, any>, error?: Error): void {
+  public log(level: LogLevel, message: string, context?: Record<string, any>, error?: Error, duration?: number): void {
+    const id = this.generateId();
     const entry: LogEntry = {
+      id,
       timestamp: new Date().toISOString(),
       level,
       message,
@@ -61,7 +80,8 @@ export class Logger {
         name: error.name,
         message: error.message,
         stack: error.stack
-      } as Error : undefined
+      } as Error : undefined,
+      duration
     };
     
     // Always log to console
@@ -73,16 +93,19 @@ export class Logger {
         console.error('Failed to write log to KV:', err);
       });
     }
+    
+    return id;
   }
   
   /**
    * Log to console with appropriate formatting
    */
   private logToConsole(entry: LogEntry): void {
-    const { level, message, context, error } = entry;
+    const { id, level, message, context, error, duration } = entry;
     
     const contextStr = context ? ` ${JSON.stringify(context)}` : '';
-    const baseMessage = `[${level}] ${message}${contextStr}`;
+    const durationStr = duration ? ` (${duration}ms)` : '';
+    const baseMessage = `[${level}][${id}] ${message}${contextStr}${durationStr}`;
     
     switch (level) {
       case LogLevel.DEBUG:
@@ -119,19 +142,19 @@ export class Logger {
   }
   
   // Convenience methods
-  public debug(message: string, context?: Record<string, any>): void {
-    this.log(LogLevel.DEBUG, message, context);
+  public debug(message: string, context?: Record<string, any>, duration?: number): string {
+    return this.log(LogLevel.DEBUG, message, context, undefined, duration);
   }
   
-  public info(message: string, context?: Record<string, any>): void {
-    this.log(LogLevel.INFO, message, context);
+  public info(message: string, context?: Record<string, any>, duration?: number): string {
+    return this.log(LogLevel.INFO, message, context, undefined, duration);
   }
   
-  public warn(message: string, context?: Record<string, any>): void {
-    this.log(LogLevel.WARN, message, context);
+  public warn(message: string, context?: Record<string, any>, duration?: number): string {
+    return this.log(LogLevel.WARN, message, context, undefined, duration);
   }
   
-  public error(message: string, error?: Error, context?: Record<string, any>): void {
-    this.log(LogLevel.ERROR, message, context, error);
+  public error(message: string, error?: Error, context?: Record<string, any>, duration?: number): string {
+    return this.log(LogLevel.ERROR, message, context, error, duration);
   }
 }

@@ -3,6 +3,9 @@ import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createJsonResponse } from '../utils/requests-responses-util';
+import { ApiError } from '../utils/api-error';
+import { ErrorCode } from '../utils/error-catalog';
+import { handleRequest } from '../utils/request-handler';
 
 /**
  * Interface for statistics response from Supabase
@@ -153,82 +156,78 @@ export class SupabaseDO extends DurableObject<Env> {
 			// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
 
-		// Handle requests that don't match the base path
-		if (!path.startsWith(this.BASE_PATH)) {
-			return createJsonResponse(
-				{
-					error: `Request at ${path} does not start with base path ${this.BASE_PATH}`,
-				},
-				404
-			);
-		}
-
-		// Parse requested endpoint from base path
-		const endpoint = path.replace(this.BASE_PATH, '');
-
-		// Handle root route
-		if (endpoint === '' || endpoint === '/') {
-			return createJsonResponse({
-				message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-			});
-		}
-
-		// handle unsupported endpoints
-		const isSupported = this.SUPPORTED_ENDPOINTS.some(
-			(path) =>
-				endpoint === path || // exact match
-				(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
-		);
-
-		if (!isSupported) {
-			return createJsonResponse(
-				{
-					error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-				},
-				404
-			);
-		}
-
-		// create cache key from endpoint
-		const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
-
-		// Handle /stats endpoint
-		if (endpoint === '/stats') {
-			const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
-
-			if (cached) {
-				return createJsonResponse(cached);
+		return handleRequest(async () => {
+			// Handle requests that don't match the base path
+			if (!path.startsWith(this.BASE_PATH)) {
+				throw new ApiError(ErrorCode.NOT_FOUND, { 
+					resource: path,
+					basePath: this.BASE_PATH
+				});
 			}
 
-			const stats = await this.fetchStats();
-			// verify that stats were fetched
-			if (!stats) {
-				return createJsonResponse(
-					{
-						error: 'Failed to fetch stats from Supabase',
-					},
-					500
-				);
+			// Parse requested endpoint from base path
+			const endpoint = path.replace(this.BASE_PATH, '');
+
+			// Handle root route
+			if (endpoint === '' || endpoint === '/') {
+				return {
+					message: `Supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
+				};
 			}
 
-			// format the data, store it, and return it
-			const data = JSON.stringify({
-				timestamp: new Date().toISOString(),
-				...stats,
-			});
-			await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, data, {
-				expirationTtl: this.CACHE_TTL,
-			});
+			// handle unsupported endpoints
+			const isSupported = this.SUPPORTED_ENDPOINTS.some(
+				(path) =>
+					endpoint === path || // exact match
+					(path.endsWith('/') && endpoint.startsWith(path)) // prefix match for paths ending with /
+			);
 
-			return createJsonResponse(data);
-		}
+			if (!isSupported) {
+				throw new ApiError(ErrorCode.NOT_FOUND, {
+					resource: endpoint,
+					supportedEndpoints: this.SUPPORTED_ENDPOINTS
+				});
+			}
 
-		// Return 404 for any other endpoint
-		return createJsonResponse(
-			{
-				error: `Unsupported endpoint: ${endpoint}, supported endpoints: ${this.SUPPORTED_ENDPOINTS.join(', ')}`,
-			},
-			404
-		);
+			// create cache key from endpoint
+			const cacheKey = `${this.CACHE_PREFIX}${endpoint.replaceAll('/', '_')}`;
+
+			// Handle /stats endpoint
+			if (endpoint === '/stats') {
+				const cached = await this.env.AIBTCDEV_CACHE_KV.get(cacheKey);
+
+				if (cached) {
+					return JSON.parse(cached);
+				}
+
+				const stats = await this.fetchStats();
+				// verify that stats were fetched
+				if (!stats) {
+					throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+						message: 'Failed to fetch stats from Supabase'
+					});
+				}
+
+				// format the data, store it, and return it
+				const data = {
+					timestamp: new Date().toISOString(),
+					...stats,
+				};
+				
+				await this.env.AIBTCDEV_CACHE_KV.put(cacheKey, JSON.stringify(data), {
+					expirationTtl: this.CACHE_TTL,
+				});
+
+				return data;
+			}
+
+			// This should never happen due to the isSupported check above
+			throw new ApiError(ErrorCode.NOT_FOUND, {
+				resource: endpoint,
+				supportedEndpoints: this.SUPPORTED_ENDPOINTS
+			});
+		}, this.env, {
+			slowThreshold: 3000 // Database operations can be slow, so set a higher threshold (3 seconds)
+		});
 	}
 }
