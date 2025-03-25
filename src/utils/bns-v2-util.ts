@@ -1,19 +1,27 @@
-import { getFetchOptions, setFetchOptions } from '@stacks/common';
-import { AppConfig } from '../config';
-import { BufferCV, ClarityType, ClarityValue, principalCV, TupleCV } from '@stacks/transactions';
-import { StacksContractFetcher } from '../stacks-rate-limiter';
 import { Env } from '../../worker-configuration';
-import { ValidNetworks } from './stacks';
+import { AppConfig } from '../config';
+import { getFetchOptions, setFetchOptions } from '@stacks/common';
+import { BufferCV, ClarityType, principalCV, TupleCV } from '@stacks/transactions';
+import { StacksContractFetcher } from '../services/stacks-contract-data-service';
 
+/**
+ * BNS contract constants for the Stacks blockchain
+ */
 const BNS_CONTRACT_ADDRESS = 'SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF';
 const BNS_CONTRACT_NAME = 'BNS-V2';
 
+/**
+ * Type definition for BNS name response from the contract
+ */
 type NameResponse = {
 	name: BufferCV;
 	namespace: BufferCV;
 };
 
-// workaround for using stacks.js fetch in Cloudflare Workers
+/**
+ * Workaround for using stacks.js fetch in Cloudflare Workers
+ * Removes referrerPolicy which is not supported in Workers
+ */
 type StacksRequestInit = RequestInit & {
 	referrerPolicy?: string;
 };
@@ -21,6 +29,12 @@ const fetchOptions: StacksRequestInit = getFetchOptions();
 delete fetchOptions.referrerPolicy;
 setFetchOptions(fetchOptions);
 
+/**
+ * Converts a hex string to ASCII text
+ * 
+ * @param hexString - Hex string or BigInt to convert
+ * @returns ASCII string representation
+ */
 function hexToAscii(hexString: string | bigint): string {
 	// Convert BigInt to hex string if needed
 	const hex = typeof hexString === 'bigint' ? hexString.toString(16) : hexString.replace('0x', '');
@@ -32,13 +46,22 @@ function hexToAscii(hexString: string | bigint): string {
 	return str;
 }
 
+/**
+ * Union type for BNS name responses from the contract
+ */
 type BnsNameResponse = BnsNameErrResponse | BnsNameSuccessResponse;
 
+/**
+ * Type for error responses from BNS contract
+ */
 type BnsNameErrResponse = {
 	type: ClarityType.ResponseErr;
 	value: string;
 };
 
+/**
+ * Type for successful responses from BNS contract
+ */
 type BnsNameSuccessResponse = {
 	type: ClarityType.ResponseOk;
 	value: {
@@ -50,8 +73,16 @@ type BnsNameSuccessResponse = {
 	};
 };
 
+/**
+ * Singleton instance of the StacksContractFetcher
+ */
 let stacksFetcher: StacksContractFetcher;
 
+/**
+ * Initializes the StacksContractFetcher with configuration from AppConfig
+ * 
+ * @param env - The Cloudflare Worker environment
+ */
 export function initStacksFetcher(env: Env) {
 	const config = AppConfig.getInstance(env).getConfig();
 	stacksFetcher = new StacksContractFetcher(
@@ -64,14 +95,22 @@ export function initStacksFetcher(env: Env) {
 	);
 }
 
-export async function getNameFromAddress(address: string, network: ValidNetworks = 'mainnet'): Promise<string> {
+/**
+ * Retrieves the BNS name associated with a Stacks address
+ * 
+ * @param address - The Stacks address to look up
+ * @param network - The Stacks network to use (defaults to 'mainnet')
+ * @returns The BNS name in format 'name.namespace' or empty string if not found
+ * @throws Error if the StacksFetcher is not initialized or if the request fails
+ */
+export async function getNameFromAddress(address: string, network = 'mainnet'): Promise<string> {
 	if (!stacksFetcher) {
 		throw new Error('StacksFetcher not initialized. Call initStacksFetcher first.');
 	}
 	try {
 		const addressCV = principalCV(address);
 		const cacheKey = `bns_get-primary_${address}`;
-		const response: BnsNameResponse = await stacksFetcher.fetch(
+		const response = (await stacksFetcher.fetch(
 			BNS_CONTRACT_ADDRESS,
 			BNS_CONTRACT_NAME,
 			'get-primary',
@@ -79,7 +118,7 @@ export async function getNameFromAddress(address: string, network: ValidNetworks
 			address,
 			network,
 			cacheKey
-		);
+		)) as BnsNameResponse;
 		if (response.type === ClarityType.ResponseErr) {
 			// name doesn't exist, return a blank string
 			// console.log(`getNameFromAddress: name not found for address ${address}`);

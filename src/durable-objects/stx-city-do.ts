@@ -1,9 +1,14 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { createJsonResponse } from '../utils/requests-responses';
-import { RateLimitedFetcher } from '../rate-limiter';
+import { ApiRateLimiterService } from '../services/api-rate-limiter-service';
+import { createJsonResponse } from '../utils/requests-responses-util';
 
+/**
+ * Represents token metrics from STX.city
+ * 
+ * Contains various numerical metrics about a token's performance and usage.
+ */
 type Metrics = {
 	price_usd: number;
 	holder_count: number;
@@ -12,11 +17,20 @@ type Metrics = {
 	liquidity_usd: number;
 };
 
+/**
+ * Represents social media links for a token
+ */
 type Socials = {
 	platform: string;
 	value: string;
 };
 
+/**
+ * Comprehensive details about a token from STX.city
+ * 
+ * Contains all information about a token including its contract details,
+ * supply information, metrics, social links, and descriptive content.
+ */
 type TokenDetails = {
 	contract_id: string;
 	symbol: string;
@@ -38,7 +52,14 @@ type TokenDetails = {
 };
 
 /**
- * Durable Object class for STXCITY queries
+ * Durable Object class for proxying and caching STX.city API requests
+ * 
+ * This Durable Object provides a rate-limited and cached interface to the STX.city API,
+ * which offers data about tokens on the Stacks blockchain. It handles:
+ * 
+ * 1. Proxying requests to the STX.city API with rate limiting
+ * 2. Caching responses to reduce API calls
+ * 3. Providing endpoints for token data and trading information
  */
 export class StxCityDO extends DurableObject<Env> {
 	// can override values here for all endpoints
@@ -54,7 +75,7 @@ export class StxCityDO extends DurableObject<Env> {
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
 	private readonly SUPPORTED_ENDPOINTS: string[] = ['/tokens/tradable-full-details-tokens'];
 	// custom fetcher with KV cache logic and rate limiting
-	private fetcher: RateLimitedFetcher;
+	private fetcher: ApiRateLimiterService;
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -71,7 +92,7 @@ export class StxCityDO extends DurableObject<Env> {
 		this.MAX_RETRIES = config.MAX_RETRIES;
 		this.RETRY_DELAY = config.RETRY_DELAY;
 
-		this.fetcher = new RateLimitedFetcher(
+		this.fetcher = new ApiRateLimiterService(
 			this.env,
 			this.BASE_API_URL,
 			this.CACHE_TTL,
@@ -82,9 +103,19 @@ export class StxCityDO extends DurableObject<Env> {
 		);
 
 		// Set up alarm to run at configured interval
-		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+		// ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
+	/**
+	 * Alarm handler that periodically updates cached endpoints
+	 * 
+	 * This method:
+	 * 1. Iterates through all supported endpoints
+	 * 2. Refreshes the cache for each endpoint
+	 * 3. Logs statistics about the update process
+	 * 
+	 * @returns A promise that resolves when the alarm handler completes
+	 */
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
@@ -106,16 +137,39 @@ export class StxCityDO extends DurableObject<Env> {
 			// Always schedule next alarm if one isn't set
 			const currentAlarm = await this.ctx.storage.getAlarm();
 			if (currentAlarm === null) {
-				this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+				// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 			}
 		}
 	}
 
-	// helper function to fetch data from KV cache with rate limiting for API calls
+	/**
+	 * Helper function to fetch data from KV cache with rate limiting for API calls
+	 * 
+	 * This method:
+	 * 1. Checks the cache for the requested data
+	 * 2. If not found or cache bust requested, fetches from the STX.city API
+	 * 3. Applies rate limiting to prevent API abuse
+	 * 4. Stores successful responses in the cache
+	 * 
+	 * @param endpoint - The API endpoint to fetch
+	 * @param cacheKey - The key to use for caching
+	 * @param bustCache - Whether to ignore the cache and force a fresh fetch
+	 * @returns A Response object with the requested data
+	 */
 	private async fetchWithCache(endpoint: string, cacheKey: string, bustCache = false): Promise<Response> {
 		return this.fetcher.fetch(endpoint, cacheKey, bustCache);
 	}
 
+	/**
+	 * Main request handler for the STX.city API Durable Object
+	 * 
+	 * Handles the following endpoints:
+	 * - / - Returns a list of supported endpoints
+	 * - /tokens/tradable-full-details-tokens - Returns details about tradable tokens
+	 * 
+	 * @param request - The incoming HTTP request
+	 * @returns A Response object with the requested data or an error message
+	 */
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname;
@@ -123,7 +177,7 @@ export class StxCityDO extends DurableObject<Env> {
 		// Schedule next alarm if one isn't set
 		const currentAlarm = await this.ctx.storage.getAlarm();
 		if (currentAlarm === null) {
-			this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+			// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 		}
 
 		// Handle requests that don't match the base path

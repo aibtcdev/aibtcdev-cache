@@ -1,13 +1,30 @@
 import { Env } from '../worker-configuration';
 
+/**
+ * Singleton configuration class for the application
+ * 
+ * Provides centralized access to configuration settings and environment variables
+ */
 export class AppConfig {
 	private static instance: AppConfig;
 	private env: Env;
 
+	/**
+	 * Private constructor to enforce singleton pattern
+	 * 
+	 * @param env - The Cloudflare Worker environment
+	 */
 	private constructor(env: Env) {
 		this.env = env;
 	}
 
+	/**
+	 * Gets the singleton instance of AppConfig
+	 * 
+	 * @param env - The Cloudflare Worker environment (required on first call)
+	 * @returns The AppConfig singleton instance
+	 * @throws Error if called without env before initialization
+	 */
 	public static getInstance(env?: Env): AppConfig {
 		if (!AppConfig.instance && env) {
 			AppConfig.instance = new AppConfig(env);
@@ -17,11 +34,16 @@ export class AppConfig {
 		return AppConfig.instance;
 	}
 
+	/**
+	 * Returns the application configuration settings
+	 * 
+	 * @returns Configuration object with all application settings
+	 */
 	public getConfig() {
 		return {
 			// supported services for API caching
 			// each entry is a durable object that handles requests
-			SUPPORTED_SERVICES: ['/bns', '/hiro-api', '/stx-city', '/supabase'],
+			SUPPORTED_SERVICES: ['/bns', '/hiro-api', '/stx-city', '/supabase', '/contract-calls'],
 			// VALUES BELOW CAN BE OVERRIDDEN BY DURABLE OBJECTS
 			// default cache TTL used for KV
 			CACHE_TTL: 900, // 15 minutes

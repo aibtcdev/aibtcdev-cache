@@ -1,13 +1,17 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
-import { createJsonResponse } from '../utils/requests-responses';
-import { getKnownAddresses } from '../utils/address-store';
-import { getNameFromAddress, initStacksFetcher } from '../utils/bns-v2';
 import { validateStacksAddress } from '@stacks/transactions';
+import { createJsonResponse } from '../utils/requests-responses-util';
+import { getKnownAddresses } from '../utils/address-store-util';
+import { getNameFromAddress, initStacksFetcher } from '../utils/bns-v2-util';
 
 /**
- * Durable Object class for the BNS API
+ * Durable Object class for the BNS (Blockchain Naming System) API
+ * 
+ * This Durable Object handles BNS name lookups for Stacks addresses.
+ * It provides endpoints to retrieve BNS names associated with Stacks addresses
+ * and maintains a cache of these associations to reduce API calls.
  */
 export class BnsApiDO extends DurableObject<Env> {
 	private readonly CACHE_TTL: number;
@@ -31,9 +35,20 @@ export class BnsApiDO extends DurableObject<Env> {
 		initStacksFetcher(env);
 
 		// Set up alarm to run at configured interval
-		ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+		// ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 	}
 
+	/**
+	 * Alarm handler that periodically updates the BNS name cache
+	 * 
+	 * This method is triggered by the Durable Object's alarm system and:
+	 * 1. Retrieves all known Stacks addresses from KV storage
+	 * 2. Updates the BNS name for each address
+	 * 3. Stores the results in KV cache with the configured TTL
+	 * 4. Logs statistics about the update process
+	 * 
+	 * @returns A promise that resolves when the alarm handler completes
+	 */
 	async alarm(): Promise<void> {
 		const startTime = Date.now();
 		try {
@@ -75,11 +90,21 @@ export class BnsApiDO extends DurableObject<Env> {
 			// Always schedule next alarm if one isn't set
 			const currentAlarm = await this.ctx.storage.getAlarm();
 			if (currentAlarm === null) {
-				this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
+				// this.ctx.storage.setAlarm(Date.now() + this.ALARM_INTERVAL_MS);
 			}
 		}
 	}
 
+	/**
+	 * Main request handler for the BNS API Durable Object
+	 * 
+	 * Handles the following endpoints:
+	 * - / - Returns a list of supported endpoints
+	 * - /names/{address} - Returns the BNS name for the given Stacks address
+	 * 
+	 * @param request - The incoming HTTP request
+	 * @returns A Response object with the requested data or an error message
+	 */
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname;
