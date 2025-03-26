@@ -42,7 +42,7 @@ jobs:
         run: |
           # Extract the preview URL from Wrangler output
           PREVIEW_URL=$(echo "${{ steps.deploy.outputs.deployment-url }}" | sed 's/https:\/\///')
-          echo "TEST_URL=https://aibtcdev-cache.$PREVIEW_URL" >> $GITHUB_ENV
+          echo "TEST_URL=https://$PREVIEW_URL" >> $GITHUB_ENV
 
       - name: Test Endpoints (10s delay)
         run: |
