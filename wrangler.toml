@@ -2,6 +2,7 @@
 name = "aibtcdev-cache"
 main = "src/index.ts"
 compatibility_date = "2024-11-09"
+compatibility_flags = ["nodejs_compat_v2"]
 account_id = "96280594e2b905d4dc40b3c744149710"
 
 [observability]
