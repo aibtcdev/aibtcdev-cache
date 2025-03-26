@@ -30,7 +30,11 @@ export class CacheService {
 			return cached ? (JSON.parse(cached) as T) : null;
 		} catch (error) {
 			const logger = Logger.getInstance(this.env);
-			logger.error(`Failed to get cache key: ${key}`, error instanceof Error ? error : new Error(String(error)));
+			logger.error(`Cache error: Failed to get key ${key}`, error instanceof Error ? error : new Error(String(error)), {
+				operation: 'get',
+				cacheKey: key,
+				errorType: error instanceof Error ? error.constructor.name : typeof error,
+			});
 			throw new ApiError(ErrorCode.CACHE_ERROR, {
 				reason: `Failed to get cache key: ${key}`,
 				error: error instanceof Error ? error.message : String(error),
@@ -47,16 +51,20 @@ export class CacheService {
 	 *              If ttl is 0, the item will be cached indefinitely
 	 */
 	async set(key: string, value: unknown, ttl: number = this.defaultTtl): Promise<void> {
+		// If ttl is 0 or ignoreTtl is true, cache indefinitely
+		const shouldIgnoreTtl = this.ignoreTtl || ttl === 0;
 		try {
-			// If ttl is 0 or ignoreTtl is true, cache indefinitely
-			const shouldIgnoreTtl = this.ignoreTtl || ttl === 0;
-
 			await this.env.AIBTCDEV_CACHE_KV.put(key, typeof value === 'string' ? value : stringifyWithBigInt(value), {
 				expirationTtl: shouldIgnoreTtl ? undefined : ttl,
 			});
 		} catch (error) {
 			const logger = Logger.getInstance(this.env);
-			logger.error(`Failed to set cache key: ${key}`, error instanceof Error ? error : new Error(String(error)));
+			logger.error(`Cache error: Failed to set key ${key}`, error instanceof Error ? error : new Error(String(error)), {
+				operation: 'set',
+				cacheKey: key,
+				ttl: shouldIgnoreTtl ? 'indefinite' : ttl,
+				errorType: error instanceof Error ? error.constructor.name : typeof error,
+			});
 			throw new ApiError(ErrorCode.CACHE_ERROR, {
 				reason: `Failed to set cache key: ${key}`,
 				error: error instanceof Error ? error.message : String(error),

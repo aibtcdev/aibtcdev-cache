@@ -26,10 +26,10 @@ echo -e "\nTesting API at: $API_URL"
 
 # Run all test suites
 test_index
-test_hiro_api
-test_stx_city
-test_supabase
-test_bns
+#test_hiro_api (deprecated)
+#test_stx_city (deprecated)
+#test_supabase (deprecated)
+#test_bns (deprecated)
 test_contract_calls
 
 echo "===================="

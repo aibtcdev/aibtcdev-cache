@@ -72,6 +72,13 @@ export class AppConfig {
 				},
 				INTERVAL_MS: 60000, // 1 minute
 			},
+			// Default timeout settings
+			TIMEOUTS: {
+				DEFAULT: 5000, // 5 seconds default timeout
+				STACKS_API: 5000, // 5 seconds for Stacks API calls
+				HIRO_API: 10000, // 10 seconds for Hiro API calls
+				SUPABASE: 5000, // 5 seconds for Supabase calls
+			},
 			// environment variables
 			SUPABASE_URL: this.env.SUPABASE_URL,
 			SUPABASE_SERVICE_KEY: this.env.SUPABASE_SERVICE_KEY,

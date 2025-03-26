@@ -1,11 +1,11 @@
 import { ClarityValue } from '@stacks/transactions';
 import { Env } from '../../worker-configuration';
+import { AppConfig } from '../config';
 import { CacheService } from './kv-cache-service';
 import { StacksApiService } from './stacks-api-service';
 import { RequestQueue } from './request-queue-service';
 import { ApiError } from '../utils/api-error-util';
 import { ErrorCode } from '../utils/error-catalog-util';
-import { Logger } from '../utils/logger-util';
 
 /**
  * Service for fetching data from Stacks smart contracts
@@ -34,9 +34,13 @@ export class StacksContractFetcher {
 		maxRetries: number,
 		retryDelay: number
 	) {
+		// Get timeout from config
+		const config = AppConfig.getInstance(env).getConfig();
+		const requestTimeout = config?.TIMEOUTS?.STACKS_API || 5000;
+
 		this.cacheService = new CacheService(env, cacheTtl, false);
-		this.stacksApiService = new StacksApiService();
-		this.requestQueue = new RequestQueue<ClarityValue>(maxRequestsPerInterval, intervalMs, maxRetries, retryDelay);
+		this.stacksApiService = new StacksApiService(env);
+		this.requestQueue = new RequestQueue<ClarityValue>(maxRequestsPerInterval, intervalMs, maxRetries, retryDelay, env, requestTimeout);
 	}
 
 	/**
