@@ -22,8 +22,16 @@ test_endpoint() {
     
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
     
+    # Ensure proper URL formatting (avoid double slashes)
+    local url
+    if [[ "$API_URL" == */ && "$endpoint" == /* ]]; then
+        url="${API_URL}${endpoint:1}"
+    else
+        url="${API_URL}${endpoint}"
+    fi
+    
     # Make the request and capture headers and body using -i
-    response=$(curl -s -i -w "\n%{http_code}" -X GET "${API_URL}${endpoint}")
+    response=$(curl -s -i -w "\n%{http_code}" -X GET "$url")
     
     # Parse response (modified to handle -i output)
     status=$(echo "$response" | tail -n1)
@@ -71,10 +79,18 @@ test_cors() {
     
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
     
+    # Ensure proper URL formatting (avoid double slashes)
+    local url
+    if [[ "$API_URL" == */ && "$endpoint" == /* ]]; then
+        url="${API_URL}${endpoint:1}"
+    else
+        url="${API_URL}${endpoint}"
+    fi
+    
     response=$(curl -s -w "\n%{http_code}" -X OPTIONS \
         -H "Origin: http://localhost:3000" \
         -H "Access-Control-Request-Method: GET" \
-        "${API_URL}${endpoint}")
+        "$url")
     
     status=$(echo "$response" | tail -n1)
     
