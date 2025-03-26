@@ -1,5 +1,4 @@
 import { Env } from '../../worker-configuration';
-import { StacksNetworkName } from '@stacks/network';
 import { ClarityAbi, ClarityAbiFunction, fetchAbi, validateStacksAddress } from '@stacks/transactions';
 import { CacheService } from './kv-cache-service';
 import { getNetworkByPrincipal } from '../utils/stacks-network-util';

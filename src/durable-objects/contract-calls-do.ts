@@ -162,7 +162,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 				// Contract calls can be slow, so set a higher threshold
 				slowThreshold: 2000, // 2 seconds
 				path,
-				method
+				method,
 			}
 		);
 	}

@@ -1,7 +1,7 @@
-import { ApiError } from './api-error-util';
-import { createSuccessResponse, createErrorResponse } from './requests-responses-util';
-import { Logger } from './logger-util';
 import { Env } from '../../worker-configuration';
+import { ApiError } from './api-error-util';
+import { Logger } from './logger-util';
+import { createSuccessResponse, createErrorResponse } from './requests-responses-util';
 
 /**
  * Wraps a request handler function with standardized error handling and performance tracking
@@ -34,19 +34,19 @@ export async function handleRequest<T>(
 		// Log performance information
 		const slowThreshold = options.slowThreshold || 1000; // Default to 1 second
 		if (duration > slowThreshold) {
-			logger.warn(`Slow request completed`, { 
-				requestId, 
+			logger.warn(`Slow request completed`, {
+				requestId,
 				duration,
 				path: options.path || 'unknown',
 				method: options.method || 'unknown',
-				slowThreshold
+				slowThreshold,
 			});
 		} else {
-			logger.debug(`Request completed`, { 
-				requestId, 
+			logger.debug(`Request completed`, {
+				requestId,
 				duration,
 				path: options.path || 'unknown',
-				method: options.method || 'unknown'
+				method: options.method || 'unknown',
 			});
 		}
 

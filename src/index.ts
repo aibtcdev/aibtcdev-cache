@@ -28,13 +28,13 @@ export default {
 		const url = new URL(request.url);
 		const path = url.pathname;
 		const method = request.method;
-		
+
 		// Generate a unique request ID for tracking this request through the system
-		const requestId = logger.info('Request started', { 
-			path, 
+		const requestId = logger.info('Request started', {
+			path,
 			method,
 			userAgent: request.headers.get('User-Agent'),
-			contentType: request.headers.get('Content-Type')
+			contentType: request.headers.get('Content-Type'),
 		});
 
 		try {
@@ -55,7 +55,7 @@ export default {
 				logger.debug('Root request completed', { requestId, duration });
 				return createSuccessResponse({
 					message: `Welcome to the aibtcdev-api-cache! Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
-					requestId
+					requestId,
 				});
 			}
 
@@ -107,11 +107,11 @@ export default {
 
 			// Log the error if it hasn't been logged already
 			if (!(error instanceof ApiError)) {
-				logger.error('Unhandled exception in worker', error instanceof Error ? error : new Error(String(error)), { 
+				logger.error('Unhandled exception in worker', error instanceof Error ? error : new Error(String(error)), {
 					requestId,
 					duration,
 					path,
-					method
+					method,
 				});
 			}
 
@@ -119,7 +119,7 @@ export default {
 			if (error instanceof ApiError) {
 				error.details = {
 					...error.details,
-					requestId
+					requestId,
 				};
 			}
 			return createErrorResponse(error);

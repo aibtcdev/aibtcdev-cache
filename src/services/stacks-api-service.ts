@@ -1,10 +1,10 @@
 import { StacksNetworkName } from '@stacks/network';
 import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
+import { AppConfig } from '../config';
 import { ApiError } from '../utils/api-error-util';
 import { ErrorCode } from '../utils/error-catalog-util';
 import { Logger } from '../utils/logger-util';
 import { withTimeout } from '../utils/timeout-util';
-import { AppConfig } from '../config';
 import { Env } from '../../worker-configuration';
 
 /**
@@ -12,12 +12,12 @@ import { Env } from '../../worker-configuration';
  * Provides methods to call read-only functions on Stacks smart contracts
  */
 export class StacksApiService {
-	private readonly env: Env;
+	private readonly env: Env | undefined;
 	private readonly timeoutMs: number;
 
 	/**
 	 * Creates a new Stacks API service
-	 * 
+	 *
 	 * @param env - Optional Cloudflare Worker environment
 	 */
 	constructor(env?: Env) {
@@ -87,7 +87,7 @@ export class StacksApiService {
 			return result;
 		} catch (error) {
 			const duration = Date.now() - startTime;
-			
+
 			// If it's already an ApiError (like our timeout error), just add context and rethrow
 			if (error instanceof ApiError) {
 				// Add more context to the error
@@ -99,16 +99,16 @@ export class StacksApiService {
 					duration,
 					requestId,
 				};
-				
+
 				logger.error(
 					`Failed to call ${contractAddress}.${contractName}::${functionName}: ${error.code}`,
 					error instanceof Error ? error : new Error(String(error)),
 					{ requestId, duration, network }
 				);
-				
+
 				throw error;
 			}
-			
+
 			// Otherwise create a new API error
 			logger.error(
 				`Failed to call ${contractAddress}.${contractName}::${functionName}`,

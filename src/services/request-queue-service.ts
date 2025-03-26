@@ -72,17 +72,17 @@ export class RequestQueue<T> {
 	public enqueue(execute: () => Promise<T>): Promise<T> {
 		const logger = Logger.getInstance(this.env);
 		const requestId = logger.debug(`Request enqueued, current queue length: ${this.queue.length + 1}`);
-		
+
 		return new Promise<T>((resolve, reject) => {
 			const queuedAt = Date.now();
-			
+
 			this.queue.push({
 				execute,
 				resolve,
 				reject,
 				retryCount: 0,
 				requestId,
-				queuedAt
+				queuedAt,
 			});
 			void this.processQueue();
 		});
@@ -115,38 +115,38 @@ export class RequestQueue<T> {
 					const logger = Logger.getInstance(this.env);
 					const startTime = Date.now();
 					const queueTime = startTime - request.queuedAt;
-					
-					logger.debug(`Processing queued request`, { 
+
+					logger.debug(`Processing queued request`, {
 						requestId: request.requestId,
 						queueTime,
 						queuePosition: 0,
-						queueLength: this.queue.length
+						queueLength: this.queue.length,
 					});
-					
+
 					// Wrap the execution with a timeout
 					const result = await withTimeout(
 						request.execute(),
 						this.requestTimeout,
 						`Request execution timed out after ${this.requestTimeout}ms`
 					);
-					
+
 					const duration = Date.now() - startTime;
 					const totalTime = duration + queueTime;
 
 					// Log slow requests (over 1 second)
 					if (duration > 1000) {
-						logger.warn(`Slow queued request execution`, { 
+						logger.warn(`Slow queued request execution`, {
 							requestId: request.requestId,
 							executionTime: duration,
 							queueTime,
-							totalTime
+							totalTime,
 						});
 					} else {
-						logger.debug(`Request execution completed`, { 
+						logger.debug(`Request execution completed`, {
 							requestId: request.requestId,
 							executionTime: duration,
 							queueTime,
-							totalTime
+							totalTime,
 						});
 					}
 
@@ -168,7 +168,7 @@ export class RequestQueue<T> {
 							attempt: request.retryCount,
 							maxRetries: this.maxRetries,
 							retryDelay,
-							error: error instanceof Error ? error.message : String(error)
+							error: error instanceof Error ? error.message : String(error),
 						});
 
 						await new Promise((resolve) => setTimeout(resolve, retryDelay));
