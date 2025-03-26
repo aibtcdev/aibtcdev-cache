@@ -44,11 +44,15 @@ export class CacheService {
 	 * @param key - The cache key to store the value under
 	 * @param value - The value to cache (will be JSON stringified)
 	 * @param ttl - Optional TTL in seconds (defaults to the service's defaultTtl)
+	 *              If ttl is 0, the item will be cached indefinitely
 	 */
 	async set(key: string, value: unknown, ttl: number = this.defaultTtl): Promise<void> {
 		try {
+			// If ttl is 0 or ignoreTtl is true, cache indefinitely
+			const shouldIgnoreTtl = this.ignoreTtl || ttl === 0;
+			
 			await this.env.AIBTCDEV_CACHE_KV.put(key, typeof value === 'string' ? value : stringifyWithBigInt(value), {
-				expirationTtl: this.ignoreTtl ? undefined : ttl,
+				expirationTtl: shouldIgnoreTtl ? undefined : ttl,
 			});
 		} catch (error) {
 			const logger = Logger.getInstance(this.env);
