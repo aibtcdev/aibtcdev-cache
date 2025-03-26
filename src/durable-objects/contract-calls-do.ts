@@ -6,9 +6,9 @@ import { ClarityValue, deserializeCV, validateStacksAddress } from '@stacks/tran
 import { ContractAbiService } from '../services/stacks-contract-abi-service';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
 import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } from '../utils/clarity-responses-util';
-import { ApiError } from '../utils/api-error';
-import { ErrorCode } from '../utils/error-catalog';
-import { handleRequest } from '../utils/request-handler';
+import { ApiError } from '../utils/api-error-util';
+import { ErrorCode } from '../utils/error-catalog-util';
+import { handleRequest } from '../utils/request-handler-util';
 import { CacheKeyService } from '../services/cache-key-service';
 
 /**
@@ -29,9 +29,9 @@ interface ContractCallRequest {
 	preserveContainers?: boolean;
 	// Cache control options
 	cacheControl?: {
-		bustCache?: boolean;       // If true, bypass cache and force a fresh request
-		ttl?: number;              // Custom TTL in seconds, if not provided uses default or infinite
-		skipCache?: boolean;       // If true, don't cache the result of this request
+		bustCache?: boolean; // If true, bypass cache and force a fresh request
+		ttl?: number; // Custom TTL in seconds, if not provided uses default or infinite
+		skipCache?: boolean; // If true, don't cache the result of this request
 	};
 }
 
@@ -88,7 +88,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 			config.MAX_RETRIES,
 			config.RETRY_DELAY
 		);
-		
+
 		// Initialize cache key service with a prefix for this DO
 		this.cacheKeyService = new CacheKeyService(this.CACHE_PREFIX);
 
@@ -270,20 +270,18 @@ export class ContractCallsDO extends DurableObject<Env> {
 		const cacheControl = body.cacheControl || {};
 		const bustCache = cacheControl.bustCache || false;
 		const skipCache = cacheControl.skipCache || false;
-		
+
 		// Generate a deterministic cache key based on the contract call parameters
-		const cacheKey = this.cacheKeyService.generateContractCallKey(
-			contractAddress,
-			contractName,
-			functionName,
-			functionArgs,
-			network
-		);
+		const cacheKey = this.cacheKeyService.generateContractCallKey(contractAddress, contractName, functionName, functionArgs, network);
 
 		// Determine TTL - use custom TTL if provided, otherwise use default or infinite
-		const ttl = cacheControl.ttl !== undefined ? cacheControl.ttl : 
-			// If ttl is 0, cache indefinitely
-			(cacheControl.ttl === 0 ? 0 : this.CACHE_TTL);
+		const ttl =
+			cacheControl.ttl !== undefined
+				? cacheControl.ttl
+				: // If ttl is 0, cache indefinitely
+				cacheControl.ttl === 0
+				? 0
+				: this.CACHE_TTL;
 
 		// Execute contract call with our caching strategy
 		const result = await this.stacksContractFetcher.fetch(

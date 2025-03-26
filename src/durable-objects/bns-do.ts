@@ -4,9 +4,9 @@ import { AppConfig } from '../config';
 import { validateStacksAddress } from '@stacks/transactions';
 import { getKnownAddresses } from '../utils/address-store-util';
 import { getNameFromAddress, initStacksFetcher } from '../utils/bns-v2-util';
-import { ApiError } from '../utils/api-error';
-import { ErrorCode } from '../utils/error-catalog';
-import { handleRequest } from '../utils/request-handler';
+import { ApiError } from '../utils/api-error-util';
+import { ErrorCode } from '../utils/error-catalog-util';
+import { handleRequest } from '../utils/request-handler-util';
 
 /**
  * Durable Object class for the BNS (Blockchain Naming System) API

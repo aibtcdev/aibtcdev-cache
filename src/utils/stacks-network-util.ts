@@ -1,6 +1,6 @@
 import { StacksNetworkName } from '@stacks/network';
 import { validateStacksAddress } from '@stacks/transactions';
-import { Logger } from './logger';
+import { Logger } from './logger-util';
 
 /**
  * Determines the Stacks network (mainnet or testnet) based on a principal address

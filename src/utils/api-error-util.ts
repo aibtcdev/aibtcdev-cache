@@ -1,4 +1,4 @@
-import { ErrorCode, ErrorMessages, ErrorStatusCodes } from './error-catalog';
+import { ErrorCode, ErrorMessages, ErrorStatusCodes } from './error-catalog-util';
 
 /**
  * Standard API error class used throughout the application

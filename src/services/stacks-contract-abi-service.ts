@@ -3,8 +3,8 @@ import { StacksNetworkName } from '@stacks/network';
 import { ClarityAbi, ClarityAbiFunction, fetchAbi, validateStacksAddress } from '@stacks/transactions';
 import { CacheService } from './kv-cache-service';
 import { getNetworkByPrincipal } from '../utils/stacks-network-util';
-import { ApiError } from '../utils/api-error';
-import { ErrorCode } from '../utils/error-catalog';
+import { ApiError } from '../utils/api-error-util';
+import { ErrorCode } from '../utils/error-catalog-util';
 
 /**
  * Service for fetching and managing Clarity smart contract ABIs

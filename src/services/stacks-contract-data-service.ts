@@ -3,9 +3,9 @@ import { Env } from '../../worker-configuration';
 import { CacheService } from './kv-cache-service';
 import { StacksApiService } from './stacks-api-service';
 import { RequestQueue } from './request-queue-service';
-import { ApiError } from '../utils/api-error';
-import { ErrorCode } from '../utils/error-catalog';
-import { Logger } from '../utils/logger';
+import { ApiError } from '../utils/api-error-util';
+import { ErrorCode } from '../utils/error-catalog-util';
+import { Logger } from '../utils/logger-util';
 
 /**
  * Service for fetching data from Stacks smart contracts
