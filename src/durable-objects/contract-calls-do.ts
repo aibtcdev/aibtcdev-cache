@@ -113,6 +113,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname;
+		const method = request.method;
 
 		return handleRequest(
 			async () => {
@@ -160,6 +161,8 @@ export class ContractCallsDO extends DurableObject<Env> {
 			{
 				// Contract calls can be slow, so set a higher threshold
 				slowThreshold: 2000, // 2 seconds
+				path,
+				method
 			}
 		);
 	}

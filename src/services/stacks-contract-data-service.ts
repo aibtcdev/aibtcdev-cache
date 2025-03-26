@@ -34,9 +34,20 @@ export class StacksContractFetcher {
 		maxRetries: number,
 		retryDelay: number
 	) {
+		// Get timeout from config
+		const config = AppConfig.getInstance(env).getConfig();
+		const requestTimeout = config?.TIMEOUTS?.STACKS_API || 5000;
+		
 		this.cacheService = new CacheService(env, cacheTtl, false);
-		this.stacksApiService = new StacksApiService();
-		this.requestQueue = new RequestQueue<ClarityValue>(maxRequestsPerInterval, intervalMs, maxRetries, retryDelay);
+		this.stacksApiService = new StacksApiService(env);
+		this.requestQueue = new RequestQueue<ClarityValue>(
+			maxRequestsPerInterval, 
+			intervalMs, 
+			maxRetries, 
+			retryDelay,
+			env,
+			requestTimeout
+		);
 	}
 
 	/**

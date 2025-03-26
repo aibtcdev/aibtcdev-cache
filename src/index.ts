@@ -25,10 +25,21 @@ export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const logger = Logger.getInstance(env);
 		const startTime = Date.now();
+		const url = new URL(request.url);
+		const path = url.pathname;
+		const method = request.method;
+		
+		// Generate a unique request ID for tracking this request through the system
+		const requestId = logger.info('Request started', { 
+			path, 
+			method,
+			userAgent: request.headers.get('User-Agent'),
+			contentType: request.headers.get('Content-Type')
+		});
 
 		try {
 			// Handle CORS preflight requests
-			if (request.method === 'OPTIONS') {
+			if (method === 'OPTIONS') {
 				return new Response(null, {
 					headers: corsHeaders(request.headers.get('Origin') || undefined),
 				});
@@ -36,14 +47,15 @@ export default {
 
 			// Initialize config with environment
 			const config = AppConfig.getInstance(env).getConfig();
-			const url = new URL(request.url);
-			const path = url.pathname;
 
-			logger.debug('Processing request', { path, method: request.method });
+			logger.debug('Processing request', { requestId, path, method });
 
 			if (path === '/') {
+				const duration = Date.now() - startTime;
+				logger.debug('Root request completed', { requestId, duration });
 				return createSuccessResponse({
 					message: `Welcome to the aibtcdev-api-cache! Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
+					requestId
 				});
 			}
 
@@ -95,16 +107,36 @@ export default {
 
 			// Log the error if it hasn't been logged already
 			if (!(error instanceof ApiError)) {
-				logger.error('Unhandled exception in worker', error instanceof Error ? error : new Error(String(error)), { duration });
+				logger.error('Unhandled exception in worker', error instanceof Error ? error : new Error(String(error)), { 
+					requestId,
+					duration,
+					path,
+					method
+				});
 			}
 
-			// Return appropriate error response
+			// Return appropriate error response with request ID
+			if (error instanceof ApiError) {
+				error.details = {
+					...error.details,
+					requestId
+				};
+			}
 			return createErrorResponse(error);
 		} finally {
 			const duration = Date.now() - startTime;
 			if (duration > 1000) {
 				logger.warn('Slow request processing', {
-					path: new URL(request.url).pathname,
+					requestId,
+					path,
+					method,
+					duration,
+				});
+			} else {
+				logger.debug('Request processing completed', {
+					requestId,
+					path,
+					method,
 					duration,
 				});
 			}

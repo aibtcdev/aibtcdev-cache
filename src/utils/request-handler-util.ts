@@ -16,11 +16,16 @@ export async function handleRequest<T>(
 	env?: Env,
 	options: {
 		slowThreshold?: number; // Time in ms after which a request is considered slow
+		path?: string; // The request path for better logging
+		method?: string; // The HTTP method for better logging
 	} = {}
 ): Promise<Response> {
 	const logger = Logger.getInstance(env);
 	const startTime = Date.now();
-	const requestId = logger.info('Request started');
+	const requestId = logger.info('Request started', {
+		path: options.path || 'unknown',
+		method: options.method || 'unknown',
+	});
 
 	try {
 		const result = await handler();
@@ -29,9 +34,20 @@ export async function handleRequest<T>(
 		// Log performance information
 		const slowThreshold = options.slowThreshold || 1000; // Default to 1 second
 		if (duration > slowThreshold) {
-			logger.warn(`Slow request completed`, { requestId, duration });
+			logger.warn(`Slow request completed`, { 
+				requestId, 
+				duration,
+				path: options.path || 'unknown',
+				method: options.method || 'unknown',
+				slowThreshold
+			});
 		} else {
-			logger.debug(`Request completed`, { requestId, duration });
+			logger.debug(`Request completed`, { 
+				requestId, 
+				duration,
+				path: options.path || 'unknown',
+				method: options.method || 'unknown'
+			});
 		}
 
 		return createSuccessResponse(result);

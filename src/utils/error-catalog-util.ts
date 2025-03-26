@@ -11,6 +11,7 @@ export enum ErrorCode {
 	// API specific errors
 	RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
 	UPSTREAM_API_ERROR = 'UPSTREAM_API_ERROR',
+	TIMEOUT_ERROR = 'TIMEOUT_ERROR',
 
 	// Validation errors
 	VALIDATION_ERROR = 'VALIDATION_ERROR',
@@ -37,6 +38,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
 
 	[ErrorCode.RATE_LIMIT_EXCEEDED]: 'Rate limit exceeded. Try again in {retryAfter} seconds',
 	[ErrorCode.UPSTREAM_API_ERROR]: 'Upstream API error: {message}',
+	[ErrorCode.TIMEOUT_ERROR]: 'Request timed out after {timeoutMs}ms: {message}',
 
 	[ErrorCode.VALIDATION_ERROR]: 'Validation error: {message}',
 	[ErrorCode.INVALID_CONTRACT_ADDRESS]: 'Invalid contract address: {address}',
@@ -59,6 +61,7 @@ export const ErrorStatusCodes: Record<ErrorCode, number> = {
 
 	[ErrorCode.RATE_LIMIT_EXCEEDED]: 429,
 	[ErrorCode.UPSTREAM_API_ERROR]: 502,
+	[ErrorCode.TIMEOUT_ERROR]: 504, // Gateway Timeout
 
 	[ErrorCode.VALIDATION_ERROR]: 400,
 	[ErrorCode.INVALID_CONTRACT_ADDRESS]: 400,
