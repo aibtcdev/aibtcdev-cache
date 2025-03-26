@@ -1,4 +1,4 @@
-import { ApiError } from './api-error';
+import { ApiError } from './api-error-util';
 
 /**
  * Generates a unique error ID for tracking purposes

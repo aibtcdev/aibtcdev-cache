@@ -3,9 +3,9 @@ import { createSuccessResponse, createErrorResponse } from '../utils/requests-re
 import { RequestQueue } from './request-queue-service';
 import { TokenBucket } from './token-bucket-service';
 import { CacheService } from './kv-cache-service';
-import { ApiError } from '../utils/api-error';
-import { ErrorCode } from '../utils/error-catalog';
-import { Logger } from '../utils/logger';
+import { ApiError } from '../utils/api-error-util';
+import { ErrorCode } from '../utils/error-catalog-util';
+import { Logger } from '../utils/logger-util';
 
 /**
  * Service that provides rate-limited API fetching capabilities

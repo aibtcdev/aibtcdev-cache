@@ -17,6 +17,6 @@
 	},
 	"dependencies": {
 		"@stacks/transactions": "^7.0.5",
-		"@supabase/supabase-js": "^2.49.1"
+		"@supabase/supabase-js": "^2.49.3"
 	}
 }

@@ -3,9 +3,9 @@ import { AppConfig } from '../config';
 import { getFetchOptions, setFetchOptions } from '@stacks/common';
 import { BufferCV, ClarityType, principalCV, TupleCV } from '@stacks/transactions';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
-import { ApiError } from './api-error';
-import { ErrorCode } from './error-catalog';
-import { Logger } from './logger';
+import { ApiError } from './api-error-util';
+import { ErrorCode } from './error-catalog-util';
+import { Logger } from './logger-util';
 
 /**
  * BNS contract constants for the Stacks blockchain

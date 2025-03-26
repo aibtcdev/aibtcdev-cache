@@ -1,7 +1,7 @@
 import { TokenBucket } from './token-bucket-service';
-import { ApiError } from '../utils/api-error';
-import { ErrorCode } from '../utils/error-catalog';
-import { Logger } from '../utils/logger';
+import { ApiError } from '../utils/api-error-util';
+import { ErrorCode } from '../utils/error-catalog-util';
+import { Logger } from '../utils/logger-util';
 
 /**
  * Represents a request in the queue with its execution function and callbacks

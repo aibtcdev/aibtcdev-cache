@@ -1,6 +1,6 @@
 import { Env } from '../worker-configuration';
-import { ApiError } from './utils/api-error';
-import { ErrorCode } from './utils/error-catalog';
+import { ApiError } from './utils/api-error-util';
+import { ErrorCode } from './utils/error-catalog-util';
 
 /**
  * Singleton configuration class for the application

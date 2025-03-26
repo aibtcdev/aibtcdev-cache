@@ -1,6 +1,6 @@
-import { ApiError } from './api-error';
+import { ApiError } from './api-error-util';
 import { createSuccessResponse, createErrorResponse } from './requests-responses-util';
-import { Logger } from './logger';
+import { Logger } from './logger-util';
 import { Env } from '../../worker-configuration';
 
 /**

@@ -1,7 +1,7 @@
 import { Env } from '../../worker-configuration';
-import { ApiError } from './api-error';
-import { ErrorCode } from './error-catalog';
-import { Logger } from './logger';
+import { ApiError } from './api-error-util';
+import { ErrorCode } from './error-catalog-util';
+import { Logger } from './logger-util';
 
 /**
  * KV storage key for the list of known Stacks addresses

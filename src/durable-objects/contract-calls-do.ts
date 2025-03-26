@@ -3,12 +3,13 @@ import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { StacksNetworkName } from '@stacks/network';
 import { ClarityValue, deserializeCV, validateStacksAddress } from '@stacks/transactions';
+import { CacheKeyService } from '../services/cache-key-service';
 import { ContractAbiService } from '../services/stacks-contract-abi-service';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
 import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } from '../utils/clarity-responses-util';
-import { ApiError } from '../utils/api-error';
-import { ErrorCode } from '../utils/error-catalog';
-import { handleRequest } from '../utils/request-handler';
+import { ApiError } from '../utils/api-error-util';
+import { ErrorCode } from '../utils/error-catalog-util';
+import { handleRequest } from '../utils/request-handler-util';
 
 /**
  * Interface for expected request body for contract calls
@@ -26,6 +27,12 @@ interface ContractCallRequest {
 	senderAddress?: string;
 	strictJsonCompat?: boolean;
 	preserveContainers?: boolean;
+	// Cache control options
+	cacheControl?: {
+		bustCache?: boolean; // If true, bypass cache and force a fresh request
+		ttl?: number; // Custom TTL in seconds, if not provided uses default or infinite
+		skipCache?: boolean; // If true, don't cache the result of this request
+	};
 }
 
 /**
@@ -55,6 +62,7 @@ export class ContractCallsDO extends DurableObject<Env> {
 	// Services
 	private readonly contractAbiService: ContractAbiService;
 	private readonly stacksContractFetcher: StacksContractFetcher;
+	private readonly cacheKeyService: CacheKeyService;
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -80,6 +88,9 @@ export class ContractCallsDO extends DurableObject<Env> {
 			config.MAX_RETRIES,
 			config.RETRY_DELAY
 		);
+
+		// Initialize cache key service with a prefix for this DO
+		this.cacheKeyService = new CacheKeyService(this.CACHE_PREFIX);
 
 		// No alarm configured yet
 	}
@@ -255,9 +266,18 @@ export class ContractCallsDO extends DurableObject<Env> {
 			});
 		}
 
-		// Execute contract call
-		const cacheKey = `${this.CACHE_PREFIX}_call_${contractAddress}_${contractName}_${functionName}_${new Date().getTime()}`;
+		// Get cache control options from request
+		const cacheControl = body.cacheControl || {};
+		const bustCache = cacheControl.bustCache || false;
+		const skipCache = cacheControl.skipCache || false;
 
+		// Generate a deterministic cache key based on the contract call parameters
+		const cacheKey = this.cacheKeyService.generateContractCallKey(contractAddress, contractName, functionName, functionArgs, network);
+
+		// Determine TTL - use custom TTL if provided, otherwise cache indefinitely (0)
+		const ttl = cacheControl.ttl !== undefined ? cacheControl.ttl : 0;
+
+		// Execute contract call with our caching strategy
 		const result = await this.stacksContractFetcher.fetch(
 			contractAddress,
 			contractName,
@@ -265,7 +285,10 @@ export class ContractCallsDO extends DurableObject<Env> {
 			functionArgs,
 			senderAddress,
 			network,
-			cacheKey
+			cacheKey,
+			bustCache,
+			skipCache,
+			ttl
 		);
 
 		return decodeClarityValues(result, strictJsonCompat, preserveContainers);

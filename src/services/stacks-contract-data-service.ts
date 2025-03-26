@@ -3,9 +3,9 @@ import { Env } from '../../worker-configuration';
 import { CacheService } from './kv-cache-service';
 import { StacksApiService } from './stacks-api-service';
 import { RequestQueue } from './request-queue-service';
-import { ApiError } from '../utils/api-error';
-import { ErrorCode } from '../utils/error-catalog';
-import { Logger } from '../utils/logger';
+import { ApiError } from '../utils/api-error-util';
+import { ErrorCode } from '../utils/error-catalog-util';
+import { Logger } from '../utils/logger-util';
 
 /**
  * Service for fetching data from Stacks smart contracts
@@ -50,6 +50,8 @@ export class StacksContractFetcher {
 	 * @param network - The Stacks network to use ('mainnet' or 'testnet')
 	 * @param cacheKey - The key to use for caching the response
 	 * @param bustCache - If true, bypass the cache and force a fresh request
+	 * @param skipCache - If true, don't cache the result of this request
+	 * @param ttl - Custom TTL in seconds, if not provided uses default
 	 * @returns A promise that resolves to the Clarity value returned by the function
 	 */
 	public async fetch(
@@ -60,7 +62,9 @@ export class StacksContractFetcher {
 		senderAddress: string,
 		network: string,
 		cacheKey: string,
-		bustCache = false
+		bustCache = false,
+		skipCache = false,
+		ttl?: number
 	): Promise<ClarityValue> {
 		// Check cache first
 		if (!bustCache) {
@@ -88,8 +92,12 @@ export class StacksContractFetcher {
 				network
 			);
 
-			// Cache the result
-			await this.cacheService.set(cacheKey, response);
+			// Cache the result unless skipCache is true
+			if (!skipCache) {
+				// Use provided TTL or default
+				const cacheTtl = ttl !== undefined ? ttl : this.cacheTtl;
+				await this.cacheService.set(cacheKey, response, cacheTtl);
+			}
 
 			return response;
 		});

@@ -22,8 +22,8 @@ import {
 	responseOkCV,
 	responseErrorCV,
 } from '@stacks/transactions';
-import { ApiError } from './api-error';
-import { ErrorCode } from './error-catalog';
+import { ApiError } from './api-error-util';
+import { ErrorCode } from './error-catalog-util';
 
 /**
  * Interface for simplified Clarity value representation

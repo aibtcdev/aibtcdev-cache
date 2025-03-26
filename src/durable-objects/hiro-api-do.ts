@@ -3,9 +3,9 @@ import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { ApiRateLimiterService } from '../services/api-rate-limiter-service';
 import { getKnownAddresses, addKnownAddress } from '../utils/address-store-util';
-import { ApiError } from '../utils/api-error';
-import { ErrorCode } from '../utils/error-catalog';
-import { handleRequest } from '../utils/request-handler';
+import { ApiError } from '../utils/api-error-util';
+import { ErrorCode } from '../utils/error-catalog-util';
+import { handleRequest } from '../utils/request-handler-util';
 
 /**
  * Interface representing information about known Stacks addresses
