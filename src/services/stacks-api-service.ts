@@ -52,7 +52,7 @@ export class StacksApiService {
 			contractAddress,
 			contractName,
 			functionName,
-			senderAddress
+			senderAddress,
 		});
 
 		try {
@@ -77,13 +77,13 @@ export class StacksApiService {
 					requestId,
 					duration,
 					network,
-					threshold: 2000
+					threshold: 2000,
 				});
 			} else {
 				logger.debug(`Contract call completed: ${contractAddress}.${contractName}::${functionName}`, {
 					requestId,
 					duration,
-					network
+					network,
 				});
 			}
 
@@ -106,11 +106,11 @@ export class StacksApiService {
 				logger.error(
 					`Contract call failed: ${contractAddress}.${contractName}::${functionName} (${error.code})`,
 					error instanceof Error ? error : new Error(String(error)),
-					{ 
-						requestId, 
-						duration, 
+					{
+						requestId,
+						duration,
 						network,
-						errorCode: error.code
+						errorCode: error.code,
 					}
 				);
 
@@ -121,11 +121,11 @@ export class StacksApiService {
 			logger.error(
 				`Contract call failed: ${contractAddress}.${contractName}::${functionName}`,
 				error instanceof Error ? error : new Error(String(error)),
-				{ 
-					requestId, 
-					duration, 
+				{
+					requestId,
+					duration,
 					network,
-					errorType: error instanceof Error ? error.constructor.name : typeof error
+					errorType: error instanceof Error ? error.constructor.name : typeof error,
 				}
 			);
 

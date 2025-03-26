@@ -93,10 +93,10 @@ export default {
 			} catch (error) {
 				// Log errors from Durable Objects
 				const duration = Date.now() - startTime;
-				logger.error(`Error in Durable Object request: ${method} ${path}`, error instanceof Error ? error : new Error(String(error)), { 
+				logger.error(`Error in Durable Object request: ${method} ${path}`, error instanceof Error ? error : new Error(String(error)), {
 					requestId,
 					duration,
-					service: path.split('/')[1] // Extract service name from path
+					service: path.split('/')[1], // Extract service name from path
 				});
 				throw error; // Re-throw to be handled by the outer try/catch
 			}
@@ -116,7 +116,7 @@ export default {
 					duration,
 					path,
 					method,
-					errorType: error instanceof Error ? error.constructor.name : typeof error
+					errorType: error instanceof Error ? error.constructor.name : typeof error,
 				});
 			}
 
@@ -134,12 +134,12 @@ export default {
 				logger.warn(`Slow request: ${method} ${path}`, {
 					requestId,
 					duration,
-					threshold: 1000
+					threshold: 1000,
 				});
 			} else {
 				logger.debug(`Request completed: ${method} ${path}`, {
 					requestId,
-					duration
+					duration,
 				});
 			}
 		}

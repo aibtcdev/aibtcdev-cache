@@ -37,12 +37,12 @@ export async function handleRequest<T>(
 			logger.warn(`Slow request: ${options.method || 'UNKNOWN'} ${options.path || 'unknown'}`, {
 				requestId,
 				duration,
-				threshold: slowThreshold
+				threshold: slowThreshold,
 			});
 		} else {
 			logger.debug(`Request completed: ${options.method || 'UNKNOWN'} ${options.path || 'unknown'}`, {
 				requestId,
-				duration
+				duration,
 			});
 		}
 
@@ -52,20 +52,20 @@ export async function handleRequest<T>(
 
 		// Log the error with duration information
 		if (error instanceof ApiError) {
-			logger.warn(`API Error: ${error.code} - ${error.message}`, { 
-				requestId, 
-				errorId: error.id, 
+			logger.warn(`API Error: ${error.code} - ${error.message}`, {
+				requestId,
+				errorId: error.id,
 				path: options.path || 'unknown',
 				method: options.method || 'UNKNOWN',
 				duration,
-				...error.details 
+				...error.details,
 			});
 		} else {
 			const errorObj = error instanceof Error ? error : new Error(String(error));
-			logger.error(`Unhandled exception: ${options.method || 'UNKNOWN'} ${options.path || 'unknown'}`, errorObj, { 
+			logger.error(`Unhandled exception: ${options.method || 'UNKNOWN'} ${options.path || 'unknown'}`, errorObj, {
 				requestId,
 				duration,
-				errorType: error instanceof Error ? error.constructor.name : typeof error
+				errorType: error instanceof Error ? error.constructor.name : typeof error,
 			});
 		}
 

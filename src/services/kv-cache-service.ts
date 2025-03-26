@@ -33,7 +33,7 @@ export class CacheService {
 			logger.error(`Cache error: Failed to get key ${key}`, error instanceof Error ? error : new Error(String(error)), {
 				operation: 'get',
 				cacheKey: key,
-				errorType: error instanceof Error ? error.constructor.name : typeof error
+				errorType: error instanceof Error ? error.constructor.name : typeof error,
 			});
 			throw new ApiError(ErrorCode.CACHE_ERROR, {
 				reason: `Failed to get cache key: ${key}`,
@@ -51,10 +51,9 @@ export class CacheService {
 	 *              If ttl is 0, the item will be cached indefinitely
 	 */
 	async set(key: string, value: unknown, ttl: number = this.defaultTtl): Promise<void> {
+		// If ttl is 0 or ignoreTtl is true, cache indefinitely
+		const shouldIgnoreTtl = this.ignoreTtl || ttl === 0;
 		try {
-			// If ttl is 0 or ignoreTtl is true, cache indefinitely
-			const shouldIgnoreTtl = this.ignoreTtl || ttl === 0;
-
 			await this.env.AIBTCDEV_CACHE_KV.put(key, typeof value === 'string' ? value : stringifyWithBigInt(value), {
 				expirationTtl: shouldIgnoreTtl ? undefined : ttl,
 			});
@@ -64,7 +63,7 @@ export class CacheService {
 				operation: 'set',
 				cacheKey: key,
 				ttl: shouldIgnoreTtl ? 'indefinite' : ttl,
-				errorType: error instanceof Error ? error.constructor.name : typeof error
+				errorType: error instanceof Error ? error.constructor.name : typeof error,
 			});
 			throw new ApiError(ErrorCode.CACHE_ERROR, {
 				reason: `Failed to set cache key: ${key}`,
