@@ -61,7 +61,10 @@ test_contract_calls() {
     local decode_response=$(curl -s -X POST -H "Content-Type: application/json" -d "$decode_payload" "$decode_url")
     local decode_status=$?
     
-    if [ $decode_status -eq 0 ] && [ "$(echo "$decode_response" | jq -e 'has("decoded")' 2>/dev/null)" == "true" ]; then
+    # Check if response has data.decoded or just decoded field
+    if [ $decode_status -eq 0 ] && \
+       ([ "$(echo "$decode_response" | jq -e 'has("decoded")' 2>/dev/null)" == "true" ] || \
+        [ "$(echo "$decode_response" | jq -e '.data | has("decoded")' 2>/dev/null)" == "true" ]); then
         echo -e "${GREEN}✓${NC} Decode clarity value successful"
         ((TOTAL_TESTS++))
     else
