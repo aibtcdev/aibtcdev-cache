@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Set default API URL from argument if provided
+export API_URL=${1:-"http://localhost:8787"}
+
 source "$(dirname "$0")/utils.sh"
 
 test_contract_calls() {
@@ -74,12 +77,8 @@ test_contract_calls() {
 
 # Allow running just this test file
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    # Set default API URL if not already set
-    export API_URL=${API_URL:-"http://localhost:8787"}
     export FAILED_TESTS=0
     export TOTAL_TESTS=0
-    
-    source "$(dirname "$0")/utils.sh"
     
     echo -e "\nTesting Contract Calls API at: $API_URL"
     test_contract_calls
