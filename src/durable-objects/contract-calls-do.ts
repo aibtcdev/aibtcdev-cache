@@ -3,13 +3,13 @@ import { Env } from '../../worker-configuration';
 import { AppConfig } from '../config';
 import { StacksNetworkName } from '@stacks/network';
 import { ClarityValue, deserializeCV, validateStacksAddress } from '@stacks/transactions';
+import { CacheKeyService } from '../services/cache-key-service';
 import { ContractAbiService } from '../services/stacks-contract-abi-service';
 import { StacksContractFetcher } from '../services/stacks-contract-data-service';
 import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } from '../utils/clarity-responses-util';
 import { ApiError } from '../utils/api-error-util';
 import { ErrorCode } from '../utils/error-catalog-util';
 import { handleRequest } from '../utils/request-handler-util';
-import { CacheKeyService } from '../services/cache-key-service';
 
 /**
  * Interface for expected request body for contract calls
