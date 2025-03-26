@@ -30,7 +30,7 @@ export default {
 		const method = request.method;
 
 		// Generate a unique request ID for tracking this request through the system
-		const requestId = logger.info('Request started', {
+		const requestId = logger.info(`Request started: ${method} ${path}`, {
 			path,
 			method,
 			userAgent: request.headers.get('User-Agent'),
@@ -48,11 +48,11 @@ export default {
 			// Initialize config with environment
 			const config = AppConfig.getInstance(env).getConfig();
 
-			logger.debug('Processing request', { requestId, path, method });
+			logger.debug(`Processing request: ${method} ${path}`, { requestId });
 
 			if (path === '/') {
 				const duration = Date.now() - startTime;
-				logger.debug('Root request completed', { requestId, duration });
+				logger.debug(`Request completed: ${method} ${path}`, { requestId, duration });
 				return createSuccessResponse({
 					message: `Welcome to the aibtcdev-api-cache! Supported services: ${config.SUPPORTED_SERVICES.join(', ')}`,
 					requestId,
@@ -93,7 +93,11 @@ export default {
 			} catch (error) {
 				// Log errors from Durable Objects
 				const duration = Date.now() - startTime;
-				logger.error(`Error in Durable Object request to ${path}`, error instanceof Error ? error : new Error(String(error)), { duration });
+				logger.error(`Error in Durable Object request: ${method} ${path}`, error instanceof Error ? error : new Error(String(error)), { 
+					requestId,
+					duration,
+					service: path.split('/')[1] // Extract service name from path
+				});
 				throw error; // Re-throw to be handled by the outer try/catch
 			}
 
@@ -107,11 +111,12 @@ export default {
 
 			// Log the error if it hasn't been logged already
 			if (!(error instanceof ApiError)) {
-				logger.error('Unhandled exception in worker', error instanceof Error ? error : new Error(String(error)), {
+				logger.error(`Unhandled exception: ${method} ${path}`, error instanceof Error ? error : new Error(String(error)), {
 					requestId,
 					duration,
 					path,
 					method,
+					errorType: error instanceof Error ? error.constructor.name : typeof error
 				});
 			}
 
@@ -126,18 +131,15 @@ export default {
 		} finally {
 			const duration = Date.now() - startTime;
 			if (duration > 1000) {
-				logger.warn('Slow request processing', {
+				logger.warn(`Slow request: ${method} ${path}`, {
 					requestId,
-					path,
-					method,
 					duration,
+					threshold: 1000
 				});
 			} else {
-				logger.debug('Request processing completed', {
+				logger.debug(`Request completed: ${method} ${path}`, {
 					requestId,
-					path,
-					method,
-					duration,
+					duration
 				});
 			}
 		}

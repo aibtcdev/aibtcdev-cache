@@ -22,9 +22,9 @@ export async function handleRequest<T>(
 ): Promise<Response> {
 	const logger = Logger.getInstance(env);
 	const startTime = Date.now();
-	const requestId = logger.info('Request started', {
+	const requestId = logger.info(`Request started: ${options.method || 'UNKNOWN'} ${options.path || 'unknown'}`, {
 		path: options.path || 'unknown',
-		method: options.method || 'unknown',
+		method: options.method || 'UNKNOWN',
 	});
 
 	try {
@@ -34,19 +34,15 @@ export async function handleRequest<T>(
 		// Log performance information
 		const slowThreshold = options.slowThreshold || 1000; // Default to 1 second
 		if (duration > slowThreshold) {
-			logger.warn(`Slow request completed`, {
+			logger.warn(`Slow request: ${options.method || 'UNKNOWN'} ${options.path || 'unknown'}`, {
 				requestId,
 				duration,
-				path: options.path || 'unknown',
-				method: options.method || 'unknown',
-				slowThreshold,
+				threshold: slowThreshold
 			});
 		} else {
-			logger.debug(`Request completed`, {
+			logger.debug(`Request completed: ${options.method || 'UNKNOWN'} ${options.path || 'unknown'}`, {
 				requestId,
-				duration,
-				path: options.path || 'unknown',
-				method: options.method || 'unknown',
+				duration
 			});
 		}
 
@@ -56,10 +52,21 @@ export async function handleRequest<T>(
 
 		// Log the error with duration information
 		if (error instanceof ApiError) {
-			logger.warn(`API Error: ${error.code} - ${error.message}`, { requestId, errorId: error.id, ...error.details }, duration);
+			logger.warn(`API Error: ${error.code} - ${error.message}`, { 
+				requestId, 
+				errorId: error.id, 
+				path: options.path || 'unknown',
+				method: options.method || 'UNKNOWN',
+				duration,
+				...error.details 
+			});
 		} else {
 			const errorObj = error instanceof Error ? error : new Error(String(error));
-			logger.error('Unhandled exception', errorObj, { requestId }, duration);
+			logger.error(`Unhandled exception: ${options.method || 'UNKNOWN'} ${options.path || 'unknown'}`, errorObj, { 
+				requestId,
+				duration,
+				errorType: error instanceof Error ? error.constructor.name : typeof error
+			});
 		}
 
 		// Return appropriate error response

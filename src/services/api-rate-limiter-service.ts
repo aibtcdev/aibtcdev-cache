@@ -125,6 +125,7 @@ export class ApiRateLimiterService {
 	 */
 	private async makeRequest(endpoint: string, cacheKey: string): Promise<Response> {
 		const logger = Logger.getInstance(this.env);
+		logger.debug(`API request: ${url.toString()}`);
 
 		// Separate the path from the base URL, if there is one
 		const baseUrl = new URL(this.baseApiUrl);
@@ -138,7 +139,11 @@ export class ApiRateLimiterService {
 
 		// Log slow responses
 		if (duration > 1000) {
-			logger.warn(`Slow API response from ${url.toString()}`, { duration });
+			logger.warn(`Slow API response: ${url.toString()}`, { 
+				duration,
+				threshold: 1000,
+				endpoint
+			});
 		}
 
 		if (response.status === 429) {

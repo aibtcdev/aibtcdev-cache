@@ -30,7 +30,11 @@ export class CacheService {
 			return cached ? (JSON.parse(cached) as T) : null;
 		} catch (error) {
 			const logger = Logger.getInstance(this.env);
-			logger.error(`Failed to get cache key: ${key}`, error instanceof Error ? error : new Error(String(error)));
+			logger.error(`Cache error: Failed to get key ${key}`, error instanceof Error ? error : new Error(String(error)), {
+				operation: 'get',
+				cacheKey: key,
+				errorType: error instanceof Error ? error.constructor.name : typeof error
+			});
 			throw new ApiError(ErrorCode.CACHE_ERROR, {
 				reason: `Failed to get cache key: ${key}`,
 				error: error instanceof Error ? error.message : String(error),
@@ -56,7 +60,12 @@ export class CacheService {
 			});
 		} catch (error) {
 			const logger = Logger.getInstance(this.env);
-			logger.error(`Failed to set cache key: ${key}`, error instanceof Error ? error : new Error(String(error)));
+			logger.error(`Cache error: Failed to set key ${key}`, error instanceof Error ? error : new Error(String(error)), {
+				operation: 'set',
+				cacheKey: key,
+				ttl: shouldIgnoreTtl ? 'indefinite' : ttl,
+				errorType: error instanceof Error ? error.constructor.name : typeof error
+			});
 			throw new ApiError(ErrorCode.CACHE_ERROR, {
 				reason: `Failed to set cache key: ${key}`,
 				error: error instanceof Error ? error.message : String(error),

@@ -2,6 +2,11 @@ import { Env } from '../../worker-configuration';
 
 /**
  * Log levels in order of increasing severity
+ * 
+ * DEBUG: Detailed information for debugging purposes (request details, cache operations, etc.)
+ * INFO: Normal application behavior (request start/end, API calls start/end)
+ * WARN: Potential issues that don't prevent operation (slow requests, rate limit approaching)
+ * ERROR: Actual errors that affect functionality (API errors, unhandled exceptions)
  */
 export enum LogLevel {
 	DEBUG = 'DEBUG',

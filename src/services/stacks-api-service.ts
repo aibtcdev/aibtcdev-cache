@@ -47,10 +47,12 @@ export class StacksApiService {
 	): Promise<ClarityValue> {
 		const logger = Logger.getInstance(this.env);
 		const startTime = Date.now();
-		const requestId = logger.info(`Starting contract call to ${contractAddress}.${contractName}::${functionName}`, {
+		const requestId = logger.info(`Contract call started: ${contractAddress}.${contractName}::${functionName}`, {
 			network,
 			contractAddress,
+			contractName,
 			functionName,
+			senderAddress
 		});
 
 		try {
@@ -71,16 +73,17 @@ export class StacksApiService {
 			const duration = Date.now() - startTime;
 			if (duration > 2000) {
 				// Log if call takes more than 2 seconds
-				logger.warn(`Slow contract call to ${contractAddress}.${contractName}::${functionName}`, {
+				logger.warn(`Slow contract call: ${contractAddress}.${contractName}::${functionName}`, {
 					requestId,
 					duration,
 					network,
+					threshold: 2000
 				});
 			} else {
-				logger.debug(`Completed contract call to ${contractAddress}.${contractName}::${functionName}`, {
+				logger.debug(`Contract call completed: ${contractAddress}.${contractName}::${functionName}`, {
 					requestId,
 					duration,
-					network,
+					network
 				});
 			}
 
@@ -101,9 +104,14 @@ export class StacksApiService {
 				};
 
 				logger.error(
-					`Failed to call ${contractAddress}.${contractName}::${functionName}: ${error.code}`,
+					`Contract call failed: ${contractAddress}.${contractName}::${functionName} (${error.code})`,
 					error instanceof Error ? error : new Error(String(error)),
-					{ requestId, duration, network }
+					{ 
+						requestId, 
+						duration, 
+						network,
+						errorCode: error.code
+					}
 				);
 
 				throw error;
@@ -111,9 +119,14 @@ export class StacksApiService {
 
 			// Otherwise create a new API error
 			logger.error(
-				`Failed to call ${contractAddress}.${contractName}::${functionName}`,
+				`Contract call failed: ${contractAddress}.${contractName}::${functionName}`,
 				error instanceof Error ? error : new Error(String(error)),
-				{ requestId, duration, network }
+				{ 
+					requestId, 
+					duration, 
+					network,
+					errorType: error instanceof Error ? error.constructor.name : typeof error
+				}
 			);
 
 			throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
