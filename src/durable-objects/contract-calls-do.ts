@@ -274,14 +274,8 @@ export class ContractCallsDO extends DurableObject<Env> {
 		// Generate a deterministic cache key based on the contract call parameters
 		const cacheKey = this.cacheKeyService.generateContractCallKey(contractAddress, contractName, functionName, functionArgs, network);
 
-		// Determine TTL - use custom TTL if provided, otherwise use default or infinite
-		const ttl =
-			cacheControl.ttl !== undefined
-				? cacheControl.ttl
-				: // If ttl is 0, cache indefinitely
-				cacheControl.ttl === 0
-				? 0
-				: this.CACHE_TTL;
+		// Determine TTL - use custom TTL if provided, otherwise cache indefinitely (0)
+		const ttl = cacheControl.ttl !== undefined ? cacheControl.ttl : 0;
 
 		// Execute contract call with our caching strategy
 		const result = await this.stacksContractFetcher.fetch(
