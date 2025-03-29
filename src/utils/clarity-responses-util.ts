@@ -21,6 +21,8 @@ import {
 	someCV,
 	responseOkCV,
 	responseErrorCV,
+	ClarityWireType,
+	clarityByteToType,
 } from '@stacks/transactions';
 import { ApiError } from './api-error-util';
 import { ErrorCode } from './error-catalog-util';
@@ -116,71 +118,86 @@ export function decodeListRecursively(list: ListCV, strictJsonCompat = false, pr
  * @throws Error if the type is unsupported or the conversion fails
  */
 export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue): ClarityValue {
-	// If it's already a ClarityValue (has a type property that's a ClarityType enum)
-	if (typeof arg === 'object' && arg !== null && 'type' in arg && Object.values(ClarityType).includes(arg.type as ClarityType)) {
-		return arg as ClarityValue;
-	}
-
-	// Otherwise, treat it as a simplified object
-	const simplifiedArg = arg as SimplifiedClarityValue;
-	const type = simplifiedArg.type.toLowerCase();
-
-	try {
-		switch (type) {
-			case 'uint':
-				return uintCV(BigInt(simplifiedArg.value));
-			case 'int':
-				return intCV(BigInt(simplifiedArg.value));
-			case 'bool':
-				return boolCV(Boolean(simplifiedArg.value));
-			case 'principal':
-				return principalCV(String(simplifiedArg.value));
-			case 'buffer':
-				// Handle buffer conversion based on input format
-				if (typeof simplifiedArg.value === 'string') {
-					return bufferCVFromString(simplifiedArg.value);
-				}
-				return bufferCV(Buffer.from(simplifiedArg.value));
-			case 'string':
-			case 'stringascii':
-				return stringAsciiCV(String(simplifiedArg.value));
-			case 'stringutf8':
-				return stringUtf8CV(String(simplifiedArg.value));
-			case 'list':
-				return listCV((simplifiedArg.value as SimplifiedClarityValue[]).map(convertToClarityValue));
-			case 'tuple':
-				const tupleObj: Record<string, ClarityValue> = {};
-				Object.entries(simplifiedArg.value).forEach(([key, val]) => {
-					tupleObj[key] = convertToClarityValue(val as SimplifiedClarityValue);
-				});
-				return tupleCV(tupleObj);
-			case 'none':
-				return noneCV();
-			case 'optional':
-			case 'some':
-				return someCV(convertToClarityValue(simplifiedArg.value));
-			case 'ok':
-			case 'responseok':
-				return responseOkCV(convertToClarityValue(simplifiedArg.value));
-			case 'err':
-			case 'responseerr':
-				return responseErrorCV(convertToClarityValue(simplifiedArg.value));
-			default:
-				throw new ApiError(ErrorCode.VALIDATION_ERROR, {
-					message: `Unsupported clarity type: ${simplifiedArg.type}`,
-				});
+	// if it's an object with key 'type'
+	if (typeof arg === 'object' && arg !== null && 'type' in arg) {
+		// test if the type matches a known ClarityType
+		if (Object.values(ClarityType).includes(arg.type as ClarityType)) {
+			return arg as ClarityValue;
 		}
-	} catch (error) {
-		// If it's already an ApiError, rethrow it
-		if (error instanceof ApiError) {
-			throw error;
+		// test if the type matches a known ClarityWireType
+		if (Object.values(ClarityWireType).includes(arg.type as unknown as ClarityWireType)) {
+			// clone the arg
+			const clonedArg = { ...arg };
+			// convert the type to ClarityType using clarityByteToType
+			clonedArg.type = clarityByteToType(arg.type as unknown as ClarityWireType) as ClarityType;
+			// return the cloned arg as ClarityValue
+			return clonedArg as ClarityValue;
 		}
+		// test if we can parse it as a simple object
+		const simplifiedArg = arg as SimplifiedClarityValue;
+		const type = simplifiedArg.type.toLowerCase();
+		try {
+			switch (type) {
+				case 'uint':
+					return uintCV(BigInt(simplifiedArg.value));
+				case 'int':
+					return intCV(BigInt(simplifiedArg.value));
+				case 'bool':
+					return boolCV(Boolean(simplifiedArg.value));
+				case 'principal':
+					return principalCV(String(simplifiedArg.value));
+				case 'buffer':
+					// Handle buffer conversion based on input format
+					if (typeof simplifiedArg.value === 'string') {
+						return bufferCVFromString(simplifiedArg.value);
+					}
+					return bufferCV(Buffer.from(simplifiedArg.value));
+				case 'string':
+				case 'stringascii':
+					return stringAsciiCV(String(simplifiedArg.value));
+				case 'stringutf8':
+					return stringUtf8CV(String(simplifiedArg.value));
+				case 'list':
+					return listCV((simplifiedArg.value as SimplifiedClarityValue[]).map(convertToClarityValue));
+				case 'tuple':
+					const tupleObj: Record<string, ClarityValue> = {};
+					Object.entries(simplifiedArg.value).forEach(([key, val]) => {
+						tupleObj[key] = convertToClarityValue(val as SimplifiedClarityValue);
+					});
+					return tupleCV(tupleObj);
+				case 'none':
+					return noneCV();
+				case 'optional':
+				case 'some':
+					return someCV(convertToClarityValue(simplifiedArg.value));
+				case 'ok':
+				case 'responseok':
+					return responseOkCV(convertToClarityValue(simplifiedArg.value));
+				case 'err':
+				case 'responseerr':
+					return responseErrorCV(convertToClarityValue(simplifiedArg.value));
+				default:
+					throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+						message: `Unsupported clarity type: ${simplifiedArg.type}`,
+					});
+			}
+		} catch (error) {
+			// If it's already an ApiError, rethrow it
+			if (error instanceof ApiError) {
+				throw error;
+			}
 
-		// Otherwise, wrap in an ApiError
-		throw new ApiError(ErrorCode.VALIDATION_ERROR, {
-			message: `Failed to convert to Clarity value of type ${type}`,
-			error: error instanceof Error ? error.message : String(error),
-			valueType: type,
-		});
+			// Otherwise, wrap in an ApiError
+			throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+				message: `Failed to convert to Clarity value of type ${type}`,
+				error: error instanceof Error ? error.message : String(error),
+				valueType: type,
+			});
+		}
 	}
+	// we don't know what it is
+	throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+		message: 'Invalid Clarity value format. Expected an object with keys "type" and "value".',
+		value: arg,
+	});
 }
