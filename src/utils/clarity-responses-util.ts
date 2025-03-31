@@ -154,13 +154,29 @@ export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue
 		if (Object.values(ClarityWireType).includes(arg.type as unknown as ClarityWireType)) {
 			// clone the arg
 			const clonedArg = { ...arg };
+			const manualTestArg = {
+				address: {
+					hash160: 'fea47d2d8c68608a9eed74933643706a79009f9d',
+					type: 0,
+					version: 26,
+				},
+				contractName: {
+					content: 'media3-treasury-withdraw-stx-814455',
+					type: 2,
+					lengthPrefixBytes: 1,
+					maxLengthBytes: 128,
+				},
+				type: 6,
+			};
 			console.log({
 				message: 'attempting to clone and serialize arg',
 				arg: arg,
 				clonedArg: clonedArg,
+				manualTestArg: manualTestArg,
 				convertedType: clarityByteToType(arg.type as unknown as ClarityWireType),
+				convertedValue: cvToValue(clonedArg as ClarityValue),
 			});
-			const serializedArg = Cl.serialize(clonedArg as ClarityValue);
+			const serializedArg = Cl.serialize(manualTestArg as unknown as ClarityValue);
 			const deserializedArg = Cl.deserialize(serializedArg);
 			// convert the type to ClarityType using clarityByteToType
 			// clonedArg.type = clarityByteToType(arg.type as unknown as ClarityWireType) as ClarityType;
