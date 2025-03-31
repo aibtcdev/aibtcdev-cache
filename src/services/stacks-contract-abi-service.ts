@@ -124,6 +124,30 @@ export class ContractAbiService {
 			};
 		}
 
+		// Validate numeric arguments
+		if (functionSpec.args) {
+			for (let i = 0; i < functionSpec.args.length; i++) {
+				const argSpec = functionSpec.args[i];
+				const arg = functionArgs[i];
+
+				// If the argument is expected to be a number type in Clarity
+				const argSpecType = String(argSpec.type);
+				if (argSpecType.includes('int') && typeof arg === 'string') {
+					// Validate that the string can be parsed as a BigInt
+					try {
+						// Remove 'n' suffix if present before parsing
+						const cleanValue = arg.toString().endsWith('n') ? arg.toString().slice(0, -1) : arg.toString();
+						BigInt(cleanValue);
+					} catch (e) {
+						return {
+							valid: false,
+							error: `Argument ${i + 1} should be a valid integer: ${e instanceof Error ? e.message : String(e)}`,
+						};
+					}
+				}
+			}
+		}
+
 		return { valid: true };
 	}
 

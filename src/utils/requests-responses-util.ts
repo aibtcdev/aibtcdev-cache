@@ -122,12 +122,12 @@ export function createJsonResponse(body: unknown, status = 200): Response {
  * @param value - The value to stringify
  * @param replacer - Optional replacer function for JSON.stringify
  * @param space - Optional space parameter for JSON.stringify formatting
- * @returns JSON string with BigInt values converted to strings with 'n' suffix
+ * @returns JSON string with BigInt values converted to strings without 'n' suffix
  */
 export function stringifyWithBigInt(value: unknown, replacer?: (key: string, value: unknown) => unknown, space?: string | number): string {
 	const customReplacer = (key: string, val: unknown): unknown => {
 		if (typeof val === 'bigint') {
-			return val.toString() + 'n'; // Convert BigInt to string with 'n' suffix
+			return val.toString(); // Convert BigInt to string without 'n' suffix
 		}
 		if (replacer && typeof replacer === 'function') {
 			return replacer(key, val);

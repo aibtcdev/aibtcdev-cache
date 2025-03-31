@@ -243,7 +243,8 @@ export class ContractCallsDO extends DurableObject<Env> {
 		const rawFunctionArgs = body.functionArgs || [];
 		const network = (body.network || 'testnet') as StacksNetworkName;
 		const senderAddress = body.senderAddress || contractAddress;
-		const strictJsonCompat = body.strictJsonCompat || true;
+		// Default to true unless explicitly set to false for consistent BigInt handling
+		const strictJsonCompat = body.strictJsonCompat !== false;
 		const preserveContainers = body.preserveContainers || false;
 
 		// Convert any simplified arguments to ClarityValues
@@ -344,8 +345,8 @@ export class ContractCallsDO extends DurableObject<Env> {
 		// Decode the value with the provided options
 		const decodedValue = decodeClarityValues(
 			clarityValue,
-			body.strictJsonCompat !== undefined ? body.strictJsonCompat : true,
-			body.preserveContainers !== undefined ? body.preserveContainers : false
+			body.strictJsonCompat !== false, // Default to true unless explicitly set to false
+			body.preserveContainers === true // Default to false unless explicitly set to true
 		);
 
 		return {
