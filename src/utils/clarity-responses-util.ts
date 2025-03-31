@@ -23,6 +23,7 @@ import {
 	responseErrorCV,
 	ClarityWireType,
 	clarityByteToType,
+	Cl,
 } from '@stacks/transactions';
 import { ApiError } from './api-error-util';
 import { ErrorCode } from './error-catalog-util';
@@ -153,10 +154,12 @@ export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue
 		if (Object.values(ClarityWireType).includes(arg.type as unknown as ClarityWireType)) {
 			// clone the arg
 			const clonedArg = { ...arg };
+			const serializedArg = Cl.serialize(clonedArg as ClarityValue);
+			const deserializedArg = Cl.deserialize(serializedArg);
 			// convert the type to ClarityType using clarityByteToType
-			clonedArg.type = clarityByteToType(arg.type as unknown as ClarityWireType) as ClarityType;
-			// return the cloned arg as ClarityValue
-			return clonedArg as ClarityValue;
+			// clonedArg.type = clarityByteToType(arg.type as unknown as ClarityWireType) as ClarityType;
+			// return the deserialized arg as ClarityValue
+			return deserializedArg;
 		}
 		// test if we can parse it as a simple object
 		const simplifiedArg = arg as SimplifiedClarityValue;
