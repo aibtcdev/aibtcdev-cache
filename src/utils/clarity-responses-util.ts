@@ -119,7 +119,7 @@ export function decodeListRecursively(list: ListCV, strictJsonCompat = true, pre
  */
 /**
  * Safely converts a value to BigInt, handling string representations with or without 'n' suffix
- * 
+ *
  * @param value - The value to convert to BigInt
  * @returns A BigInt representation of the value
  * @throws Error if the value cannot be converted to BigInt
@@ -128,17 +128,17 @@ export function safeBigIntConversion(value: unknown): bigint {
 	if (typeof value === 'bigint') {
 		return value;
 	}
-	
+
 	if (typeof value === 'number') {
 		return BigInt(value);
 	}
-	
+
 	if (typeof value === 'string') {
 		// Remove 'n' suffix if present
 		const cleanValue = value.endsWith('n') ? value.slice(0, -1) : value;
 		return BigInt(cleanValue);
 	}
-	
+
 	throw new Error(`Cannot convert ${typeof value} to BigInt`);
 }
 
@@ -165,14 +165,18 @@ export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue
 			switch (type) {
 				case 'uint':
 					// Handle both string and number inputs for uint
-					return uintCV(typeof simplifiedArg.value === 'string' 
-						? BigInt(simplifiedArg.value.endsWith('n') ? simplifiedArg.value.slice(0, -1) : simplifiedArg.value)
-						: BigInt(simplifiedArg.value));
+					return uintCV(
+						typeof simplifiedArg.value === 'string'
+							? BigInt(simplifiedArg.value.endsWith('n') ? simplifiedArg.value.slice(0, -1) : simplifiedArg.value)
+							: BigInt(simplifiedArg.value)
+					);
 				case 'int':
 					// Handle both string and number inputs for int
-					return intCV(typeof simplifiedArg.value === 'string'
-						? BigInt(simplifiedArg.value.endsWith('n') ? simplifiedArg.value.slice(0, -1) : simplifiedArg.value)
-						: BigInt(simplifiedArg.value));
+					return intCV(
+						typeof simplifiedArg.value === 'string'
+							? BigInt(simplifiedArg.value.endsWith('n') ? simplifiedArg.value.slice(0, -1) : simplifiedArg.value)
+							: BigInt(simplifiedArg.value)
+					);
 				case 'bool':
 					return boolCV(Boolean(simplifiedArg.value));
 				case 'principal':

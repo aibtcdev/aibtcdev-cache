@@ -28,7 +28,7 @@ export class CacheService {
 		try {
 			const cached = await this.env.AIBTCDEV_CACHE_KV.get(key);
 			if (!cached) return null;
-			
+
 			// Parse the cached value with special handling for legacy BigInt values
 			const parsed = JSON.parse(cached, (key, value) => {
 				// Handle legacy BigInt values with 'n' suffix
@@ -37,7 +37,7 @@ export class CacheService {
 				}
 				return value;
 			});
-			
+
 			return parsed as T;
 		} catch (error) {
 			const logger = Logger.getInstance(this.env);
@@ -67,7 +67,7 @@ export class CacheService {
 		try {
 			// Use stringifyWithBigInt to ensure consistent handling of BigInt values
 			const serializedValue = typeof value === 'string' ? value : stringifyWithBigInt(value);
-			
+
 			await this.env.AIBTCDEV_CACHE_KV.put(key, serializedValue, {
 				expirationTtl: shouldIgnoreTtl ? undefined : ttl,
 			});
