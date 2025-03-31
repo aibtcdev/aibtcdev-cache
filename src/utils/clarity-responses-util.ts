@@ -40,11 +40,11 @@ export interface SimplifiedClarityValue {
  * Recursively decodes Clarity values into JavaScript objects
  *
  * @param value - The Clarity value to decode
- * @param strictJsonCompat - If true, ensures values are JSON compatible
+ * @param strictJsonCompat - If true, ensures values are JSON compatible (defaults to true for consistent BigInt handling)
  * @param preserveContainers - If true, preserves container types in the output
  * @returns JavaScript representation of the Clarity value
  */
-export function decodeClarityValues(value: ClarityValue, strictJsonCompat = false, preserveContainers = false): any {
+export function decodeClarityValues(value: ClarityValue, strictJsonCompat = true, preserveContainers = false): any {
 	switch (value.type) {
 		case ClarityType.Tuple:
 			return decodeTupleRecursively(value as TupleCV, strictJsonCompat, preserveContainers);
@@ -83,11 +83,11 @@ export function decodeClarityValues(value: ClarityValue, strictJsonCompat = fals
  * Recursively decodes a Clarity tuple into a JavaScript object
  *
  * @param tuple - The Clarity tuple to decode
- * @param strictJsonCompat - If true, ensures values are JSON compatible
+ * @param strictJsonCompat - If true, ensures values are JSON compatible (defaults to true for consistent BigInt handling)
  * @param preserveContainers - If true, preserves container types in the output
  * @returns JavaScript object representation of the tuple
  */
-export function decodeTupleRecursively(tuple: TupleCV, strictJsonCompat = false, preserveContainers = false): any {
+export function decodeTupleRecursively(tuple: TupleCV, strictJsonCompat = true, preserveContainers = false): any {
 	return Object.fromEntries(
 		Object.entries(tuple.value).map(([key, value]) => {
 			return [key, decodeClarityValues(value, strictJsonCompat, preserveContainers)];
@@ -99,11 +99,11 @@ export function decodeTupleRecursively(tuple: TupleCV, strictJsonCompat = false,
  * Recursively decodes a Clarity list into a JavaScript array
  *
  * @param list - The Clarity list to decode
- * @param strictJsonCompat - If true, ensures values are JSON compatible
+ * @param strictJsonCompat - If true, ensures values are JSON compatible (defaults to true for consistent BigInt handling)
  * @param preserveContainers - If true, preserves container types in the output
  * @returns JavaScript array representation of the list
  */
-export function decodeListRecursively(list: ListCV, strictJsonCompat = false, preserveContainers = false): any[] {
+export function decodeListRecursively(list: ListCV, strictJsonCompat = true, preserveContainers = false): any[] {
 	return list.value.map((value) => {
 		return decodeClarityValues(value, strictJsonCompat, preserveContainers);
 	});
