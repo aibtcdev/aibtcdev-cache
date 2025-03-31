@@ -110,14 +110,6 @@ export function decodeListRecursively(list: ListCV, strictJsonCompat = true, pre
 }
 
 /**
- * Converts a simplified Clarity value representation to a proper ClarityValue object
- * This allows non-TypeScript clients to use a simpler JSON format for contract calls
- *
- * @param arg - Either a ClarityValue object or a simplified representation
- * @returns A proper ClarityValue object
- * @throws Error if the type is unsupported or the conversion fails
- */
-/**
  * Safely converts a value to BigInt, handling string representations with or without 'n' suffix
  *
  * @param value - The value to convert to BigInt
@@ -142,6 +134,14 @@ export function safeBigIntConversion(value: unknown): bigint {
 	throw new Error(`Cannot convert ${typeof value} to BigInt`);
 }
 
+/**
+ * Converts a simplified Clarity value representation to a proper ClarityValue object
+ * This allows non-TypeScript clients to use a simpler JSON format for contract calls
+ *
+ * @param arg - Either a ClarityValue object or a simplified representation
+ * @returns A proper ClarityValue object
+ * @throws Error if the type is unsupported or the conversion fails
+ */
 export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue): ClarityValue {
 	// if it's an object with key 'type'
 	if (typeof arg === 'object' && arg !== null && 'type' in arg) {
