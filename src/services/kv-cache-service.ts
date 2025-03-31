@@ -27,7 +27,18 @@ export class CacheService {
 	async get<T>(key: string): Promise<T | null> {
 		try {
 			const cached = await this.env.AIBTCDEV_CACHE_KV.get(key);
-			return cached ? (JSON.parse(cached) as T) : null;
+			if (!cached) return null;
+			
+			// Parse the cached value with special handling for legacy BigInt values
+			const parsed = JSON.parse(cached, (key, value) => {
+				// Handle legacy BigInt values with 'n' suffix
+				if (typeof value === 'string' && value.endsWith('n') && /^\d+n$/.test(value)) {
+					return value.slice(0, -1); // Remove the 'n' suffix
+				}
+				return value;
+			});
+			
+			return parsed as T;
 		} catch (error) {
 			const logger = Logger.getInstance(this.env);
 			logger.error(`Cache error: Failed to get key ${key}`, error instanceof Error ? error : new Error(String(error)), {
@@ -54,7 +65,10 @@ export class CacheService {
 		// If ttl is 0 or ignoreTtl is true, cache indefinitely
 		const shouldIgnoreTtl = this.ignoreTtl || ttl === 0;
 		try {
-			await this.env.AIBTCDEV_CACHE_KV.put(key, typeof value === 'string' ? value : stringifyWithBigInt(value), {
+			// Use stringifyWithBigInt to ensure consistent handling of BigInt values
+			const serializedValue = typeof value === 'string' ? value : stringifyWithBigInt(value);
+			
+			await this.env.AIBTCDEV_CACHE_KV.put(key, serializedValue, {
 				expirationTtl: shouldIgnoreTtl ? undefined : ttl,
 			});
 		} catch (error) {

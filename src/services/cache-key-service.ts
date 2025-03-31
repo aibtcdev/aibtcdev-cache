@@ -66,7 +66,7 @@ export class CacheKeyService {
 			return JSON.stringify(args, (key, value) => {
 				// Handle BigInt serialization
 				if (typeof value === 'bigint') {
-					return value.toString() + 'n';
+					return value.toString(); // Convert BigInt to string without 'n' suffix
 				}
 				// Handle Buffer serialization
 				if (Buffer.isBuffer(value)) {
