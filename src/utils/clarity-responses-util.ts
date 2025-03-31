@@ -154,6 +154,12 @@ export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue
 		if (Object.values(ClarityWireType).includes(arg.type as unknown as ClarityWireType)) {
 			// clone the arg
 			const clonedArg = { ...arg };
+			console.log({
+				message: 'attempting to clone and serialize arg',
+				arg: arg,
+				clonedArg: clonedArg,
+				convertedType: clarityByteToType(arg.type as unknown as ClarityWireType),
+			});
 			const serializedArg = Cl.serialize(clonedArg as ClarityValue);
 			const deserializedArg = Cl.deserialize(serializedArg);
 			// convert the type to ClarityType using clarityByteToType
