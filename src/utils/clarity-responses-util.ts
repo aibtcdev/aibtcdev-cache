@@ -21,9 +21,6 @@ import {
 	someCV,
 	responseOkCV,
 	responseErrorCV,
-	ClarityWireType,
-	clarityByteToType,
-	Cl,
 } from '@stacks/transactions';
 import { ApiError } from './api-error-util';
 import { ErrorCode } from './error-catalog-util';
@@ -143,45 +140,12 @@ export function safeBigIntConversion(value: unknown): bigint {
  * @returns A proper ClarityValue object
  * @throws Error if the type is unsupported or the conversion fails
  */
-export function convertToClarityValue(arg: ClarityValue | SimplifiedClarityValue): ClarityValue {
-	// if it's an object with key 'type'
+export function convertToClarityValue(arg: unknown): ClarityValue {
+	// check if it's an object with the key type to start
 	if (typeof arg === 'object' && arg !== null && 'type' in arg) {
 		// test if the type matches a known ClarityType
 		if (Object.values(ClarityType).includes(arg.type as ClarityType)) {
 			return arg as ClarityValue;
-		}
-		// test if the type matches a known ClarityWireType
-		if (Object.values(ClarityWireType).includes(arg.type as unknown as ClarityWireType)) {
-			// clone the arg
-			const clonedArg = { ...arg };
-			const manualTestArg = {
-				address: {
-					hash160: 'fea47d2d8c68608a9eed74933643706a79009f9d',
-					type: 0,
-					version: 26,
-				},
-				contractName: {
-					content: 'media3-treasury-withdraw-stx-814455',
-					type: 2,
-					lengthPrefixBytes: 1,
-					maxLengthBytes: 128,
-				},
-				type: 6,
-			};
-			console.log({
-				message: 'attempting to clone and serialize arg',
-				arg: arg,
-				clonedArg: clonedArg,
-				manualTestArg: manualTestArg,
-				convertedType: clarityByteToType(arg.type as unknown as ClarityWireType),
-				convertedValue: cvToValue(clonedArg as ClarityValue),
-			});
-			const serializedArg = Cl.serialize(manualTestArg as unknown as ClarityValue);
-			const deserializedArg = Cl.deserialize(serializedArg);
-			// convert the type to ClarityType using clarityByteToType
-			// clonedArg.type = clarityByteToType(arg.type as unknown as ClarityWireType) as ClarityType;
-			// return the deserialized arg as ClarityValue
-			return deserializedArg;
 		}
 		// test if we can parse it as a simple object
 		const simplifiedArg = arg as SimplifiedClarityValue;
