@@ -14,6 +14,7 @@ source "$SCRIPT_DIR/test_hiro_api.sh"
 source "$SCRIPT_DIR/test_stx_city.sh"
 source "$SCRIPT_DIR/test_supabase.sh"
 source "$SCRIPT_DIR/test_bns.sh"
+source "$SCRIPT_DIR/test_contract_calls.sh"
 
 # If sleep flag is true, wait 10 seconds before starting tests
 if [ "$SLEEP_BEFORE_START" = true ]; then
@@ -25,10 +26,11 @@ echo -e "\nTesting API at: $API_URL"
 
 # Run all test suites
 test_index
-test_hiro_api
-test_stx_city
-test_supabase
-test_bns
+#test_hiro_api (deprecated)
+#test_stx_city (deprecated)
+#test_supabase (deprecated)
+#test_bns (deprecated)
+test_contract_calls
 
 echo "===================="
 echo "Test Summary"

@@ -2,6 +2,7 @@
 name = "aibtcdev-cache"
 main = "src/index.ts"
 compatibility_date = "2024-11-09"
+compatibility_flags = ["nodejs_compat_v2"]
 account_id = "96280594e2b905d4dc40b3c744149710"
 
 [observability]
@@ -11,6 +12,10 @@ enabled = true
 [[migrations]]
 tag = "20250102"
 new_classes = ["HiroApiDO", "SupabaseDO", "StxCityDO", "BnsApiDO"]
+
+[[migrations]]
+tag = "20250323"
+new_classes = ["ContractCallsDO"]
 
 
 [env.preview]
@@ -37,6 +42,10 @@ class_name = "SupabaseDO"
 name = "BNS_API_DO"
 class_name = "BnsApiDO"
 
+[[env.preview.durable_objects.bindings]]
+name = "CONTRACT_CALLS_DO"
+class_name = "ContractCallsDO"
+
 
 [env.staging]
 
@@ -62,6 +71,10 @@ class_name = "SupabaseDO"
 name = "BNS_API_DO"
 class_name = "BnsApiDO"
 
+[[env.staging.durable_objects.bindings]]
+name = "CONTRACT_CALLS_DO"
+class_name = "ContractCallsDO"
+
 
 [env.production]
 
@@ -86,3 +99,7 @@ class_name = "SupabaseDO"
 [[env.production.durable_objects.bindings]]
 name = "BNS_API_DO"
 class_name = "BnsApiDO"
+
+[[env.production.durable_objects.bindings]]
+name = "CONTRACT_CALLS_DO"
+class_name = "ContractCallsDO"

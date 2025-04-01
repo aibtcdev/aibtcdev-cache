@@ -9,4 +9,5 @@ export interface Env {
 	HIRO_API_DO: DurableObjectNamespace<import('./src/index').HiroApiDO>;
 	STX_CITY_DO: DurableObjectNamespace<import('./src/index').StxCityDO>;
 	SUPABASE_DO: DurableObjectNamespace<import('./src/index').SupabaseDO>;
+	CONTRACT_CALLS_DO: DurableObjectNamespace<import('./src/index').ContractCallsDO>;
 }
