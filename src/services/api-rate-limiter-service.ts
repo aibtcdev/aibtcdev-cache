@@ -132,9 +132,19 @@ export class ApiRateLimiterService {
 		const basePath = baseUrl.pathname === '/' ? '' : baseUrl.pathname;
 		const url = new URL(`${basePath}${endpoint}`, baseUrl.origin);
 
+		// Create headers and add API key if available
+		const headers = new Headers();
+		
+		// Add API key if this is a Hiro API request and we have an API key
+		if (this.baseApiUrl.includes('api.hiro.so') && this.env.HIRO_API_KEY) {
+			headers.set('x-api-key', this.env.HIRO_API_KEY);
+		}
+
 		// Make API request
 		const startTime = Date.now();
-		const response = await fetch(url);
+		const response = await fetch(url, {
+			headers
+		});
 		const duration = Date.now() - startTime;
 
 		// Log slow responses

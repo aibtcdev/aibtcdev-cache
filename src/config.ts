@@ -43,6 +43,15 @@ export class AppConfig {
 	 *
 	 * @returns Configuration object with all application settings
 	 */
+	/**
+	 * Returns the Hiro API key if available
+	 * 
+	 * @returns The Hiro API key or null if not available
+	 */
+	public getHiroApiKey(): string | null {
+		return this.env.HIRO_API_KEY || null;
+	}
+
 	public getConfig() {
 		// Check if Hiro API key is available
 		const hasHiroApiKey = !!this.env.HIRO_API_KEY;

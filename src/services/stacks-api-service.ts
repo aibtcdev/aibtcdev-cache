@@ -1,5 +1,6 @@
 import { StacksNetworkName } from '@stacks/network';
 import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
+import { createApiKeyMiddleware, createFetchFn } from '@stacks/common';
 import { AppConfig } from '../config';
 import { ApiError } from '../utils/api-error-util';
 import { ErrorCode } from '../utils/error-catalog-util';
@@ -56,6 +57,15 @@ export class StacksApiService {
 		});
 
 		try {
+			// Create a custom fetch function with API key middleware if available
+			let customFetchFn;
+			if (this.env?.HIRO_API_KEY) {
+				const apiMiddleware = createApiKeyMiddleware({
+					apiKey: this.env.HIRO_API_KEY,
+				});
+				customFetchFn = createFetchFn(apiMiddleware);
+			}
+
 			// Wrap the fetch call with our timeout utility
 			const result = await withTimeout(
 				fetchCallReadOnlyFunction({
@@ -65,6 +75,7 @@ export class StacksApiService {
 					functionArgs,
 					senderAddress,
 					network,
+					fetchFn: customFetchFn, // Use the API key middleware if available
 				}),
 				this.timeoutMs,
 				`Contract call to ${contractAddress}.${contractName}::${functionName} timed out`
