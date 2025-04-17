@@ -70,8 +70,9 @@ export class HiroApiDO extends DurableObject<Env> {
 
 		// Set configuration values
 		this.CACHE_TTL = config.CACHE_TTL;
-		this.MAX_REQUESTS_PER_MINUTE = config.MAX_REQUESTS_PER_INTERVAL;
-		this.INTERVAL_MS = config.INTERVAL_MS;
+		// Use Hiro API specific rate limits
+		this.MAX_REQUESTS_PER_MINUTE = config.HIRO_API_RATE_LIMIT.MAX_REQUESTS_PER_INTERVAL;
+		this.INTERVAL_MS = config.HIRO_API_RATE_LIMIT.INTERVAL_MS;
 		this.MAX_RETRIES = config.MAX_RETRIES;
 		this.RETRY_DELAY = config.RETRY_DELAY;
 		this.ALARM_INTERVAL_MS = config.ALARM_INTERVAL_MS;
