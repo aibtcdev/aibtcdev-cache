@@ -10,7 +10,7 @@ export class ChainhooksDO extends DurableObject<Env> {
 	// Configuration constants
 	private readonly BASE_PATH: string = '/chainhooks';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
-	private readonly SUPPORTED_ENDPOINTS: string[] = ['/post_event'];
+	private readonly SUPPORTED_ENDPOINTS: string[] = ['/post-event'];
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -42,8 +42,8 @@ export class ChainhooksDO extends DurableObject<Env> {
 					};
 				}
 
-				// Handle post_event endpoint
-				if (endpoint === '/post_event') {
+				// Handle post-event endpoint
+				if (endpoint === '/post-event') {
 					if (method !== 'POST') {
 						throw new ApiError(ErrorCode.INVALID_REQUEST, {
 							reason: `Method ${method} not allowed for this endpoint. Use POST.`,
