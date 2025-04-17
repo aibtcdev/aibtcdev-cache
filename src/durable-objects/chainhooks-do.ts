@@ -10,7 +10,7 @@ export class ChainhooksDO extends DurableObject<Env> {
 	// Configuration constants
 	private readonly BASE_PATH: string = '/chainhooks';
 	private readonly CACHE_PREFIX: string = this.BASE_PATH.replaceAll('/', '');
-	private readonly SUPPORTED_ENDPOINTS: string[] = ['/post-event'];
+	private readonly SUPPORTED_ENDPOINTS: string[] = ['/post-event', '/events', '/events/:id'];
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -51,6 +51,29 @@ export class ChainhooksDO extends DurableObject<Env> {
 					}
 
 					return await this.handlePostEvent(request);
+				}
+
+				// Handle get all events endpoint
+				if (endpoint === '/events') {
+					if (method !== 'GET') {
+						throw new ApiError(ErrorCode.INVALID_REQUEST, {
+							reason: `Method ${method} not allowed for this endpoint. Use GET.`,
+						});
+					}
+
+					return await this.handleGetAllEvents();
+				}
+
+				// Handle get specific event endpoint
+				if (endpoint.startsWith('/events/')) {
+					if (method !== 'GET') {
+						throw new ApiError(ErrorCode.INVALID_REQUEST, {
+							reason: `Method ${method} not allowed for this endpoint. Use GET.`,
+						});
+					}
+
+					const eventId = endpoint.replace('/events/', '');
+					return await this.handleGetEvent(eventId);
 				}
 
 				// If we get here, the endpoint is not supported
@@ -105,6 +128,62 @@ export class ChainhooksDO extends DurableObject<Env> {
 			logger.error('Error processing chainhook event', error instanceof Error ? error : new Error(String(error)));
 			throw new ApiError(ErrorCode.INTERNAL_ERROR, {
 				reason: 'Failed to process chainhook event',
+			});
+		}
+	}
+
+	private async handleGetEvent(eventId: string): Promise<any> {
+		const logger = Logger.getInstance(this.env);
+		
+		try {
+			// Retrieve the event from storage
+			const event = await this.ctx.storage.get(`event_${eventId}`);
+			
+			if (!event) {
+				throw new ApiError(ErrorCode.NOT_FOUND, {
+					resource: `Event with ID ${eventId}`,
+				});
+			}
+			
+			return {
+				event,
+			};
+		} catch (error) {
+			if (error instanceof ApiError) {
+				throw error;
+			}
+			
+			logger.error(`Error retrieving event ${eventId}`, error instanceof Error ? error : new Error(String(error)));
+			throw new ApiError(ErrorCode.INTERNAL_ERROR, {
+				reason: `Failed to retrieve event ${eventId}`,
+			});
+		}
+	}
+
+	private async handleGetAllEvents(): Promise<any> {
+		const logger = Logger.getInstance(this.env);
+		
+		try {
+			// Get all keys that start with "event_"
+			const eventKeys = await this.ctx.storage.list({ prefix: 'event_' });
+			
+			// Create an array to hold all events
+			const events: Record<string, any> = {};
+			
+			// Retrieve each event and add it to the array
+			for (const [key, value] of eventKeys) {
+				const eventId = key.replace('event_', '');
+				events[eventId] = value;
+			}
+			
+			return {
+				events,
+				count: Object.keys(events).length,
+			};
+		} catch (error) {
+			logger.error('Error retrieving all events', error instanceof Error ? error : new Error(String(error)));
+			throw new ApiError(ErrorCode.INTERNAL_ERROR, {
+				reason: 'Failed to retrieve events',
 			});
 		}
 	}
