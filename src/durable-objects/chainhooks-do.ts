@@ -50,6 +50,13 @@ export class ChainhooksDO extends DurableObject<Env> {
 						});
 					}
 
+					// Check authentication
+					if (!this.validateAuthToken(request)) {
+						throw new ApiError(ErrorCode.UNAUTHORIZED, {
+							reason: 'Invalid or missing authentication token',
+						});
+					}
+
 					return await this.handlePostEvent(request);
 				}
 
@@ -186,5 +193,27 @@ export class ChainhooksDO extends DurableObject<Env> {
 				reason: 'Failed to retrieve events',
 			});
 		}
+	}
+
+	/**
+	 * Validates the authentication token from the request
+	 * 
+	 * @param request - The incoming request
+	 * @returns boolean indicating if the token is valid
+	 */
+	private validateAuthToken(request: Request): boolean {
+		// Extract the Authorization header
+		const authHeader = request.headers.get('Authorization');
+		
+		// Check if the header exists and has the correct format
+		if (!authHeader || !authHeader.startsWith('Bearer ')) {
+			return false;
+		}
+		
+		// Extract the token
+		const token = authHeader.replace('Bearer ', '');
+		
+		// Compare with the stored token
+		return token === this.env.CHAINHOOKS_AUTH_TOKEN;
 	}
 }

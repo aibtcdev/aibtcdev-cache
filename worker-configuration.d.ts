@@ -5,6 +5,7 @@ export interface Env {
 	HIRO_API_KEY: string;
 	SUPABASE_URL: string;
 	SUPABASE_SERVICE_KEY: string;
+	CHAINHOOKS_AUTH_TOKEN: string; // Auth token for chainhooks POST endpoint
 	BNS_API_DO: DurableObjectNamespace<import('./src/index').BnsApiDO>;
 	HIRO_API_DO: DurableObjectNamespace<import('./src/index').HiroApiDO>;
 	STX_CITY_DO: DurableObjectNamespace<import('./src/index').StxCityDO>;
