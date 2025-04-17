@@ -15,6 +15,7 @@ source "$SCRIPT_DIR/test_stx_city.sh"
 source "$SCRIPT_DIR/test_supabase.sh"
 source "$SCRIPT_DIR/test_bns.sh"
 source "$SCRIPT_DIR/test_contract_calls.sh"
+source "$SCRIPT_DIR/test_chainhooks.sh"
 
 # If sleep flag is true, wait 10 seconds before starting tests
 if [ "$SLEEP_BEFORE_START" = true ]; then
@@ -31,6 +32,7 @@ test_index
 #test_supabase (deprecated)
 #test_bns (deprecated)
 test_contract_calls
+test_chainhooks
 
 echo "===================="
 echo "Test Summary"
