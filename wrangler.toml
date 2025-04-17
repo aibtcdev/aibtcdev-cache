@@ -17,6 +17,10 @@ new_classes = ["HiroApiDO", "SupabaseDO", "StxCityDO", "BnsApiDO"]
 tag = "20250323"
 new_classes = ["ContractCallsDO"]
 
+[[migrations]]
+tag = "20250417"
+new_classes = ["ChainhooksDO"]
+
 
 [env.preview]
 
@@ -45,6 +49,10 @@ class_name = "BnsApiDO"
 [[env.preview.durable_objects.bindings]]
 name = "CONTRACT_CALLS_DO"
 class_name = "ContractCallsDO"
+
+[[env.preview.durable_objects.bindings]]
+name = "CHAINHOOKS_DO"
+class_name = "ChainhooksDO"
 
 
 [env.staging]
@@ -75,6 +83,10 @@ class_name = "BnsApiDO"
 name = "CONTRACT_CALLS_DO"
 class_name = "ContractCallsDO"
 
+[[env.staging.durable_objects.bindings]]
+name = "CHAINHOOKS_DO"
+class_name = "ChainhooksDO"
+
 
 [env.production]
 
@@ -103,3 +115,7 @@ class_name = "BnsApiDO"
 [[env.production.durable_objects.bindings]]
 name = "CONTRACT_CALLS_DO"
 class_name = "ContractCallsDO"
+
+[[env.production.durable_objects.bindings]]
+name = "CHAINHOOKS_DO"
+class_name = "ChainhooksDO"
