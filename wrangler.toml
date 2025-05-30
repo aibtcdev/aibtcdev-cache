@@ -22,6 +22,10 @@ new_classes = ["ContractCallsDO"]
 
 routes = []
 
+# fixing a deploy error from old code
+[[env.preview.migrations]]
+tag = "20250417"
+
 [[env.preview.kv_namespaces]]
 binding = "AIBTCDEV_CACHE_KV"
 id = "beb302875cfa41eb86fb24eeb3b9373a"
