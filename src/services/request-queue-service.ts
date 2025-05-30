@@ -49,7 +49,7 @@ export class RequestQueue<T> {
 		requestTimeout: number = 5000
 	) {
 		this.rateLimiter = new TokenBucket(maxRequestsPerInterval, intervalMs);
-		this.minRequestSpacing = Math.max(250, Math.floor(intervalMs / maxRequestsPerInterval));
+		this.minRequestSpacing = Math.max(10, Math.floor(intervalMs / maxRequestsPerInterval)); // Use a smaller floor
 		this.env = env;
 		this.requestTimeout = requestTimeout;
 	}
