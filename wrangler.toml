@@ -26,6 +26,10 @@ routes = []
 [[env.preview.migrations]]
 tag = "20250417"
 
+[[env.preview.migrations]]
+tag = "20250530"
+deleted_classes = ["ChainhooksDO"]
+
 [[env.preview.kv_namespaces]]
 binding = "AIBTCDEV_CACHE_KV"
 id = "beb302875cfa41eb86fb24eeb3b9373a"
