@@ -49,7 +49,7 @@ export class RequestQueue<T> {
 		requestTimeout: number = 5000
 	) {
 		this.rateLimiter = new TokenBucket(maxRequestsPerInterval, intervalMs);
-		this.minRequestSpacing = Math.max(250, Math.floor(intervalMs / maxRequestsPerInterval));
+		this.minRequestSpacing = Math.max(10, Math.floor(intervalMs / maxRequestsPerInterval)); // Use a smaller floor
 		this.env = env;
 		this.requestTimeout = requestTimeout;
 	}
@@ -93,14 +93,20 @@ export class RequestQueue<T> {
 	 * This method is called automatically when requests are enqueued
 	 */
 	private async processQueue(): Promise<void> {
-		if (this.processing || this.queue.length === 0 || !this.rateLimiter.getToken()) {
+		if (this.processing || this.queue.length === 0) {
 			return;
 		}
 
 		this.processing = true;
 
 		try {
-			while (this.queue.length > 0 && this.rateLimiter.getAvailableTokens() > 0) {
+			while (this.queue.length > 0) {
+				// Try to get a token before processing the next request
+				if (!this.rateLimiter.getToken()) {
+					// No token available, stop processing this batch and wait for refill
+					break;
+				}
+
 				const now = Date.now();
 				const timeSinceLastRequest = now - this.lastRequestTime;
 
@@ -160,18 +166,21 @@ export class RequestQueue<T> {
 					// Implement exponential backoff for retries
 					if (request.retryCount < this.maxRetries) {
 						request.retryCount++;
-						this.queue.push(request);
-						const retryDelay = this.retryDelay * Math.pow(2, request.retryCount - 1); // Exponential backoff
+						const retryDelayMs = this.retryDelay * Math.pow(2, request.retryCount - 1); // Exponential backoff
 
 						logger.info(`Retrying request`, {
 							requestId: request.requestId,
 							attempt: request.retryCount,
 							maxRetries: this.maxRetries,
-							retryDelay,
+							retryDelay: retryDelayMs,
 							error: error instanceof Error ? error.message : String(error),
 						});
 
-						await new Promise((resolve) => setTimeout(resolve, retryDelay));
+						// Re-queue the request to be processed later, non-blockingly
+						setTimeout(() => {
+							this.queue.push(request); // Add to the back of the queue
+							void this.processQueue(); // Attempt to process queue again
+						}, retryDelayMs);
 					} else {
 						// If it's already an ApiError, pass it through
 						if (error instanceof ApiError) {
@@ -192,7 +201,10 @@ export class RequestQueue<T> {
 			}
 		} finally {
 			this.processing = false;
-			if (this.queue.length > 0 && this.rateLimiter.getAvailableTokens() > 0) {
+			// If there are still items in the queue and tokens might be available,
+			// try to process again. This handles cases where the loop broke due to
+			// lack of tokens but tokens might have refilled.
+			if (this.queue.length > 0) {
 				void this.processQueue();
 			}
 		}
