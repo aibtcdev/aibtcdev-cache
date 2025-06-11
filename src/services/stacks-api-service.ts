@@ -75,7 +75,9 @@ export class StacksApiService {
 					functionArgs,
 					senderAddress,
 					network,
-					fetchFn: customFetchFn, // Use the API key middleware if available
+					client: {
+						fetch: customFetchFn, // Use the API key middleware if available
+					},
 				}),
 				this.timeoutMs,
 				`Contract call to ${contractAddress}.${contractName}::${functionName} timed out`
@@ -171,11 +173,7 @@ export class StacksApiService {
 		}
 
 		try {
-			const response = await withTimeout(
-				fetch(url, { headers }),
-				this.timeoutMs,
-				`Nonce lookup for ${address} timed out`
-			);
+			const response = await withTimeout(fetch(url, { headers }), this.timeoutMs, `Nonce lookup for ${address} timed out`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
