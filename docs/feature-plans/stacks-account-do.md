@@ -48,3 +48,34 @@ Create a new Durable Object, `StacksAccountDO`, where each instance is uniquely 
     - [ ] Verify `bustCache=true` functionality.
     - [ ] Verify `/sync` endpoint.
     - [ ] Verify `/update` endpoint.
+
+### Testing Examples (`curl`)
+
+Replace `<WORKER_URL>` with the deployment URL and `<ADDRESS>` with a valid Stacks address.
+
+1.  **Get Nonce (Cache Miss/Hit):**
+    ```bash
+    curl <WORKER_URL>/stacks-account/<ADDRESS>/nonce
+    ```
+
+2.  **Force Refresh with `bustCache`:**
+    ```bash
+    curl <WORKER_URL>/stacks-account/<ADDRESS>/nonce?bustCache=true
+    ```
+
+3.  **Force Refresh with `sync`:**
+    ```bash
+    curl -X POST <WORKER_URL>/stacks-account/<ADDRESS>/nonce/sync
+    ```
+
+4.  **Manually Update Nonce:**
+    ```bash
+    curl -X POST -H "Content-Type: application/json" \
+      -d '{"nonce": 999}' \
+      <WORKER_URL>/stacks-account/<ADDRESS>/nonce/update
+    ```
+
+5.  **Test Invalid Address:**
+    ```bash
+    curl <WORKER_URL>/stacks-account/INVALID-ADDRESS/nonce
+    ```
