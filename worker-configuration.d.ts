@@ -10,4 +10,5 @@ export interface Env {
 	STX_CITY_DO: DurableObjectNamespace<import('./src/index').StxCityDO>;
 	SUPABASE_DO: DurableObjectNamespace<import('./src/index').SupabaseDO>;
 	CONTRACT_CALLS_DO: DurableObjectNamespace<import('./src/index').ContractCallsDO>;
+	STACKS_ACCOUNT_DO: DurableObjectNamespace<import('./src/index').StacksAccountDO>;
 }

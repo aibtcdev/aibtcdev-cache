@@ -150,4 +150,62 @@ export class StacksApiService {
 			});
 		}
 	}
+
+	/**
+	 * Fetches the current nonce for a given Stacks address using the Hiro API.
+	 *
+	 * @param address - The Stacks principal address.
+	 * @param network - The Stacks network to use ('mainnet' or 'testnet').
+	 * @returns A promise that resolves to the account's next possible nonce.
+	 */
+	async getAccountNonce(address: string, network: StacksNetworkName): Promise<number> {
+		const logger = Logger.getInstance(this.env);
+		const startTime = Date.now();
+		const requestId = logger.info(`Fetching nonce for address: ${address} on ${network}`);
+
+		const url = `https://api.${network}.hiro.so/extended/v1/addresses/${address}/nonces`;
+		const headers: HeadersInit = {};
+
+		if (this.env?.HIRO_API_KEY) {
+			headers['x-hiro-api-key'] = this.env.HIRO_API_KEY;
+		}
+
+		try {
+			const response = await withTimeout(
+				fetch(url, { headers }),
+				this.timeoutMs,
+				`Nonce lookup for ${address} timed out`
+			);
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+					message: `Failed to fetch nonce: ${response.status} ${response.statusText}`,
+					details: errorText,
+					address,
+				});
+			}
+
+			const data = (await response.json()) as { possible_next_nonce: number };
+			const duration = Date.now() - startTime;
+			logger.debug(`Nonce fetch completed for ${address}`, { requestId, duration });
+
+			return data.possible_next_nonce;
+		} catch (error) {
+			const duration = Date.now() - startTime;
+			logger.error(`Failed to fetch nonce for ${address}`, error instanceof Error ? error : new Error(String(error)), {
+				requestId,
+				duration,
+			});
+
+			// Re-throw as a consistent ApiError if it's not one already
+			if (error instanceof ApiError) {
+				throw error;
+			}
+			throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+				message: `Failed to fetch nonce: ${error instanceof Error ? error.message : String(error)}`,
+				address,
+			});
+		}
+	}
 }

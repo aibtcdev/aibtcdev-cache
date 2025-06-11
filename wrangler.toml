@@ -17,6 +17,10 @@ new_classes = ["HiroApiDO", "SupabaseDO", "StxCityDO", "BnsApiDO"]
 tag = "20250323"
 new_classes = ["ContractCallsDO"]
 
+[[migrations]]
+tag = "20250601"
+new_classes = ["StacksAccountDO"]
+
 
 [env.preview]
 
@@ -54,6 +58,10 @@ class_name = "BnsApiDO"
 name = "CONTRACT_CALLS_DO"
 class_name = "ContractCallsDO"
 
+[[env.preview.durable_objects.bindings]]
+name = "STACKS_ACCOUNT_DO"
+class_name = "StacksAccountDO"
+
 
 [env.staging]
 
@@ -83,6 +91,10 @@ class_name = "BnsApiDO"
 name = "CONTRACT_CALLS_DO"
 class_name = "ContractCallsDO"
 
+[[env.staging.durable_objects.bindings]]
+name = "STACKS_ACCOUNT_DO"
+class_name = "StacksAccountDO"
+
 
 [env.production]
 
@@ -111,3 +123,7 @@ class_name = "BnsApiDO"
 [[env.production.durable_objects.bindings]]
 name = "CONTRACT_CALLS_DO"
 class_name = "ContractCallsDO"
+
+[[env.production.durable_objects.bindings]]
+name = "STACKS_ACCOUNT_DO"
+class_name = "StacksAccountDO"

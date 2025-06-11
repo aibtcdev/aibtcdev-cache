@@ -5,13 +5,14 @@ import { HiroApiDO } from './durable-objects/hiro-api-do';
 import { StxCityDO } from './durable-objects/stx-city-do';
 import { SupabaseDO } from './durable-objects/supabase-do';
 import { ContractCallsDO } from './durable-objects/contract-calls-do';
+import { StacksAccountDO } from './durable-objects/stacks-account-do';
 import { corsHeaders, createErrorResponse, createSuccessResponse } from './utils/requests-responses-util';
 import { ApiError } from './utils/api-error-util';
 import { ErrorCode } from './utils/error-catalog-util';
 import { Logger } from './utils/logger-util';
 
 // export the Durable Object classes we're using
-export { BnsApiDO, HiroApiDO, StxCityDO, SupabaseDO, ContractCallsDO };
+export { BnsApiDO, HiroApiDO, StxCityDO, SupabaseDO, ContractCallsDO, StacksAccountDO };
 
 export default {
 	/**
@@ -89,6 +90,16 @@ export default {
 					let id: DurableObjectId = env.CONTRACT_CALLS_DO.idFromName('contract-calls-do'); // create the instance
 					let stub = env.CONTRACT_CALLS_DO.get(id); // get the stub for communication
 					return await stub.fetch(request); // forward the request to the Durable Object
+				}
+
+				if (path.startsWith('/stacks-account')) {
+					const address = path.split('/')[2];
+					if (!address) {
+						throw new ApiError(ErrorCode.INVALID_REQUEST, { reason: 'Missing Stacks address in path' });
+					}
+					const id: DurableObjectId = env.STACKS_ACCOUNT_DO.idFromName(address);
+					const stub = env.STACKS_ACCOUNT_DO.get(id);
+					return await stub.fetch(request);
 				}
 			} catch (error) {
 				// Log errors from Durable Objects
