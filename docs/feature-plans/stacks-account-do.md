@@ -19,25 +19,25 @@ Create a new Durable Object, `StacksAccountDO`, where each instance is uniquely 
 
 ### Phase 1: Core Logic & Services
 
-- [ ] **Create `StacksAccountDataService`**: A new service to handle rate-limiting and retries for fetching account data from the Hiro API. This prevents direct calls from the DO to the external API, ensuring we don't exceed rate limits.
-- [ ] **Update `StacksApiService`**: Add a `getAccountNonce` method that uses `fetch` to call the Hiro `/extended/v1/addresses/{principal}/nonces` endpoint.
-- [ ] **Create `StacksAccountDO`**: The main Durable Object class.
-    - [ ] Use the Stacks address from `ctx.id` as its identifier.
-    - [ ] Use `ctx.storage` for storing the nonce.
-    - [ ] Implement the `fetch` handler to route requests to the correct methods.
-    - [ ] Implement `getNonce`, `syncNonce`, and `updateNonce` logic.
-    - [ ] Use `StacksAccountDataService` for all external data fetching.
+- [x] **Create `StacksAccountDataService`**: A new service to handle rate-limiting and retries for fetching account data from the Hiro API. This prevents direct calls from the DO to the external API, ensuring we don't exceed rate limits.
+- [x] **Update `StacksApiService`**: Add a `getAccountNonce` method that uses `fetch` to call the Hiro `/extended/v1/addresses/{principal}/nonces` endpoint.
+- [x] **Create `StacksAccountDO`**: The main Durable Object class.
+    - [x] Use the Stacks address from `ctx.id` as its identifier.
+    - [x] Use `ctx.storage` for storing the nonce.
+    - [x] Implement the `fetch` handler to route requests to the correct methods.
+    - [x] Implement `getNonce`, `syncNonce`, and `updateNonce` logic.
+    - [x] Use `StacksAccountDataService` for all external data fetching.
 
 ### Phase 2: Configuration & Routing
 
-- [ ] **Update `wrangler.toml`**:
-    - [ ] Add a new migration for the `StacksAccountDO` class.
-    - [ ] Add the `STACKS_ACCOUNT_DO` binding to all environments (`preview`, `staging`, `production`).
-- [ ] **Update `worker-configuration.d.ts`**: Add `STACKS_ACCOUNT_DO` to the `Env` interface.
-- [ ] **Update `src/config.ts`**: Add `/stacks-account` to the `SUPPORTED_SERVICES` list.
-- [ ] **Update `src/index.ts`**:
-    - [ ] Import and export the `StacksAccountDO` class.
-    - [ ] Add routing logic to forward requests starting with `/stacks-account/{address}` to the correct DO instance.
+- [x] **Update `wrangler.toml`**:
+    - [x] Add a new migration for the `StacksAccountDO` class.
+    - [x] Add the `STACKS_ACCOUNT_DO` binding to all environments (`preview`, `staging`, `production`).
+- [x] **Update `worker-configuration.d.ts`**: Add `STACKS_ACCOUNT_DO` to the `Env` interface.
+- [x] **Update `src/config.ts`**: Add `/stacks-account` to the `SUPPORTED_SERVICES` list.
+- [x] **Update `src/index.ts`**:
+    - [x] Import and export the `StacksAccountDO` class.
+    - [x] Add routing logic to forward requests starting with `/stacks-account/{address}` to the correct DO instance.
 
 ### Phase 3: Verification
 

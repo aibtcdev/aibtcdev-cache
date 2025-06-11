@@ -71,8 +71,6 @@ export class StacksAccountDO extends DurableObject<Env> {
 			return this.syncNonce();
 		}
 
-
-
 		if (endpoint === '/nonce/update' && method === 'POST') {
 			const { nonce } = (await request.json()) as { nonce: number };
 			if (typeof nonce !== 'number') {
