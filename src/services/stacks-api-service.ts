@@ -165,7 +165,7 @@ export class StacksApiService {
 		const startTime = Date.now();
 		const requestId = logger.info(`Fetching nonce for address: ${address} on ${network}`);
 
-		const url = `https://api.${network}.hiro.so/extended/v1/addresses/${address}/nonces`;
+		const url = `https://api.${network}.hiro.so/extended/v1/address/${address}/nonces`;
 		const headers: HeadersInit = {};
 
 		if (this.env?.HIRO_API_KEY) {
