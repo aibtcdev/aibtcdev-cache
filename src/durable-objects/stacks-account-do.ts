@@ -9,12 +9,10 @@ import { validateStacksAddress } from '@stacks/transactions';
 
 export class StacksAccountDO extends DurableObject<Env> {
 	private accountDataService: StacksAccountDataService;
-	private address: string;
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
 		this.env = env;
-		this.address = ctx.id.toString();
 
 		const config = AppConfig.getInstance(env).getConfig();
 		const hiroConfig = config.HIRO_API_RATE_LIMIT;
@@ -31,24 +29,26 @@ export class StacksAccountDO extends DurableObject<Env> {
 
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
+		const path = url.pathname;
+		const address = path.split('/')[2];
 		// e.g., /stacks-account/{address}/nonce -> /nonce
-		const endpoint = url.pathname.replace(`/stacks-account/${this.address}`, '') || '/';
+		const endpoint = url.pathname.replace(`/stacks-account/${address}`, '') || '/';
 		const method = request.method;
 
 		return handleRequest(
 			async () => {
-				if (!validateStacksAddress(this.address)) {
-					throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: this.address });
+				if (!validateStacksAddress(address)) {
+					throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: address });
 				}
 
 				// Route to different functions based on the endpoint
 				if (endpoint.startsWith('/nonce')) {
-					return this.handleNonceRequest(request, endpoint);
+					return this.handleNonceRequest(request, endpoint, address);
 				}
 
 				// Default response for the root of the DO
 				if (endpoint === '/') {
-					return { message: `StacksAccountDO for ${this.address}. Supported endpoints: /nonce` };
+					return { message: `StacksAccountDO for ${address}. Supported endpoints: /nonce` };
 				}
 
 				throw new ApiError(ErrorCode.NOT_FOUND, { resource: endpoint });
@@ -58,17 +58,17 @@ export class StacksAccountDO extends DurableObject<Env> {
 		);
 	}
 
-	private async handleNonceRequest(request: Request, endpoint: string): Promise<{ nonce: number }> {
+	private async handleNonceRequest(request: Request, endpoint: string, address: string): Promise<{ nonce: number }> {
 		const url = new URL(request.url);
 		const method = request.method;
 
 		if (endpoint === '/nonce' && method === 'GET') {
 			const bustCache = url.searchParams.get('bustCache') === 'true';
-			return this.getNonce(bustCache);
+			return this.getNonce(address, bustCache);
 		}
 
 		if (endpoint === '/nonce/sync' && method === 'POST') {
-			return this.syncNonce();
+			return this.syncNonce(address);
 		}
 
 		if (endpoint === '/nonce/update' && method === 'POST') {
@@ -82,7 +82,7 @@ export class StacksAccountDO extends DurableObject<Env> {
 		throw new ApiError(ErrorCode.INVALID_REQUEST, { reason: `Method ${method} not supported for ${endpoint}` });
 	}
 
-	private async getNonce(bustCache: boolean): Promise<{ nonce: number }> {
+	private async getNonce(address: string, bustCache: boolean): Promise<{ nonce: number }> {
 		if (!bustCache) {
 			const storedNonce = await this.ctx.storage.get<number>('nonce');
 			if (storedNonce !== undefined) {
@@ -90,11 +90,11 @@ export class StacksAccountDO extends DurableObject<Env> {
 			}
 		}
 		// If cache is busted or nonce is not in storage, sync it
-		return this.syncNonce();
+		return this.syncNonce(address);
 	}
 
-	private async syncNonce(): Promise<{ nonce: number }> {
-		const nonce = await this.accountDataService.fetchNonce(this.address);
+	private async syncNonce(address: string): Promise<{ nonce: number }> {
+		const nonce = await this.accountDataService.fetchNonce(address);
 		await this.ctx.storage.put('nonce', nonce);
 		return { nonce };
 	}
