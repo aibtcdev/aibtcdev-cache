@@ -25,6 +25,7 @@ routes = []
 # fixing a deploy error from old code
 [[env.preview.migrations]]
 tag = "20250417"
+new_classes = ["ChainhooksDO"]
 
 [[env.preview.migrations]]
 tag = "20250530"
