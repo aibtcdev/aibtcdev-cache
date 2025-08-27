@@ -30,11 +30,11 @@ This plan addresses test failures from `bash tests/run_tests.sh`, focusing on pa
    - Status: Completed
 
 5. **Test, Validate, and Document**
-   - [ ] Re-run `bash tests/run_tests.sh` after each step.
-   - [ ] Update `docs/RETRO.md` with resolutions.
-   - [ ] Test edge cases (e.g., manual curls with double slashes).
+   - [x] Re-run `bash tests/run_tests.sh` after each step.
+   - [x] Update `docs/RETRO.md` with resolutions.
+   - [x] Test edge cases (e.g., manual curls with double slashes).
    - Assigned: Tester/Developer
-   - Status: Pending
+   - Status: Completed
 
 ## Iteration Notes
 - Track progress by checking boxes.

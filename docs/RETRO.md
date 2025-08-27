@@ -10,3 +10,13 @@
 - Improved src/services/request-queue-service.ts by adding priority to QueuedRequest, accepting priority in enqueue, and sorting the queue by priority in processQueue.
 - Integrated Hiro rate limit headers by updating TokenBucket to sync from response headers, modifying StacksApiService to perform custom fetches and pass headers for syncing, and updating StacksContractFetcher to use the sync functionality after requests.
 - Marked all implementation steps and tasks as completed in docs/PLAN.md and docs/QUESTIONS.md.
+
+# 2025-08-27
+
+## Accomplishments from AIBTCDEV Cache Fix Plan
+
+- Fixed test scripts to trim trailing slashes from API_URL, preventing double-slash path malformations.
+- Added path normalization in ContractCallsDO to handle multiple slashes robustly.
+- Improved error handling with try-catch blocks to ensure consistent status codes and prevent unexpected 500s.
+- Added warnings for missing Hiro API keys to improve debuggability.
+- Marked all steps as completed in docs/PLAN.md after validation; tests now pass with the fixes.
