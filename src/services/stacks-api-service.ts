@@ -1,5 +1,5 @@
-import { StacksNetworkName } from '@stacks/network';
-import { ClarityValue, fetchCallReadOnlyFunction } from '@stacks/transactions';
+import { StacksNetworkName, StacksMainnet, StacksTestnet } from '@stacks/network';
+import { ClarityValue, cvToHex, deserializeCV } from '@stacks/transactions';
 import { createApiKeyMiddleware, createFetchFn } from '@stacks/common';
 import { AppConfig } from '../config';
 import { ApiError } from '../utils/api-error-util';
@@ -47,7 +47,8 @@ export class StacksApiService {
 		functionName: string,
 		functionArgs: any[],
 		senderAddress: string,
-		network: StacksNetworkName
+		network: StacksNetworkName,
+		onResponse?: (response: Response) => void
 	): Promise<ClarityValue> {
 		const logger = Logger.getInstance(this.env);
 		const startTime = Date.now();
@@ -69,20 +70,58 @@ export class StacksApiService {
 				customFetchFn = createFetchFn(apiMiddleware);
 			}
 
-			// Wrap the fetch call with our timeout utility
-			const result = await withTimeout(
-				fetchCallReadOnlyFunction({
-					contractAddress,
-					contractName,
-					functionName,
-					functionArgs,
-					senderAddress,
-					network,
-					fetchFn: customFetchFn, // Use the API key middleware if available
-				}),
+			// Determine network object
+			const networkObj = network === 'mainnet' ? new StacksMainnet() : new StacksTestnet();
+
+			// Build API URL
+			const url = `${networkObj.coreUrl}/v2/contracts/call-read/${contractAddress}/${contractName}`;
+
+			// Prepare request body
+			const body = JSON.stringify({
+				sender: senderAddress,
+				arguments: functionArgs.map(arg => cvToHex(arg)),
+			});
+
+			// Prepare fetch options
+			const fetchOptions: RequestInit = {
+				method: 'POST',
+				body,
+				headers: { 'Content-Type': 'application/json' },
+			};
+
+			// Perform the fetch with timeout
+			const response = await withTimeout(
+				async () => {
+					const resp = await (customFetchFn ? customFetchFn(url, fetchOptions) : fetch(url, fetchOptions));
+					if (onResponse) onResponse(resp);
+					return resp;
+				},
 				this.timeoutMs,
 				`Contract call to ${contractAddress}.${contractName}::${functionName} timed out`
 			);
+
+			// Parse response
+			const data = await response.json<any>();
+
+			if (!response.ok) {
+				let errorMessage = data.error || `HTTP ${response.status}: ${response.statusText}`;
+				let errorCode = ErrorCode.UPSTREAM_API_ERROR;
+
+				if (response.status === 429) {
+					errorMessage += ' (Rate limit exceeded)';
+					errorCode = ErrorCode.RATE_LIMIT_EXCEEDED;
+				}
+
+				throw new ApiError(errorCode, { message: errorMessage });
+			}
+
+			if (!data.ok) {
+				throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+					message: data.error || 'Contract call failed',
+				});
+			}
+
+			const result = deserializeCV(data.result);
 
 			const duration = Date.now() - startTime;
 			if (duration > 2000) {

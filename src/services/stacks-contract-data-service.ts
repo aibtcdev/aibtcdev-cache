@@ -96,7 +96,8 @@ export class StacksContractFetcher {
 				functionName,
 				functionArgs,
 				senderAddress,
-				network
+				network,
+				(resp) => this.requestQueue.syncRateLimiter(resp.headers)
 			);
 
 			// Cache the result unless skipCache is true

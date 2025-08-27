@@ -49,7 +49,7 @@ export class RequestQueue<T> {
 		env?: Env,
 		requestTimeout: number = 5000
 	) {
-		this.rateLimiter = new TokenBucket(maxRequestsPerInterval, intervalMs);
+		this.rateLimiter = new TokenBucket(maxRequestsPerInterval, intervalMs, env);
 		this.minRequestSpacing = Math.max(10, Math.floor(intervalMs / maxRequestsPerInterval)); // Use a smaller floor
 		this.env = env;
 		this.requestTimeout = requestTimeout;
@@ -94,6 +94,15 @@ export class RequestQueue<T> {
 	 * Processes the queue of requests, respecting rate limits and handling retries
 	 * This method is called automatically when requests are enqueued
 	 */
+	/**
+	 * Syncs the rate limiter state from API response headers
+	 *
+	 * @param headers - The response headers from the API call
+	 */
+	public syncRateLimiter(headers: Headers): void {
+		this.rateLimiter.syncFromHeaders(headers);
+	}
+
 	private async processQueue(): Promise<void> {
 		if (this.processing || this.queue.length === 0) {
 			return;
