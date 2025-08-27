@@ -75,6 +75,9 @@ export class ContractCallsDO extends DurableObject<Env> {
 		// Set configuration values
 		this.CACHE_TTL = config.CACHE_TTL;
 
+		// Get API key for this DO instance
+		const hiroApiKey = AppConfig.getInstance(env).getKeyForDoId(this.ctx.id.toString());
+
 		// Initialize services
 		this.contractAbiService = new ContractAbiService(env, this.CACHE_TTL);
 
@@ -86,7 +89,8 @@ export class ContractCallsDO extends DurableObject<Env> {
 			hiroConfig.MAX_REQUESTS_PER_INTERVAL,
 			hiroConfig.INTERVAL_MS,
 			config.MAX_RETRIES,
-			config.RETRY_DELAY
+			config.RETRY_DELAY,
+			hiroApiKey
 		);
 
 		// Initialize cache key service with a prefix for this DO
@@ -281,6 +285,9 @@ export class ContractCallsDO extends DurableObject<Env> {
 		// Determine TTL - use custom TTL if provided, otherwise cache indefinitely (0)
 		const ttl = cacheControl.ttl !== undefined ? cacheControl.ttl : 0;
 
+		// Set priority: higher for non-bust requests
+		const priority = bustCache ? 0 : 1;
+
 		// Execute contract call with our caching strategy
 		const result = await this.stacksContractFetcher.fetch(
 			contractAddress,
@@ -292,7 +299,8 @@ export class ContractCallsDO extends DurableObject<Env> {
 			cacheKey,
 			bustCache,
 			skipCache,
-			ttl
+			ttl,
+			priority
 		);
 
 		return decodeClarityValues(result, strictJsonCompat, preserveContainers);

@@ -25,6 +25,7 @@ export class StacksContractFetcher {
 	 * @param intervalMs - The time interval in milliseconds for rate limiting
 	 * @param maxRetries - Maximum number of times to retry a failed request
 	 * @param retryDelay - Base delay in milliseconds between retries
+	 * @param hiroApiKey - Optional Hiro API key for authentication
 	 */
 	constructor(
 		private readonly env: Env,
@@ -32,14 +33,15 @@ export class StacksContractFetcher {
 		maxRequestsPerInterval: number,
 		intervalMs: number,
 		maxRetries: number,
-		retryDelay: number
+		retryDelay: number,
+		hiroApiKey?: string
 	) {
 		// Get timeout from config
 		const config = AppConfig.getInstance(env).getConfig();
 		const requestTimeout = config?.TIMEOUTS?.STACKS_API || 5000;
 
 		this.cacheService = new CacheService(env, cacheTtl, false);
-		this.stacksApiService = new StacksApiService(env);
+		this.stacksApiService = new StacksApiService(hiroApiKey, env);
 		this.requestQueue = new RequestQueue<ClarityValue>(maxRequestsPerInterval, intervalMs, maxRetries, retryDelay, env, requestTimeout);
 	}
 
@@ -68,7 +70,8 @@ export class StacksContractFetcher {
 		cacheKey: string,
 		bustCache = false,
 		skipCache = false,
-		ttl?: number
+		ttl?: number,
+		priority: number = 0
 	): Promise<ClarityValue> {
 		// Check cache first
 		if (!bustCache) {
@@ -104,6 +107,6 @@ export class StacksContractFetcher {
 			}
 
 			return response;
-		});
+		}, priority);
 	}
 }

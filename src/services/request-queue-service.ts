@@ -15,6 +15,7 @@ interface QueuedRequest<T> {
 	retryCount: number;
 	requestId: string;
 	queuedAt: number;
+	priority: number;
 }
 
 /**
@@ -69,7 +70,7 @@ export class RequestQueue<T> {
 	 * @param execute - Function that executes the request and returns a promise
 	 * @returns A promise that resolves with the result of the request or rejects with an error
 	 */
-	public enqueue(execute: () => Promise<T>): Promise<T> {
+	public enqueue(execute: () => Promise<T>, priority: number = 0): Promise<T> {
 		const logger = Logger.getInstance(this.env);
 		const requestId = logger.debug(`Request enqueued, current queue length: ${this.queue.length + 1}`);
 
@@ -83,6 +84,7 @@ export class RequestQueue<T> {
 				retryCount: 0,
 				requestId,
 				queuedAt,
+				priority,
 			});
 			void this.processQueue();
 		});
@@ -100,6 +102,9 @@ export class RequestQueue<T> {
 		this.processing = true;
 
 		try {
+			// Sort queue by priority (higher first)
+			this.queue.sort((a, b) => b.priority - a.priority);
+
 			while (this.queue.length > 0) {
 				// Try to get a token before processing the next request
 				if (!this.rateLimiter.getToken()) {

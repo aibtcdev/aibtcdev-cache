@@ -13,15 +13,18 @@ import { Env } from '../../worker-configuration';
  * Provides methods to call read-only functions on Stacks smart contracts
  */
 export class StacksApiService {
+	private readonly hiroApiKey?: string;
 	private readonly env: Env | undefined;
 	private readonly timeoutMs: number;
 
 	/**
 	 * Creates a new Stacks API service
 	 *
+	 * @param hiroApiKey - Optional Hiro API key for authentication
 	 * @param env - Optional Cloudflare Worker environment
 	 */
-	constructor(env?: Env) {
+	constructor(hiroApiKey?: string, env?: Env) {
+		this.hiroApiKey = hiroApiKey;
 		this.env = env;
 		// Get timeout from config or use default
 		const config = env ? AppConfig.getInstance(env).getConfig() : null;
@@ -59,9 +62,9 @@ export class StacksApiService {
 		try {
 			// Create a custom fetch function with API key middleware if available
 			let customFetchFn;
-			if (this.env?.HIRO_API_KEY) {
+			if (this.hiroApiKey) {
 				const apiMiddleware = createApiKeyMiddleware({
-					apiKey: this.env.HIRO_API_KEY,
+					apiKey: this.hiroApiKey,
 				});
 				customFetchFn = createFetchFn(apiMiddleware);
 			}
