@@ -1,6 +1,6 @@
-import { StacksNetworkName, StacksMainnet, StacksTestnet } from '@stacks/network';
+import { StacksNetworkName, STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
 import { ClarityValue, cvToHex, deserializeCV } from '@stacks/transactions';
-import { createApiKeyMiddleware, createFetchFn } from '@stacks/common';
+import { createApiKeyMiddleware, createFetchFn, FetchFn } from '@stacks/common';
 import { AppConfig } from '../config';
 import { ApiError } from '../utils/api-error-util';
 import { ErrorCode } from '../utils/error-catalog-util';
@@ -62,7 +62,7 @@ export class StacksApiService {
 
 		try {
 			// Create a custom fetch function with API key middleware if available
-			let customFetchFn;
+			let customFetchFn: FetchFn | undefined;
 			if (this.hiroApiKey) {
 				const apiMiddleware = createApiKeyMiddleware({
 					apiKey: this.hiroApiKey,
@@ -71,15 +71,16 @@ export class StacksApiService {
 			}
 
 			// Determine network object
-			const networkObj = network === 'mainnet' ? new StacksMainnet() : new StacksTestnet();
+			const networkObj = network === 'mainnet' ? STACKS_MAINNET : STACKS_TESTNET;
 
 			// Build API URL
+			// TODO: coreUrl does not exist, updated object to use latest constant but property is missing. will include latest network docs to assist in fix.
 			const url = `${networkObj.coreUrl}/v2/contracts/call-read/${contractAddress}/${contractName}`;
 
 			// Prepare request body
 			const body = JSON.stringify({
 				sender: senderAddress,
-				arguments: functionArgs.map(arg => cvToHex(arg)),
+				arguments: functionArgs.map((arg) => cvToHex(arg)),
 			});
 
 			// Prepare fetch options
@@ -91,6 +92,7 @@ export class StacksApiService {
 
 			// Perform the fetch with timeout
 			const response = await withTimeout(
+				// TODO: issue with assinging Promise<unknown> to Promise<Response> here
 				async () => {
 					const resp = await (customFetchFn ? customFetchFn(url, fetchOptions) : fetch(url, fetchOptions));
 					if (onResponse) onResponse(resp);
@@ -100,7 +102,7 @@ export class StacksApiService {
 				`Contract call to ${contractAddress}.${contractName}::${functionName} timed out`
 			);
 
-			// Parse response
+			// Parse response - TODO related, we need to type this correctly response is unknown
 			const data = await response.json<any>();
 
 			if (!response.ok) {
