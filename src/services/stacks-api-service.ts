@@ -73,9 +73,8 @@ export class StacksApiService {
 			// Determine network object
 			const networkObj = network === 'mainnet' ? STACKS_MAINNET : STACKS_TESTNET;
 
-			// Build API URL
-			// TODO: coreUrl does not exist, updated object to use latest constant but property is missing. will include latest network docs to assist in fix.
-			const url = `${networkObj.coreUrl}/v2/contracts/call-read/${contractAddress}/${contractName}`;
+			// Build API URL using client.baseUrl as per latest @stacks/network docs
+			const url = `${networkObj.client.baseUrl}/v2/contracts/call-read/${contractAddress}/${contractName}/${functionName}`;
 
 			// Prepare request body
 			const body = JSON.stringify({
@@ -91,10 +90,9 @@ export class StacksApiService {
 			};
 
 			// Perform the fetch with timeout
-			const response = await withTimeout(
-				// TODO: issue with assinging Promise<unknown> to Promise<Response> here
+			const response = await withTimeout<Response>(
 				async () => {
-					const resp = await (customFetchFn ? customFetchFn(url, fetchOptions) : fetch(url, fetchOptions));
+					const resp = await (customFetchFn ? customFetchFn(url, fetchOptions) : fetch(url, fetchOptions)) as Response;
 					if (onResponse) onResponse(resp);
 					return resp;
 				},
@@ -102,7 +100,7 @@ export class StacksApiService {
 				`Contract call to ${contractAddress}.${contractName}::${functionName} timed out`
 			);
 
-			// Parse response - TODO related, we need to type this correctly response is unknown
+			// Parse response
 			const data = await response.json<any>();
 
 			if (!response.ok) {
