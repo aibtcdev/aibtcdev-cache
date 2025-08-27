@@ -58,6 +58,7 @@ export class AppConfig {
 	public getHiroDoNames(): string[] {
 		const keys = this.env.HIRO_API_KEYS?.split(',').map(k => k.trim()) || [];
 		if (keys.length === 0) {
+			Logger.getInstance().debug('No Hiro API keys configured; falling back to default DO');
 			return ['contract-calls-do'];
 		}
 		return keys.map(key => this.hashToIdName(key));

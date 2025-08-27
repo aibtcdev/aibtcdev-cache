@@ -77,6 +77,9 @@ export class ContractCallsDO extends DurableObject<Env> {
 
 		// Get API key for this DO instance
 		const hiroApiKey = AppConfig.getInstance(env).getKeyForDoId(this.ctx.id.toString());
+		if (!hiroApiKey) {
+			Logger.getInstance(env).warn('No Hiro API key for this DO; using unauthenticated requests');
+		}
 
 		// Initialize services
 		this.contractAbiService = new ContractAbiService(env, this.CACHE_TTL);

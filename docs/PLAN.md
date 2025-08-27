@@ -24,10 +24,10 @@ This plan addresses test failures from `bash tests/run_tests.sh`, focusing on pa
    - Status: Completed
 
 4. **Handle Hiro Key Absences Gracefully**
-   - [ ] Add warnings for missing keys in `src/durable-objects/contract-calls-do.ts`, `src/services/stacks-api-service.ts`, and `src/config.ts`.
+   - [x] Add warnings for missing keys in `src/durable-objects/contract-calls-do.ts`, `src/services/stacks-api-service.ts`, and `src/config.ts`.
    - Why: Improves debuggability without crashing.
    - Assigned: Developer
-   - Status: Pending
+   - Status: Completed
 
 5. **Test, Validate, and Document**
    - [ ] Re-run `bash tests/run_tests.sh` after each step.

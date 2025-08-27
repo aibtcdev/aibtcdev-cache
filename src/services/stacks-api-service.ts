@@ -26,6 +26,9 @@ export class StacksApiService {
 	constructor(hiroApiKey?: string, env?: Env) {
 		this.hiroApiKey = hiroApiKey;
 		this.env = env;
+		if (!this.hiroApiKey) {
+			Logger.getInstance(env).warn('No Hiro API key provided; using unauthenticated requests');
+		}
 		// Get timeout from config or use default
 		const config = env ? AppConfig.getInstance(env).getConfig() : null;
 		this.timeoutMs = config?.TIMEOUTS?.STACKS_API || 5000;
