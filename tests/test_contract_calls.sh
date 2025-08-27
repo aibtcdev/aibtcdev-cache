@@ -2,6 +2,7 @@
 
 # Set default API URL from argument if provided
 export API_URL=${1:-"http://localhost:8787"}
+API_URL="${API_URL%/}"
 
 source "$(dirname "$0")/utils.sh"
 

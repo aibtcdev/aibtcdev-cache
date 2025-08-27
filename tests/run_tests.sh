@@ -2,6 +2,7 @@
 
 # Set default API URL and sleep flag from arguments
 export API_URL=${1:-"http://localhost:8787"}
+API_URL="${API_URL%/}"
 export SLEEP_BEFORE_START=${2:-false}
 export FAILED_TESTS=0
 export TOTAL_TESTS=0

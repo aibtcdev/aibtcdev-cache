@@ -6,10 +6,10 @@ This plan addresses test failures from `bash tests/run_tests.sh`, focusing on pa
 ## Actionable Steps
 
 1. **Fix Test Script to Eliminate Double Slashes (Quick Win)**
-   - [ ] In `tests/test_contract_calls.sh` and `tests/run_tests.sh`, trim trailing `/` from API_URL.
+   - [x] In `tests/test_contract_calls.sh` and `tests/run_tests.sh`, trim trailing `/` from API_URL.
    - Why: Prevents // paths in requests.
    - Assigned: Developer
-   - Status: Pending
+   - Status: Completed
 
 2. **Normalize Paths in ContractCallsDO for Robustness**
    - [ ] Add path normalization in `src/durable-objects/contract-calls-do.ts`.
