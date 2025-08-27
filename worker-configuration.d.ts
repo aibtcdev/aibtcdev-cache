@@ -2,7 +2,7 @@
 
 export interface Env {
 	AIBTCDEV_CACHE_KV: KVNamespace;
-	HIRO_API_KEY: string;
+	HIRO_API_KEYS: string;
 	SUPABASE_URL: string;
 	SUPABASE_SERVICE_KEY: string;
 	BNS_API_DO: DurableObjectNamespace<import('./src/index').BnsApiDO>;

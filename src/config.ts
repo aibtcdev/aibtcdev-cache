@@ -1,6 +1,7 @@
 import { Env } from '../worker-configuration';
 import { ApiError } from './utils/api-error-util';
 import { ErrorCode } from './utils/error-catalog-util';
+import { createHash } from 'crypto';
 
 /**
  * Singleton configuration class for the application
@@ -39,14 +40,61 @@ export class AppConfig {
 	}
 
 	/**
+	 * Generates a hashed name for a Durable Object based on the API key
+	 *
+	 * @param key - The API key to hash
+	 * @returns A unique name for the DO instance
+	 */
+	private hashToIdName(key: string): string {
+		const hash = createHash('sha256').update(key).digest('hex').substring(0, 8);
+		return `contract-calls-do-${hash}`;
+	}
+
+	/**
+	 * Returns the list of hashed DO names for Hiro API keys
+	 *
+	 * @returns Array of DO names, falling back to a single default if no keys
+	 */
+	public getHiroDoNames(): string[] {
+		const keys = this.env.HIRO_API_KEYS?.split(',').map(k => k.trim()) || [];
+		if (keys.length === 0) {
+			return ['contract-calls-do'];
+		}
+		return keys.map(key => this.hashToIdName(key));
+	}
+
+	/**
+	 * Looks up the API key for a given DO ID
+	 *
+	 * @param doId - The DO ID string to lookup
+	 * @returns The corresponding API key or undefined if not found/no keys
+	 */
+	public getKeyForDoId(doId: string): string | undefined {
+		const keys = this.env.HIRO_API_KEYS?.split(',').map(k => k.trim()) || [];
+		if (keys.length === 0) {
+			const defaultId = this.env.CONTRACT_CALLS_DO.idFromName('contract-calls-do').toString();
+			return defaultId === doId ? undefined : undefined;
+		}
+		for (const key of keys) {
+			const name = this.hashToIdName(key);
+			const computedId = this.env.CONTRACT_CALLS_DO.idFromName(name).toString();
+			if (computedId === doId) {
+				return key;
+			}
+		}
+		return undefined;
+	}
+
+	/**
 	 * Returns the application configuration settings
 	 *
 	 * @returns Configuration object with all application settings
 	 */
 
 	public getConfig() {
-		// Check if Hiro API key is available
-		const hasHiroApiKey = !!this.env.HIRO_API_KEY;
+		// Get Hiro API keys as array
+		const keys = this.env.HIRO_API_KEYS?.split(',').map(k => k.trim()) || [];
+		const hasHiroApiKey = keys.length > 0;
 
 		return {
 			// supported services for API caching
@@ -64,8 +112,8 @@ export class AppConfig {
 			ALARM_INTERVAL_MS: 300000, // 5 minutes
 			// Hiro API specific rate limiting settings
 			HIRO_API_RATE_LIMIT: {
-				// Adjust based on whether we have an API key
-				// Hiro limits: 50 RPM without key, 500 RPM with key
+				// Adjust based on whether we have API keys
+				// Hiro limits: 50 RPM without key, 500 RPM with key (per key/DO)
 				MAX_REQUESTS_PER_MINUTE: hasHiroApiKey ? 500 : 50,
 				// Convert to our interval format
 				get MAX_REQUESTS_PER_INTERVAL() {
@@ -83,7 +131,7 @@ export class AppConfig {
 			// environment variables
 			SUPABASE_URL: this.env.SUPABASE_URL,
 			SUPABASE_SERVICE_KEY: this.env.SUPABASE_SERVICE_KEY,
-			HIRO_API_KEY: this.env.HIRO_API_KEY,
+			HIRO_API_KEYS: keys,
 		};
 	}
 }
