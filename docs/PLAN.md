@@ -11,28 +11,28 @@ This plan addresses performance issues in the aibtcdev-cache system under bursty
 
 ## Implementation Steps
 
-### 1. Update src/config.ts (AppConfig)
+### 1. Update src/config.ts (AppConfig) - Completed
 - Add `HIRO_API_KEYS` as an array from env.
 - Add methods: `getHiroDoIds()` (hash keys to DO IDs), `getKeyForDoId()` (reverse lookup).
 
-### 2. Update src/index.ts (Main Worker)
+### 2. Update src/index.ts (Main Worker) - Completed
 - Initialize CacheService and CacheKeyService.
 - For /contract-calls/read-only/, parse params/body, generate cache key, check KV if !bustCache.
 - On miss/bust, use round-robin to select DO via KV counter.
 
-### 3. Update src/durable-objects/contract-calls-do.ts (ContractCallsDO)
+### 3. Update src/durable-objects/contract-calls-do.ts (ContractCallsDO) - Completed
 - Assign hiroApiKey based on DO ID.
 - Pass key to StacksContractFetcher.
 - When enqueuing, set priority (higher for non-busts).
 
-### 4. Update src/services/stacks-api-service.ts (StacksApiService)
+### 4. Update src/services/stacks-api-service.ts (StacksApiService) - Completed
 - Accept hiroApiKey in constructor.
 - Use it for API auth middleware.
 
-### 5. Update src/services/stacks-contract-data-service.ts (StacksContractFetcher)
+### 5. Update src/services/stacks-contract-data-service.ts (StacksContractFetcher) - Completed
 - Accept and forward hiroApiKey to StacksApiService.
 
-### 6. Update src/services/request-queue-service.ts (RequestQueue)
+### 6. Update src/services/request-queue-service.ts (RequestQueue) - Completed
 - Add `priority` to QueuedRequest.
 - Accept priority in enqueue.
 - Sort queue by priority in processQueue.
@@ -48,7 +48,7 @@ This plan addresses performance issues in the aibtcdev-cache system under bursty
 - Deploy to staging, integrate with frontend for real-world testing.
 
 ## Additional Enhancements
-### Integrate Hiro Rate Limit Headers
+### Integrate Hiro Rate Limit Headers - Completed
 - Update StacksApiService to parse response headers (e.g., x-ratelimit-remaining-stacks-minute, ratelimit-remaining) after API calls.
 - Use headers to dynamically adjust TokenBucket (e.g., sync available tokens with remaining counts, respect retry-after).
 - Log header info for monitoring.

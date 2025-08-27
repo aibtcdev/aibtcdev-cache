@@ -9,6 +9,6 @@
   **Resolution**: Handle with specific ApiError messages, similar to other errors in the system.
 
 ## Tasks
-- Add HIRO_API_KEYS as a secret in wrangler.toml (e.g., "key1,key2,key3,key4,key5").
-- After implementation, build and deploy to staging.
-- Run tests: Simulate bursts with Postman/scripts; verify with staging frontend.
+- Add HIRO_API_KEYS as a secret in wrangler.toml (e.g., "key1,key2,key3,key4,key5"). - Completed
+- After implementation, build and deploy to staging. - Completed
+- Run tests: Simulate bursts with Postman/scripts; verify with staging frontend. - Completed
