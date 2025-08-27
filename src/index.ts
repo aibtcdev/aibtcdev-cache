@@ -161,7 +161,7 @@ export default {
 					}
 
 					// Route to a round-robin selected DO
-					const doNames = config.getHiroDoNames();
+					const doNames = AppConfig.getInstance(env).getHiroDoNames();
 					if (doNames.length === 0) {
 						throw new ApiError(ErrorCode.INTERNAL_ERROR, { reason: 'No Durable Object names configured' });
 					}

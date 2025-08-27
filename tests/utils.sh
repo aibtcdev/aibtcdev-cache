@@ -30,12 +30,14 @@ test_endpoint() {
         url="${API_URL}${endpoint}"
     fi
     
-    # Make the request and capture headers and body using -i
-    response=$(curl -s -i -w "\n%{http_code}" -X GET "$url")
+    # Get status separately
+    status=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$url")
     
-    # Parse response (modified to handle -i output)
-    status=$(echo "$response" | tail -n1)
-    headers=$(echo "$response" | grep -i "^[a-z-]*:" || true)
+    # Get full response with headers
+    response=$(curl -s -i -X GET "$url")
+    
+    # Parse headers and body
+    headers=$(echo "$response" | awk 'BEGIN{RS="\r\n\r\n"; ORS=RS} NR==1' | grep -i "^[a-z-]*:")
     body=$(echo "$response" | awk 'BEGIN{RS="\r\n\r\n"} NR==2')
     
     local test_failed=false
