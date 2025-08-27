@@ -90,12 +90,14 @@ export class StacksApiService {
 			};
 
 			// Perform the fetch with timeout
+			const fetchPromise = (async () => {
+				const resp = await (customFetchFn ? customFetchFn(url, fetchOptions) : fetch(url, fetchOptions)) as Response;
+				if (onResponse) onResponse(resp);
+				return resp;
+			})();
+
 			const response = await withTimeout<Response>(
-				async () => {
-					const resp = await (customFetchFn ? customFetchFn(url, fetchOptions) : fetch(url, fetchOptions)) as Response;
-					if (onResponse) onResponse(resp);
-					return resp;
-				},
+				fetchPromise,
 				this.timeoutMs,
 				`Contract call to ${contractAddress}.${contractName}::${functionName} timed out`
 			);
