@@ -12,10 +12,10 @@ This plan addresses test failures from `bash tests/run_tests.sh`, focusing on pa
    - Status: Completed
 
 2. **Normalize Paths in ContractCallsDO for Robustness**
-   - [ ] Add path normalization in `src/durable-objects/contract-calls-do.ts`.
+   - [x] Add path normalization in `src/durable-objects/contract-calls-do.ts`.
    - Why: Handles double slashes gracefully.
    - Assigned: Developer
-   - Status: Pending
+   - Status: Completed
 
 3. **Improve Error Handling to Prevent Unexpected 500s**
    - [ ] Add try-catch in `src/durable-objects/contract-calls-do.ts`, `src/services/request-queue-service.ts`, and debug logs in `src/services/stacks-api-service.ts`.

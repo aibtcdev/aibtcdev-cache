@@ -117,16 +117,17 @@ export class ContractCallsDO extends DurableObject<Env> {
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname;
+		const normalizedPath = path.replace(/\/+/g, '/');
 		const method = request.method;
 
 		return handleRequest(
 			async () => {
-				if (!path.startsWith(this.BASE_PATH)) {
+				if (!normalizedPath.startsWith(this.BASE_PATH)) {
 					throw new ApiError(ErrorCode.NOT_FOUND, { resource: path });
 				}
 
 				// Remove base path to get the endpoint
-				const endpoint = path.replace(this.BASE_PATH, '');
+				const endpoint = normalizedPath.replace(this.BASE_PATH, '');
 
 				// Handle root path
 				if (endpoint === '' || endpoint === '/') {
