@@ -46,3 +46,11 @@ This plan addresses performance issues in the aibtcdev-cache system under bursty
 - Add HIRO_API_KEYS to wrangler.toml.
 - Test with 30+ mixed requests; verify metrics in logs.
 - Deploy to staging, integrate with frontend for real-world testing.
+
+## Additional Enhancements
+### Integrate Hiro Rate Limit Headers
+- Update StacksApiService to parse response headers (e.g., x-ratelimit-remaining-stacks-minute, ratelimit-remaining) after API calls.
+- Use headers to dynamically adjust TokenBucket (e.g., sync available tokens with remaining counts, respect retry-after).
+- Log header info for monitoring.
+- Align with migration timeline: Use new headers from August 1, 2024; remove legacy support after September 1, 2024.
+- Focus on Stacks-specific headers since this project primarily uses Stacks endpoints.
