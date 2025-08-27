@@ -21,7 +21,7 @@ import { handleRequest } from '../utils/request-handler-util';
  * - ClarityValue[] - For TypeScript clients using @stacks/transactions
  * - SimplifiedClarityValue[] - For non-TypeScript clients using a simpler JSON format
  */
-interface ContractCallRequest {
+export interface ContractCallRequest {
 	functionArgs: (ClarityValue | SimplifiedClarityValue)[];
 	network?: StacksNetworkName;
 	senderAddress?: string;
