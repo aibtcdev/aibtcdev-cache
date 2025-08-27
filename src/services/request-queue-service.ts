@@ -196,20 +196,23 @@ export class RequestQueue<T> {
 							void this.processQueue(); // Attempt to process queue again
 						}, retryDelayMs);
 					} else {
-						// If it's already an ApiError, pass it through
-						if (error instanceof ApiError) {
-							request.reject(error);
+						let apiError: ApiError;
+						if (error instanceof TimeoutError) {
+							apiError = new ApiError(ErrorCode.TIMEOUT_ERROR, {
+								message: error.message,
+							});
+						} else if (error instanceof ApiError) {
+							apiError = error;
 						} else {
-							// Otherwise, wrap in an ApiError
-							const apiError = new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
+							apiError = new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
 								message: error instanceof Error ? error.message : String(error),
 							});
-							Logger.getInstance().error(
-								`Request failed after ${this.maxRetries} retries`,
-								error instanceof Error ? error : new Error(String(error))
-							);
-							request.reject(apiError);
 						}
+						Logger.getInstance().error(
+							`Request failed after ${this.maxRetries} retries`,
+							error instanceof Error ? error : new Error(String(error))
+						);
+						request.reject(apiError);
 					}
 				}
 			}

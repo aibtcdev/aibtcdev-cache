@@ -106,6 +106,8 @@ export class StacksApiService {
 			const data = await response.json<any>();
 
 			if (!response.ok) {
+				logger.debug('Upstream response', { status: response.status, body: data });
+
 				let errorMessage = data.error || `HTTP ${response.status}: ${response.statusText}`;
 				let errorCode = ErrorCode.UPSTREAM_API_ERROR;
 
@@ -118,6 +120,8 @@ export class StacksApiService {
 			}
 
 			if (!data.ok) {
+				logger.debug('Upstream response', { status: response.status, body: data });
+
 				throw new ApiError(ErrorCode.UPSTREAM_API_ERROR, {
 					message: data.error || 'Contract call failed',
 				});

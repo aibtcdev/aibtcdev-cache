@@ -220,91 +220,101 @@ export class ContractCallsDO extends DurableObject<Env> {
 	 * @returns A Response with the function call result or an error message
 	 */
 	private async handleReadOnlyRequest(endpoint: string, request: Request): Promise<any> {
-		const parts = endpoint.split('/').filter(Boolean);
-		if (parts.length !== 4) {
-			throw new ApiError(ErrorCode.INVALID_REQUEST, {
-				reason: 'Invalid read-only endpoint format. Use /read-only/{contractAddress}/{contractName}/{functionName}',
-			});
+		try {
+			const parts = endpoint.split('/').filter(Boolean);
+			if (parts.length !== 4) {
+				throw new ApiError(ErrorCode.INVALID_REQUEST, {
+					reason: 'Invalid read-only endpoint format. Use /read-only/{contractAddress}/{contractName}/{functionName}',
+				});
+			}
+
+			const contractAddress = parts[1];
+			const contractName = parts[2];
+			const functionName = parts[3];
+
+			// Validate contract address
+			if (!validateStacksAddress(contractAddress)) {
+				throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: contractAddress });
+			}
+
+			// Only accept POST requests for contract calls
+			if (request.method !== 'POST') {
+				throw new ApiError(ErrorCode.INVALID_REQUEST, {
+					reason: 'Only POST requests are supported for contract calls',
+				});
+			}
+
+			// Parse function arguments from request body
+			const body = (await request.json()) as ContractCallRequest;
+			const rawFunctionArgs = body.functionArgs || [];
+			const network = (body.network || 'testnet') as StacksNetworkName;
+			const senderAddress = body.senderAddress || contractAddress;
+			// Default to true unless explicitly set to false for consistent BigInt handling
+			const strictJsonCompat = body.strictJsonCompat !== false;
+			const preserveContainers = body.preserveContainers || false;
+
+			// Convert any simplified arguments to ClarityValues
+			const functionArgs = rawFunctionArgs.map(convertToClarityValue);
+
+			// Get ABI to validate function arguments
+			const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName, false);
+
+			// Validate function exists in ABI
+			if (!this.contractAbiService.validateFunctionInABI(abi, functionName)) {
+				throw new ApiError(ErrorCode.INVALID_FUNCTION, {
+					function: functionName,
+					contract: `${contractAddress}.${contractName}`,
+				});
+			}
+
+			// Validate function arguments
+			const argsValidation = this.contractAbiService.validateFunctionArgs(abi, functionName, functionArgs);
+			if (!argsValidation.valid) {
+				throw new ApiError(ErrorCode.INVALID_ARGUMENTS, {
+					function: functionName,
+					reason: argsValidation.error || 'Invalid function arguments',
+				});
+			}
+
+			// Get cache control options from request
+			const cacheControl = body.cacheControl || {};
+			const bustCache = cacheControl.bustCache || false;
+			const skipCache = cacheControl.skipCache || false;
+
+			// Generate a deterministic cache key based on the contract call parameters
+			const cacheKey = this.cacheKeyService.generateContractCallKey(contractAddress, contractName, functionName, functionArgs, network);
+
+			// Determine TTL - use custom TTL if provided, otherwise cache indefinitely (0)
+			const ttl = cacheControl.ttl !== undefined ? cacheControl.ttl : 0;
+
+			// Set priority: higher for non-bust requests
+			const priority = bustCache ? 0 : 1;
+
+			// Execute contract call with our caching strategy
+			const result = await this.stacksContractFetcher.fetch(
+				contractAddress,
+				contractName,
+				functionName,
+				functionArgs,
+				senderAddress,
+				network,
+				cacheKey,
+				bustCache,
+				skipCache,
+				ttl,
+				priority
+			);
+
+			return decodeClarityValues(result, strictJsonCompat, preserveContainers);
+		} catch (error) {
+			if (!(error instanceof ApiError)) {
+				throw new ApiError(ErrorCode.INTERNAL_ERROR, {
+					message: error instanceof Error ? error.message : String(error),
+					originalError: error instanceof Error ? error.constructor.name : typeof error,
+				});
+			}
+			throw error;
 		}
-
-		const contractAddress = parts[1];
-		const contractName = parts[2];
-		const functionName = parts[3];
-
-		// Validate contract address
-		if (!validateStacksAddress(contractAddress)) {
-			throw new ApiError(ErrorCode.INVALID_CONTRACT_ADDRESS, { address: contractAddress });
-		}
-
-		// Only accept POST requests for contract calls
-		if (request.method !== 'POST') {
-			throw new ApiError(ErrorCode.INVALID_REQUEST, {
-				reason: 'Only POST requests are supported for contract calls',
-			});
-		}
-
-		// Parse function arguments from request body
-		const body = (await request.json()) as ContractCallRequest;
-		const rawFunctionArgs = body.functionArgs || [];
-		const network = (body.network || 'testnet') as StacksNetworkName;
-		const senderAddress = body.senderAddress || contractAddress;
-		// Default to true unless explicitly set to false for consistent BigInt handling
-		const strictJsonCompat = body.strictJsonCompat !== false;
-		const preserveContainers = body.preserveContainers || false;
-
-		// Convert any simplified arguments to ClarityValues
-		const functionArgs = rawFunctionArgs.map(convertToClarityValue);
-
-		// Get ABI to validate function arguments
-		const abi = await this.contractAbiService.fetchContractABI(contractAddress, contractName, false);
-
-		// Validate function exists in ABI
-		if (!this.contractAbiService.validateFunctionInABI(abi, functionName)) {
-			throw new ApiError(ErrorCode.INVALID_FUNCTION, {
-				function: functionName,
-				contract: `${contractAddress}.${contractName}`,
-			});
-		}
-
-		// Validate function arguments
-		const argsValidation = this.contractAbiService.validateFunctionArgs(abi, functionName, functionArgs);
-		if (!argsValidation.valid) {
-			throw new ApiError(ErrorCode.INVALID_ARGUMENTS, {
-				function: functionName,
-				reason: argsValidation.error || 'Invalid function arguments',
-			});
-		}
-
-		// Get cache control options from request
-		const cacheControl = body.cacheControl || {};
-		const bustCache = cacheControl.bustCache || false;
-		const skipCache = cacheControl.skipCache || false;
-
-		// Generate a deterministic cache key based on the contract call parameters
-		const cacheKey = this.cacheKeyService.generateContractCallKey(contractAddress, contractName, functionName, functionArgs, network);
-
-		// Determine TTL - use custom TTL if provided, otherwise cache indefinitely (0)
-		const ttl = cacheControl.ttl !== undefined ? cacheControl.ttl : 0;
-
-		// Set priority: higher for non-bust requests
-		const priority = bustCache ? 0 : 1;
-
-		// Execute contract call with our caching strategy
-		const result = await this.stacksContractFetcher.fetch(
-			contractAddress,
-			contractName,
-			functionName,
-			functionArgs,
-			senderAddress,
-			network,
-			cacheKey,
-			bustCache,
-			skipCache,
-			ttl,
-			priority
-		);
-
-		return decodeClarityValues(result, strictJsonCompat, preserveContainers);
 	}
 
 	/**
@@ -317,50 +327,60 @@ export class ContractCallsDO extends DurableObject<Env> {
 	 * @returns A Response with the decoded value or an error message
 	 */
 	private async handleDecodeClarityValueRequest(request: Request): Promise<any> {
-		// Only accept POST requests for decoding
-		if (request.method !== 'POST') {
-			throw new ApiError(ErrorCode.INVALID_REQUEST, {
-				reason: 'Only POST requests are supported for decoding Clarity values',
-			});
-		}
-
-		// Parse request body
-		const body = (await request.json()) as {
-			clarityValue: ClarityValue | SimplifiedClarityValue | string;
-			strictJsonCompat?: boolean;
-			preserveContainers?: boolean;
-		};
-
-		if (!body.clarityValue) {
-			throw new ApiError(ErrorCode.INVALID_REQUEST, {
-				reason: 'Missing required field: clarityValue',
-			});
-		}
-
-		// Convert ClarityValue to ClarityValue if necessary
-		let clarityValue: ClarityValue;
 		try {
-			if (typeof body.clarityValue === 'string') {
-				clarityValue = deserializeCV(body.clarityValue);
-			} else {
-				clarityValue = convertToClarityValue(body.clarityValue);
+			// Only accept POST requests for decoding
+			if (request.method !== 'POST') {
+				throw new ApiError(ErrorCode.INVALID_REQUEST, {
+					reason: 'Only POST requests are supported for decoding Clarity values',
+				});
 			}
+
+			// Parse request body
+			const body = (await request.json()) as {
+				clarityValue: ClarityValue | SimplifiedClarityValue | string;
+				strictJsonCompat?: boolean;
+				preserveContainers?: boolean;
+			};
+
+			if (!body.clarityValue) {
+				throw new ApiError(ErrorCode.INVALID_REQUEST, {
+					reason: 'Missing required field: clarityValue',
+				});
+			}
+
+			// Convert ClarityValue to ClarityValue if necessary
+			let clarityValue: ClarityValue;
+			try {
+				if (typeof body.clarityValue === 'string') {
+					clarityValue = deserializeCV(body.clarityValue);
+				} else {
+					clarityValue = convertToClarityValue(body.clarityValue);
+				}
+			} catch (error) {
+				throw new ApiError(ErrorCode.VALIDATION_ERROR, {
+					message: `Invalid Clarity value format: ${error instanceof Error ? error.message : String(error)}`,
+				});
+			}
+
+			// Decode the value with the provided options
+			const decodedValue = decodeClarityValues(
+				clarityValue,
+				body.strictJsonCompat !== false, // Default to true unless explicitly set to false
+				body.preserveContainers === true // Default to false unless explicitly set to true
+			);
+
+			return {
+				original: body.clarityValue,
+				decoded: decodedValue,
+			};
 		} catch (error) {
-			throw new ApiError(ErrorCode.VALIDATION_ERROR, {
-				message: `Invalid Clarity value format: ${error instanceof Error ? error.message : String(error)}`,
-			});
+			if (!(error instanceof ApiError)) {
+				throw new ApiError(ErrorCode.INTERNAL_ERROR, {
+					message: error instanceof Error ? error.message : String(error),
+					originalError: error instanceof Error ? error.constructor.name : typeof error,
+				});
+			}
+			throw error;
 		}
-
-		// Decode the value with the provided options
-		const decodedValue = decodeClarityValues(
-			clarityValue,
-			body.strictJsonCompat !== false, // Default to true unless explicitly set to false
-			body.preserveContainers === true // Default to false unless explicitly set to true
-		);
-
-		return {
-			original: body.clarityValue,
-			decoded: decodedValue,
-		};
 	}
 }

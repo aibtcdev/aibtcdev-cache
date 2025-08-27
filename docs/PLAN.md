@@ -18,10 +18,10 @@ This plan addresses test failures from `bash tests/run_tests.sh`, focusing on pa
    - Status: Completed
 
 3. **Improve Error Handling to Prevent Unexpected 500s**
-   - [ ] Add try-catch in `src/durable-objects/contract-calls-do.ts`, `src/services/request-queue-service.ts`, and debug logs in `src/services/stacks-api-service.ts`.
+   - [x] Add try-catch in `src/durable-objects/contract-calls-do.ts`, `src/services/request-queue-service.ts`, and debug logs in `src/services/stacks-api-service.ts`.
    - Why: Ensures correct status codes (e.g., 404 instead of 500).
    - Assigned: Developer
-   - Status: Pending
+   - Status: Completed
 
 4. **Handle Hiro Key Absences Gracefully**
    - [ ] Add warnings for missing keys in `src/durable-objects/contract-calls-do.ts`, `src/services/stacks-api-service.ts`, and `src/config.ts`.
