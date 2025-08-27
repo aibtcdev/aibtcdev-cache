@@ -28,7 +28,9 @@ tag = "20250417"
 
 [[env.preview.migrations]]
 tag = "20250530"
-deleted_classes = ["ChainhooksDO"]
+# Removed 2025/08/27 after error on build
+# Cannot apply delete-class migration to class 'ChainhooksDO' which was not exported in the previous version of the script [code: 10074]
+# deleted_classes = ["ChainhooksDO"]
 
 [[env.preview.kv_namespaces]]
 binding = "AIBTCDEV_CACHE_KV"
