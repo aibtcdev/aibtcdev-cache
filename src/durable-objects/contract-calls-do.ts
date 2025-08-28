@@ -10,6 +10,7 @@ import { decodeClarityValues, SimplifiedClarityValue, convertToClarityValue } fr
 import { ApiError } from '../utils/api-error-util';
 import { ErrorCode } from '../utils/error-catalog-util';
 import { handleRequest } from '../utils/request-handler-util';
+import { Logger } from '../utils/logger-util';
 
 /**
  * Interface for expected request body for contract calls

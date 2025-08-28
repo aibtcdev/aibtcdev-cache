@@ -20,3 +20,5 @@
 - Improved error handling with try-catch blocks to ensure consistent status codes and prevent unexpected 500s.
 - Added warnings for missing Hiro API keys to improve debuggability.
 - Marked all steps as completed in docs/PLAN.md after validation; tests now pass with the fixes.
+
+- Added missing Logger imports to fix "Logger is not defined" errors in various services and DOs.

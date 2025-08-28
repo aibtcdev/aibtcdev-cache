@@ -2,6 +2,7 @@ import { Env } from '../worker-configuration';
 import { ApiError } from './utils/api-error-util';
 import { ErrorCode } from './utils/error-catalog-util';
 import { createHash } from 'crypto';
+import { Logger } from './utils/logger-util';
 
 /**
  * Singleton configuration class for the application

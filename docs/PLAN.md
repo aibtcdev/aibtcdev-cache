@@ -57,8 +57,8 @@ Based on latest test output (6 failures: 500s for base/known/ABI/invalid, decode
    - Status: Completed
 
 8. **Re-Test and Validate**
-   - [ ] Re-run `bash tests/run_tests.sh` and manual curls after fixes.
-   - [ ] If 500s persist for ABI/known, check server logs for requestIds (e.g., "f67162e8") to trace.
-   - [ ] Update RETRO.md with resolutions.
+   - [x] Re-run `bash tests/run_tests.sh` and manual curls after fixes.
+   - [x] If 500s persist for ABI/known, check server logs for requestIds (e.g., "f67162e8") to trace.
+   - [x] Update RETRO.md with resolutions.
    - Assigned: Tester/Developer
-   - Status: Pending
+   - Status: Completed
